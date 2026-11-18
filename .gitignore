@@ -4,3 +4,4 @@ node_modules/
 *.log
 __pycache__/
 .DS_Store
+supabase/functions/_shared/engine.js

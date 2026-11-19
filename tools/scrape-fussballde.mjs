@@ -4,7 +4,6 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 
 const SAISON = process.env.SAISON || '2627';
 const VERB = [[23, 'Mittelrhein'], [22, 'Niederrhein'], [21, 'Westfalen']];
-const HERREN = '95';
 const UA = 'Mozilla/5.0 (compatible; AmateurManagerDataBot/1.0; +https://amateur-manager.de)';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let calls = 0;
@@ -52,6 +51,7 @@ for (const [m, vname] of VERB) {
   console.log('== Verband', vname);
   const kinds = await get(`https://www.fussball.de/wam_kinds_${m}_${SAISON}_1.json`, true);
   if (!kinds) { console.error('keine Daten für', vname); continue; }
+  const HERREN = strip((Object.entries(kinds.Mannschaftsart || {}).find(([, v]) => v === 'Herren') || ['_95'])[0]);
   const sks = kinds.Spielklasse?.[HERREN] || {};
   const geb = kinds.Gebiet?.[HERREN] || {};
   const V = { id: m, name: vname, klassen: {}, staffeln: [] };

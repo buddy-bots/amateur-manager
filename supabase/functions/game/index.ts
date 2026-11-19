@@ -356,6 +356,10 @@ async function handle(req: Request, userId: string, body: any) {
     return { saveId: data.id, version: data.version, state: S };
   }
 
+  if (op === 'refInfo') return await refInfo(userId, profile);
+  if (op === 'refClaim') return await refClaim(userId, profile, String(body.code || ''));
+  if (op === 'refMission') return await refMission(userId, profile, String(body.k || ''));
+  if (op === 'refAdmin') { if (!profile.is_admin) throw new HttpError(403, 'Nur für Admins.'); return await refAdmin(String(body.add || ''), String(body.label || '')); }
   const saveId = String(body.saveId || '');
   if (!/^[0-9a-f-]{36}$/.test(saveId)) throw new HttpError(400, 'Spielstand fehlt.');
 
@@ -369,10 +373,6 @@ async function handle(req: Request, userId: string, body: any) {
     if (error) throw new HttpError(500, 'Löschen fehlgeschlagen.');
     return { ok: true };
   }
-  if (op === 'refInfo') return await refInfo(userId, profile);
-  if (op === 'refClaim') return await refClaim(userId, profile, String(body.code || ''));
-  if (op === 'refMission') return await refMission(userId, profile, String(body.k || ''));
-  if (op === 'refAdmin') { if (!profile.is_admin) throw new HttpError(403, 'Nur für Admins.'); return await refAdmin(String(body.add || ''), String(body.label || '')); }
   if (op === 'act') {
     const action = String(body.action || '');
     if (!/^[a-zA-Z0-9]{1,40}$/.test(action)) throw new HttpError(400, 'Ungültige Aktion.');

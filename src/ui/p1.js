@@ -9,7 +9,8 @@ function titleFit() {
   var x = Math.max(0, (ew - cw) / 2) + 16, y = Math.max(0, (eh - ch) / 2) + 16;
   var set = function (sel, side, v) { var el = document.querySelector(sel); if (el) el.style.setProperty(side, v + 'px', 'important'); };
   set('.titlewrap .verbadge', 'left', x); set('.titlewrap .verbadge', 'top', y); set('.titlewrap .fsstart', 'right', x); set('.titlewrap .fsstart', 'top', y);
-  set('.titlewrap .pubbadge', 'right', x + 48); set('.titlewrap .pubbadge', 'top', y);
+  set('.titlewrap .tbtns', 'right', x + 48); set('.titlewrap .tbtns', 'top', y); var tbw = (document.querySelector('.titlewrap .tbtns') || {}).offsetWidth || 0;
+  set('.titlewrap .pubbadge', 'right', x + 56 + tbw); set('.titlewrap .pubbadge', 'top', y);
 }
 window.addEventListener('resize', function () { titleFit(); });
 function VPN(long) { var v = S && S.reg && S.reg.verband; return v === 'Niederrhein' ? 'Niederrheinpokal' : v === 'Westfalen' ? 'Westfalenpokal' : v === 'Rheinland' ? 'Rheinlandpokal' : v === 'Südwest' ? 'Verbandspokal Südwest' : long ? 'Bitburger-Pokal (Mittelrheinpokal)' : 'Bitburger-Pokal'; }
@@ -22,7 +23,7 @@ var GROUPS = [
   ['jugendG', 'Academy', [['jugend', 'Academy', 'academy'], ['partner', 'Partnerverein', 'partner'], ['scout', 'Scouting', 'scouting'], ['jcamps', 'Internationale Camps', 'jcamps']]], ['kal', 'Kalender'], ['liga', 'Liga'], ['pokal', 'Pokal'],
   ['finanzen', 'Finanzen', [['fin', 'Budget'], ['transfer', 'Transfers', 'transfers'], ['spons', 'Sponsoren', 'sponsor1'], ['ausstatter', 'Ausstatter & Partner', 'ausbau']]],
   ['vereinG', 'Verein', [['verein', 'Verein'], ['fans', 'Fans'], ['erfolge', 'Erfolge'], ['news', 'Nachrichten'], ['masc', 'Maskottchen', 'maskottchen'], ['med', 'Med. Abteilung', 'med']]],
-  ['managerG', 'Manager', [['manager', 'Profil'], ['psponsor', 'Persönlicher Sponsor', 'psponsor'], ['kurse', 'Lehrgänge', 'lehrgang'], ['privat', 'Privater Bereich', 'privat']]]
+  ['managerG', 'Manager', [['manager', 'Profil'], ['psponsor', 'Persönlicher Sponsor', 'psponsor'], ['kurse', 'Lehrgänge', 'lehrgang'], ['privat', 'Privater Bereich', 'privat'], ['missionen', 'Missionen', 'missionen']]]
 ];
 function tabFeat(t) { var f = null; GROUPS.forEach(function (g) { if (g[0] === t && g[3]) f = g[3]; (g[2] || []).forEach(function (s) { if (s[0] === t) f = s[2] || null; }); }); return f; }
 function groupOf(t) { var r = t; GROUPS.forEach(function (g) { if (g[0] === t) r = g[0]; (g[2] || []).forEach(function (s) { if (s[0] === t) r = g[0]; }); }); return r; }
@@ -344,8 +345,8 @@ function homeInfo() {
 }
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
-  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '' + (function () { var ts = titleSrc(), ph = ts === 'PH'; return '<img class="titleimg' + (ph ? ' ph' : '') + '" src="' + (ph ? TITLEIMG : ts) + '" onload="if(!this.classList.contains(\'ph\'))this.style.opacity=1;titleFit()" onerror="if(this.src!==TITLEIMG){this.classList.remove(\'ph\');this.src=TITLEIMG}" style="opacity:0;transition:opacity .4s" alt="Amateur Manager">'; })() + '<div class="tboard box"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span><div class="xs muted" id="homeinfo" style="margin-top:6px">' + homeInfo() + '</div></div>' +
-    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button><button onclick="bonusPop()">🎁 Boni &amp; Einladen</button></div>' +
+  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '' + (function () { var ts = titleSrc(), ph = ts === 'PH'; return '<img class="titleimg' + (ph ? ' ph' : '') + '" src="' + (ph ? TITLEIMG : ts) + '" onload="if(!this.classList.contains(\'ph\'))this.style.opacity=1;titleFit()" onerror="if(this.src!==TITLEIMG){this.classList.remove(\'ph\');this.src=TITLEIMG}" style="opacity:0;transition:opacity .4s" alt="Amateur Manager">'; })() + '' +
+    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button></div>' +
     '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a></div></div>';
 }
 function refreshHome() {
@@ -553,12 +554,20 @@ function cpKreisList() {
   var vb = cpVbs().map(encodeURIComponent).join(',');
   $('#cphits').innerHTML = '<div class="xs muted" style="margin-top:6px">Lade Vereine …</div>';
   rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&ligen_staffeln.verband=in.(' + vb + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
-    rows.sort(function (a, b) { return (a.ligen_staffeln.ebene - b.ligen_staffeln.ebene) || a.name.localeCompare(b.name, 'de'); }); CP.hits = rows;
-    $('#cphits').innerHTML = rows.length ? '<div class="cphits tall">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Keine Vereine gefunden.</div>';
+    rows.sort(function (a, b) { return (a.ligen_staffeln.ebene - b.ligen_staffeln.ebene) || a.name.localeCompare(b.name, 'de'); }); CP.krows = rows; CP.kgrp = ''; cpKreisDraw();
   });
 }
+// Kreis → Liga → Verein zum Durchklicken
+function cpKreisDraw() {
+  var rows = CP.krows || [], el = $('#cphits'); if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div class="xs muted" style="margin-top:6px">Keine Vereine gefunden.</div>'; return; }
+  if (!CP.kgrp) { var G = [], seen = {}; rows.forEach(function (t) { var n = t.ligen_staffeln.name; if (!seen[n]) { seen[n] = { n: n, c: 0, e: t.ligen_staffeln.ebene }; G.push(seen[n]); } seen[n].c++; });
+    el.innerHTML = '<div class="xs muted" style="margin:8px 0 4px">Wähle die Liga:</div><div class="cphits tall">' + G.map(function (g, i) { return '<button class="cphit lg" onclick="CP.kgrp=CP.kgl[' + i + '];cpKreisDraw()"><span class="lgn" title="Spielklasse (Ebene)">' + g.e + '</span><span><b>' + esc(g.n) + '</b><span class="xs muted">' + g.c + (g.c === 1 ? ' Verein' : ' Vereine') + ' aus dem Kreis</span></span><span class="chev">›</span></button>'; }).join('') + '</div>'; CP.kgl = G.map(function (g) { return g.n; }); return; }
+  CP.hits = rows.filter(function (t) { return t.ligen_staffeln.name === CP.kgrp; });
+  el.innerHTML = '<div class="row" style="gap:8px;margin:8px 0 4px"><button class="sm" onclick="CP.kgrp=\'\';cpKreisDraw()">‹ Ligen</button><b class="small">' + esc(CP.kgrp) + '</b></div><div class="cphits tall">' + CP.hits.map(function (t, i) { return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b></span></button>'; }).join('') + '</div>';
+}
 function mapRedraw() { var el = $('#demapf'); if (el) el.innerHTML = deMap(); }
-function cpLand(n) { if (n && !BLAND[n]) return toast(n + ': Coming soon – bald spielbar!'); CP.land = n; CP.kreis = ''; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
+function cpLand(n) { if (n && !BLAND[n]) return toast(n + ': Coming soon – bald spielbar!'); CP.land = n; CP.kreis = ''; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; if (!LITE && !navigator.maxTouchPoints) q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
 function cpCounts() {
   if (CPN) return; CPN = {};
   Object.keys(BLAND).forEach(function (k) {
@@ -568,7 +577,7 @@ function cpCounts() {
   });
 }
 // Karte (modern, schräg von oben): Übersicht mit schwebenden spielbaren Ländern; Klick auf ein Land zoomt hinein und zeigt die Fußballkreise
-var MAPK = 0.74, MAPLIFT = 16;
+var MAPK = 0.74, MAPLIFT = 16, AIRL = [];
 function mapXY(lat, lon) { var p = DEMAP.p; return [(lon * p[3] - p[0]) * p[2], ((-lat) - p[1]) * p[2] * MAPK]; }
 function kName(k) { return String(k).replace(/Dinslak$/, 'Dinslaken').replace(/Kaiserslaut\./, 'Kaiserslautern'); }
 function pathBox(d) { var n = d.match(/-?\d+(\.\d+)?/g).map(Number), x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (var i = 0; i + 1 < n.length; i += 2) { x0 = Math.min(x0, n[i]); x1 = Math.max(x1, n[i]); y0 = Math.min(y0, n[i + 1]); y1 = Math.max(y1, n[i + 1]); } return [x0, y0 * MAPK, x1, y1 * MAPK]; }
@@ -577,7 +586,7 @@ function mapDefs() { return '<defs><linearGradient id="mgA" x1="0" y1="0" x2="0"
 function deMap() {
   if (typeof DEMAP === 'undefined') return '';
   if (CP.land && DEMAP.k && DEMAP.k[CP.land]) return deMapLand(CP.land);
-  var W = DEMAP.w, H = Math.round(DEMAP.h * MAPK), flat = '', soon = '', air = '', sc = 'scale(1 ' + MAPK + ')';
+  var W = DEMAP.w, H = Math.round(DEMAP.h * MAPK), flat = '', soon = '', sc = 'scale(1 ' + MAPK + ')'; AIRL = [];
   DEMAP.l.forEach(function (l) {
     var av = !!BLAND[l[0]];
     if (!av) {
@@ -589,11 +598,12 @@ function deMap() {
     var L = BLAND[l[0]], cx = l[2], cy = Math.round(l[3] * MAPK), n = CPN && CPN[l[0]] != null ? CPN[l[0]].toLocaleString('de-DE') + ' Teams' : '…', walls = '';
     flat += '<path d="' + l[1] + '" transform="' + sc + '" fill="#000" opacity=".45" filter="url(#mblur)"/>';
     for (var j = MAPLIFT; j >= 1; j -= 2) walls += '<path d="' + l[1] + '" transform="translate(0 ' + (j - MAPLIFT) + ') ' + sc + '" fill="' + (j > MAPLIFT / 2 ? '#2f5d18' : '#3d7420') + '"/>';
-    air += '<g class="lift" style="animation-delay:' + (l[0].length % 3) * -0.9 + 's" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + ' – antippen</title>' + walls + '<path class="top" d="' + l[1] + '" transform="translate(0 ' + (-MAPLIFT) + ') ' + sc + '"/>' +
+    AIRL.push('<g class="lift" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + ' – antippen</title>' + walls + '<path class="top" d="' + l[1] + '" transform="translate(0 ' + (-MAPLIFT) + ') ' + sc + '"/>' +
       '<g class="lbadge" transform="translate(' + cx + ' ' + (cy - MAPLIFT - 4) + ')"><path d="M0 -30 19 -24v13c0 11-8 18-19 22-11-4-19-11-19-22v-13z" fill="' + L.c[0] + '" stroke="#fff" stroke-width="2.2"/><path d="M-19 -12h38v7h-38z" fill="' + L.c[1] + '"/><path d="M-19 -5h38v6h-38z" fill="' + L.c[2] + '"/><text y="-16" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + L.k + '</text>' +
-      '<rect x="-40" y="15" width="80" height="30" rx="15" fill="rgba(12,18,10,.82)" stroke="rgba(185,242,122,.55)"/><text y="27" text-anchor="middle" font-size="8.5" font-weight="800" fill="#cfe9b4" font-family="Arial,sans-serif" letter-spacing=".4">' + esc(L.ab) + '</text><text y="39.5" text-anchor="middle" font-size="10.5" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + n + '</text></g>' + (CP.team && CP.land === l[0] ? mapPin(MAPLIFT) : '') + '</g>';
+      '<rect x="-40" y="15" width="80" height="30" rx="15" fill="rgba(12,18,10,.82)" stroke="rgba(185,242,122,.55)"/><text y="27" text-anchor="middle" font-size="8.5" font-weight="800" fill="#cfe9b4" font-family="Arial,sans-serif" letter-spacing=".4">' + esc(L.ab) + '</text><text y="39.5" text-anchor="middle" font-size="10.5" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + n + '</text></g>' + (CP.team && CP.land === l[0] ? mapPin(MAPLIFT) : '') + '</g>');
   });
-  return '<svg viewBox="-12 -60 ' + (W + 24) + ' ' + (H + 80) + '" aria-label="Deutschlandkarte">' + mapDefs() + flat + soon + air + '</svg>';
+  var vb = '-12 -60 ' + (W + 24) + ' ' + (H + 80);
+  return '<div class="mapst"><svg class="mbase" viewBox="' + vb + '" aria-label="Deutschlandkarte">' + mapDefs() + flat + soon + '</svg>' + AIRL.map(function (a, i) { return '<svg class="mair" style="animation-delay:' + (i * -1.1) + 's" viewBox="' + vb + '">' + mapDefs() + a + '</svg>'; }).join('') + '</div>';
 }
 // Ein Land groß mit seinen Fußballkreisen
 function deMapLand(land) {
@@ -690,19 +700,18 @@ function bonusPop() {
 }
 function bonusDraw(I) {
   BONUSI = I; var link = location.origin + '/?ref=' + I.code, inGame = !!(S && V && ST.screen === 'game');
-  var mrow = function (m, claim) { return '<div class="misr ' + m.st + '"><span class="mic">' + (m.st === 'open' ? '⬜' : m.st === 'done' ? '🎁' : '✅') + '</span><span class="mt">' + esc(m.t) + (m.n ? ' <span class="xs muted">(' + Math.min(m.have, m.n) + '/' + m.n + ')</span>' : '') + '</span><span class="mrw">' + rwTxt(m.rw) + '</span>' + (m.st === 'done' ? '<button class="pri sm" onclick="' + claim + '">Abholen</button>' : '') + '</div>'; };
+  var mrow = function (m, claim) { return '<div class="misr ' + m.st + '"><span class="mic">' + (m.st === 'open' ? '⬜' : m.st === 'done' ? '🎁' : '✅') + '</span><span class="mt">' + esc(m.t) + (m.n ? ' <span class="xs muted">(' + Math.min(m.have, m.n) + '/' + m.n + ')</span>' : '') + '</span><span class="mrw">' + rwTxt(m.rw) + '</span>' + (m.st === 'done' ? '<button class="sm" onclick="' + claim + '">Abholen</button>' : '') + '</div>'; };
   var cr = I.credit || {}, hasCr = (cr.j || 0) + (cr.h || 0) > 0;
-  pop('<div class="evw"><div class="ptitle"><span>🎁</span><h2>Boni &amp; Missionen</h2></div>' +
-    '<h3 style="margin:12px 0 6px">Freunde einladen</h3><div class="small muted" style="line-height:1.5">Für jede echte Person, die sich über deinen Link anmeldet, bekommst du <b>+' + I.xpEach + ' XP</b>. Spielen deine Freunde eine ganze Saison, warten weitere Belohnungen.</div>' +
-    '<div class="reflink"><input readonly value="' + esc(link) + '" onclick="this.select()"><button class="pri sm" onclick="refCopy()">Kopieren</button>' + (navigator.share ? '<button class="sm" onclick="navigator.share({title:\'Amateur Manager\',text:\'Spiel mit mir den Amateur Manager!\',url:\'' + esc(link) + '\'})">Teilen</button>' : '') + '</div>' +
+  pop('<div class="evw refp"><div class="ptitle"><span>🤝</span><h2>Freunde einladen</h2></div>' +
+    '<div class="small muted" style="line-height:1.5;margin-top:8px">Für jede echte Person, die sich über deinen Link anmeldet, bekommst du <b>+' + I.xpEach + ' XP</b>. Spielen deine Freunde eine ganze Saison, warten weitere Belohnungen.</div>' +
+    '<div class="reflink"><input readonly value="' + esc(link) + '" onclick="this.select()"><button class="sm" onclick="refCopy()">Kopieren</button>' + (navigator.share ? '<button class="sm" onclick="navigator.share({title:\'Amateur Manager\',text:\'Spiel mit mir den Amateur Manager!\',url:\'' + esc(link) + '\'})">Teilen</button>' : '') + '</div>' +
     '<div class="refst"><div><b>' + I.invited + '</b><span>angemeldet</span></div><div><b>' + I.played + '</b><span>1+ Saison gespielt</span></div></div>' +
     I.missions.map(function (m) { return mrow(m, 'refMis(\'' + m.k + '\')'); }).join('') +
-    (hasCr ? '<div class="crbox">Guthaben: <b>' + rwTxt(cr) + '</b>' + (inGame ? '<button class="pri sm" onclick="bonusRedeem()">In diesen Spielstand holen</button>' : '<span class="xs muted"> – im Spiel unter 🎁 einlösen</span>') + '</div>' : '') +
-    (inGame && V.missions ? '<h3 style="margin:14px 0 6px">Missionen in diesem Spiel</h3>' + V.missions.map(function (m) { return mrow(m, 'misClaim(\'' + m.k + '\')'); }).join('') : '') +
+    (hasCr ? '<div class="crbox">Guthaben: <b>' + rwTxt(cr) + '</b>' + (inGame ? '<button class="sm" onclick="bonusRedeem()">In diesen Spielstand holen</button>' : '') + '</div>' : '') +
     '</div>', { white: true });
 }
 var BONUSI = null;
 function refCopy() { var l = location.origin + '/?ref=' + BONUSI.code; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () { toast('Link kopiert ✓'); }, function () { toast('Bitte den Link markieren und kopieren.'); }); }
 function refMis(k) { loading(true); game('refMission', { k: k }).then(function (I) { loading(false); toast('Belohnung gutgeschrieben – im Spiel einlösen.', false, '🎁 Mission geschafft'); bonusDraw(I); }).catch(function (x) { loading(false); toast(x.message, true); }); }
-function misClaim(k) { act('misClaim', { k: k }, { quiet: true }).then(function (r) { if (!r) return; toast(String(r.info || '').replace(/^🎁\s*/, ''), false, '🎁 Belohnung'); render(true); bonusDraw(BONUSI); }); }
+function misClaim(k) { act('misClaim', { k: k }, { quiet: true }).then(function (r) { if (!r) return; var t = String(r.info || ''), i = t.indexOf(': '); toast(i > 0 ? t.slice(i + 2) : t, false, '🎯 ' + (i > 0 ? t.slice(2, i) : 'Mission')); if ($('#pop')) closePop(); render(true); }); }
 function bonusRedeem() { act('bonusRedeem', {}, { quiet: true }).then(function (r) { if (!r) return; toast(String(r.info || '').replace(/^🎁\s*/, ''), false, '🎁 Bonus'); BONUSI.credit = { j: 0, h: 0 }; render(true); bonusDraw(BONUSI); }); }

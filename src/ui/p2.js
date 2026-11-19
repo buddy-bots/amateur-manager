@@ -128,7 +128,7 @@ function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catc
 function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {
   stopIg();
-  var f = { privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews }[ST.tab] || tHome;
+  var f = { privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
   var fk = tabFeat(ST.tab);
   $('#main').className = ST.tab === 'home' ? 'hvon' : '';
   $('#main').innerHTML = fk && !has(fk) ? lockHTML(fk) : f();
@@ -280,7 +280,7 @@ function twinGo(take) {
   var keep = Object.keys(TWSEL.o).filter(function (k) { return TWSEL.o[k]; }).map(Number), add = Object.keys(TWSEL.n).filter(function (k) { return TWSEL.n[k]; }).map(Number);
   act('twinDecide', { take: take, keep: keep, add: add }, { quiet: true }).then(function (r) { if (!r) return; TWSEL = null; closePop(); render(true); toast(r.info || '', false, take ? '🏟️ Neue Mannschaft' : 'Entscheidung'); afterUpdate(); });
 }
-function icBar() { return '<span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button><button class="icbtn' + ((V.missions || []).some(function (m) { return m.st === 'done'; }) ? ' dirty' : '') + '" title="Boni &amp; Missionen" onclick="bonusPop()">🎁</button></span>'; }
+function icBar() { return '<span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button></span>'; }
 /* ---------- Hauptsponsor */
 var NW = {};
 function negoOffers(kind) { return kind === 'sp' ? V.spOffers : kind === 'ps' ? V.psOffers : kind === 'pv' ? V.pvOffers : kind === 'ball' ? V.ballOffers : V.kitOffers; }

@@ -127,7 +127,26 @@ function tHome() {
   var c1 = compBox() + topBox1('lt', '⭐ Leistungsträger') + topBox1('tore', '⚽ Torschützen') + topBox1('vorl', '👟 Vorlagengeber') + injBox() + loanBox() + contractBox1() + buildBox();
   var c2 = partnerBox() + '<div style="margin-bottom:12px">' + ticketHTML(n) + '</div>' + (n && n.comp !== 'liga' && n.comp !== 'test' && n.comp !== 'rel' ? cupExcerpt(n) : tableExcerpt()) + '<div class="box"><h3>📅 Letzte Spiele</h3>' + (played.length ? played.map(gameLine).join('') : '<div class="muted small">Noch keine Spiele in dieser Saison.</div>') + '</div>';
   var c3 = mailsBox() + feedBox();
-  return L4(c1, S2(c2, c3), mgrSide() + clubSide());
+  return L4(c1, S2(c2, c3), misBox() + mgrSide() + clubSide());
+}
+/* ---------- Missionen: kleine Übersicht (zwei Kreise) und eigene Seite unter Manager */
+function donut(p, col, lbl, sub, lock) { var r = 26, c = 2 * Math.PI * r, d = Math.max(0, Math.min(1, p)) * c; return '<div class="mdon' + (lock ? ' lock' : '') + '"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>' + (lock ? '' : '<circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + d.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 32 32)"/>') + '<text x="32" y="36" text-anchor="middle" font-size="13" font-weight="900" fill="currentColor">' + (lock ? '🔒' : Math.round(p * 100) + '%') + '</text></svg><b>' + lbl + '</b><span class="xs muted">' + sub + '</span></div>'; }
+function misBox() {
+  var M = V.missions; if (!M || !M.dailyOn) return '';
+  var d = M.daily, dn = d.filter(function (m) { return m.st !== 'open'; }).length, open = d.filter(function (m) { return m.st === 'done'; }).length + (M.careerOn ? M.career.filter(function (m) { return m.st === 'done'; }).length : 0);
+  var cc = M.career.filter(function (m) { return m.st === 'claimed'; }).length;
+  return '<div class="box misbox" onclick="if(V.missions.careerOn)go(\'missionen\');else pop(\'<h2>☀️ Tagesmissionen</h2>\' + V.missions.daily.map(misRow).join(\'\'), { white: true })" style="cursor:pointer"><h3>🎯 Missionen' + (open ? ' <span class="pill y">' + open + ' abholen</span>' : '') + '</h3><div class="mdons">' + donut(d.length ? dn / d.length : 0, '#8fc852', 'Heute', dn + '/' + d.length) + donut(cc / 50, '#f0c24b', 'Karriere', M.careerOn ? cc + '/50' : 'ab Level ' + MGR.featLvl('missionen'), !M.careerOn) + '</div></div>';
+}
+function misRow(m) {
+  var rw = m.rw, t = []; if (rw.x) t.push('+' + rw.x + ' XP'); if (rw.m) t.push(eurK(rw.m)); if (rw.f) t.push('Fans +' + rw.f); if (rw.j) t.push(rw.j + ' 🃏'); if (rw.h) t.push(String(rw.h / 2).replace('.', ',') + ' ★');
+  return '<div class="misr ' + m.st + '"><span class="mic">' + (m.st === 'claimed' ? '✅' : m.st === 'done' ? '🎁' : '⬜') + '</span><span class="mt">' + esc(m.t) + '<div class="mbar"><i style="width:' + Math.round(Math.min(1, m.have / m.n) * 100) + '%"></i></div></span><span class="xs muted" style="white-space:nowrap">' + num(m.have) + ' / ' + num(m.n) + '</span><span class="mrw">' + t.join(' · ') + '</span>' + (m.st === 'done' ? '<button class="pri sm" onclick="misClaim(\'' + m.id + '\')">Abholen</button>' : '') + '</div>';
+}
+function tMissionen() {
+  var M = V.missions || { daily: [], career: [] };
+  var daily = M.dailyOn ? '<div class="box"><h3>☀️ Tagesmissionen</h3><div class="xs muted" style="margin-bottom:6px">Jeden Tag drei neue Aufgaben – kleine Belohnungen, schnell erledigt. Neue Missionen gibt es morgen.</div>' + (M.daily.length ? M.daily.map(misRow).join('') : '<div class="muted small">Die heutigen Missionen kommen beim nächsten Tageswechsel.</div>') + '</div>' : '<div class="box"><h3>☀️ Tagesmissionen</h3><div class="muted small">🔒 Ab Level ' + MGR.featLvl('tagesmissionen') + '.</div></div>';
+  var cc = M.career.filter(function (m) { return m.st === 'claimed'; }).length, tiers = ['Einsteiger', 'Aufsteiger', 'Etabliert', 'Profi', 'Legende'];
+  var career = '<div class="box"><h3>🏆 Karriere-Missionen <span class="pill">' + cc + ' / 50</span></h3>' + (M.careerOn ? '<div class="xs muted" style="margin-bottom:6px">Fünf Stufen, jede schwerer als die vorige – und mit größeren Belohnungen.</div>' + [0, 1, 2, 3, 4].map(function (t) { var L = M.career.slice(t * 10, t * 10 + 10); return '<div class="mtier"><b>Stufe ' + (t + 1) + ' · ' + tiers[t] + '</b><span class="xs muted">' + L.filter(function (m) { return m.st === 'claimed'; }).length + '/10</span></div>' + L.map(misRow).join(''); }).join('') : '<div class="muted small">🔒 Ab Level ' + MGR.featLvl('missionen') + '.</div>') + '</div>';
+  return '<div class="grid g2" style="gap:14px;align-items:start">' + daily + career + '</div>';
 }
 function compBox() {
   var t = V.table, me = t.findIndex(function (r) { return r.svw; }), cup = function (k) { return V.cups.filter(function (c) { return c.k === k; })[0]; }, Q = V.qual || {};

@@ -77,19 +77,23 @@ function ligStaffel(n: string, gn: string, vb: string) {
   return s.replace(/\s+,/g, ',').trim();
 }
 async function ligenImport(ref: string) {
-  const { data: last } = await admin.from('ligen_staffeln').select('updated_at').order('updated_at', { ascending: false }).limit(1);
+  const { data: last } = await admin.from('ligen_teams').select('updated_at').order('updated_at', { ascending: false }).limit(1);
   if (last?.[0] && Date.now() - new Date(last[0].updated_at).getTime() < 600_000) return { status: 'recent', at: last[0].updated_at };
   const r = /^[0-9a-f]{40}$/.test(ref) ? ref : 'umbau';
   const res = await fetch(LIG_RAW + r + '/data/nrw-2627.json');
   if (!res.ok) throw new HttpError(502, 'Ligendatei nicht erreichbar (' + res.status + ').');
   const d = await res.json();
-  const now = new Date().toISOString(), S: any[] = [], T: any[] = [];
+  const now = new Date().toISOString(), S: any[] = [], T: any[] = [], seen: Record<string, 1> = {}, drop: string[] = [];
   for (const v of d.verbaende || []) {
     const order: string[] = [];
     for (const s of v.staffeln) if (!order.includes(s.skn)) order.push(s.skn);
     for (const s of v.staffeln) {
+      // Eine Mannschaft steht manchmal in zwei Runden (Findungs-/Meisterrunde): nur die erste zählt, leere Staffeln entfallen
+      const own = s.teams.filter((t: any) => !seen[t.id]);
+      if (own.length < 4) { drop.push(s.id); continue; }
+      own.forEach((t: any) => { seen[t.id] = 1; });
       S.push({ id: s.id, saison: d.season, verband: v.name, ebene: 5 + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
-      for (const t of s.teams) T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', updated_at: now });
+      for (const t of own) T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', updated_at: now });
     }
   }
   if (S.length < 50) throw new HttpError(422, 'Ligendatei unvollständig.');
@@ -102,6 +106,7 @@ async function ligenImport(ref: string) {
   T.forEach((x) => { x.name_fix = !!fixT[x.id]; if (x.name_fix) x.name = fixT[x.id]; });
   for (let i = 0; i < S.length; i += 300) { const { error } = await admin.from('ligen_staffeln').upsert(S.slice(i, i + 300), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
   for (let i = 0; i < T.length; i += 800) { const { error } = await admin.from('ligen_teams').upsert(T.slice(i, i + 800), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
+  if (drop.length) await admin.from('ligen_staffeln').delete().in('id', drop);
   Object.keys(ligCache).forEach((k) => delete ligCache[k]);
   return { status: 'ok', staffeln: S.length, teams: T.length, ref: r };
 }

@@ -3224,5 +3224,5 @@ var MGR = (function () {
     };
   }
 
-  return { leagueView: leagueView, teamSquad: teamSquad, oppInfo: oppInfo, tableBefore: tableBefore, normalize: normalize, newGame: newGame, act: act, view: view, summary: summary, FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
+  return { leagueView: leagueView, teamSquad: teamSquad, oppInfo: oppInfo, tableBefore: tableBefore, normalize: normalize, newGame: newGame, act: act, view: view, summary: summary, FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
 })();

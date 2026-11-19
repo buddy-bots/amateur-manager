@@ -18,6 +18,16 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+// Bilder aus der Admin-Seite (z. B. Partnerbilder) – alle 10 Minuten neu geladen
+let mediaAt = 0;
+async function refreshMedia() {
+  if (Date.now() - mediaAt < 600_000) return;
+  mediaAt = Date.now();
+  const { data } = await admin.from('media').select('key, path').order('key').limit(3000);
+  const base = Deno.env.get('SUPABASE_URL') + '/storage/v1/object/public/media/';
+  (D as any).relImgs = (data || []).filter((m: any) => m.key.startsWith('rel.')).map((m: any) => base + m.path.split('/').map(encodeURIComponent).join('/'));
+}
+
 class HttpError extends Error { constructor(public status: number, msg: string) { super(msg); } }
 
 function cors(origin: string | null) {
@@ -108,6 +118,7 @@ function sanitize(action: string, params: any) {
 }
 
 async function handle(req: Request, userId: string, body: any) {
+  try { await refreshMedia(); } catch (_e) { /* Bilder sind optional */ }
   const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);

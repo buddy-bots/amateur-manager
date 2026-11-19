@@ -232,3 +232,27 @@ function call(fn) {
   if (!API[fn]) return Promise.reject(new Error('Unbekannter Aufruf: ' + fn));
   return API[fn].apply(null, args).catch(function (e) { if (e && e.status === 401) return { ok: false, relogin: true, error: 'Bitte neu einloggen.' }; return { ok: false, error: (e && e.message) || String(e) }; });
 }
+
+/* ---------- Bilder (Supabase Storage, Bucket „media“) – tauschbar über die Admin-Seite, ohne neuen Code */
+var MEDIA = [];
+function mediaUrl(path) { return SB.url + '/storage/v1/object/public/media/' + String(path).split('/').map(encodeURIComponent).join('/'); }
+function loadMedia() {
+  return fetch(SB.url + '/rest/v1/media?select=key,path&order=key&limit=3000', { headers: { apikey: SB.key } })
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (rows) { MEDIA = rows || []; if (D) applyMedia(D, MEDIA); return MEDIA; })
+    .catch(function () { return []; });
+}
+// Schlüssel „gruppe.name“ → Stelle in den Spieldaten
+function applyMedia(D, rows) {
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad'].forEach(function (g) { D.imgs[g] = {}; });
+  D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
+  (rows || []).forEach(function (m) {
+    var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);
+    if (D.imgs[g]) D.imgs[g][k] = u;
+    else if (g === 'ausbau') { if (D.items && D.items[k]) D.items[k].img = u; }
+    else if (g === 'camp') (D.camps || []).forEach(function (c) { if (c.id === k) c.img = u; });
+    else if (g === 'priv') D.privImg[k] = u;
+    else if (g === 'rel') D.relImgs.push(u);
+    else if (D.media[g]) D.media[g].push(u);
+  });
+}

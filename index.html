@@ -828,6 +828,30 @@ function call(fn) {
   return API[fn].apply(null, args).catch(function (e) { if (e && e.status === 401) return { ok: false, relogin: true, error: 'Bitte neu einloggen.' }; return { ok: false, error: (e && e.message) || String(e) }; });
 }
 
+/* ---------- Bilder (Supabase Storage, Bucket „media“) – tauschbar über die Admin-Seite, ohne neuen Code */
+var MEDIA = [];
+function mediaUrl(path) { return SB.url + '/storage/v1/object/public/media/' + String(path).split('/').map(encodeURIComponent).join('/'); }
+function loadMedia() {
+  return fetch(SB.url + '/rest/v1/media?select=key,path&order=key&limit=3000', { headers: { apikey: SB.key } })
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (rows) { MEDIA = rows || []; if (D) applyMedia(D, MEDIA); return MEDIA; })
+    .catch(function () { return []; });
+}
+// Schlüssel „gruppe.name“ → Stelle in den Spieldaten
+function applyMedia(D, rows) {
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad'].forEach(function (g) { D.imgs[g] = {}; });
+  D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
+  (rows || []).forEach(function (m) {
+    var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);
+    if (D.imgs[g]) D.imgs[g][k] = u;
+    else if (g === 'ausbau') { if (D.items && D.items[k]) D.items[k].img = u; }
+    else if (g === 'camp') (D.camps || []).forEach(function (c) { if (c.id === k) c.img = u; });
+    else if (g === 'priv') D.privImg[k] = u;
+    else if (g === 'rel') D.relImgs.push(u);
+    else if (D.media[g]) D.media[g].push(u);
+  });
+}
+
 /* ===================================================================== Basis */
 var TOKEN = 'supabase'; // frühere Sitzungs-ID, nur noch als Platzhalter für alte Aufrufe
 var RAW = null, D = null, S = null, V = null, ME = null, HOME = null, DIRTY = false, SAVEDXP = 0, LASTY = 120, LASTX = 200, AUTOSAVE = null, SIMRUN = false;
@@ -1064,6 +1088,7 @@ function boot() {
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
+  loadMedia().then(function () { var t = document.querySelector('.titleimg'), u = imgOf('bg', 'titel'); if (t && u && ST.screen === 'start') t.src = u; });
   if (back && back.error) toast(back.error, true);
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
@@ -1080,7 +1105,7 @@ var LAST_INTENT = null;
 try { LAST_INTENT = sessionStorage.getItem('am_intent'); sessionStorage.removeItem('am_intent'); } catch (e) { }
 function homeInfo() {
   if (!SESSION || !ME) return 'Melde dich an, um mitzuspielen und die Bestenliste zu sehen.';
-  return 'Angemeldet als <b>' + esc(ME.name) + '</b> · <a href="#" onclick="logout();return false" style="color:var(--g)">Abmelden</a>';
+  return 'Angemeldet als <b>' + esc(ME.name) + '</b> · ' + (ME.admin ? '<a href="admin.html" style="color:var(--g)">Admin</a> · ' : '') + '<a href="#" onclick="logout();return false" style="color:var(--g)">Abmelden</a>';
 }
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();

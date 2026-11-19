@@ -234,6 +234,7 @@ function boot() {
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
+  loadMedia().then(function () { var t = document.querySelector('.titleimg'), u = imgOf('bg', 'titel'); if (t && u && ST.screen === 'start') t.src = u; });
   if (back && back.error) toast(back.error, true);
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
@@ -250,7 +251,7 @@ var LAST_INTENT = null;
 try { LAST_INTENT = sessionStorage.getItem('am_intent'); sessionStorage.removeItem('am_intent'); } catch (e) { }
 function homeInfo() {
   if (!SESSION || !ME) return 'Melde dich an, um mitzuspielen und die Bestenliste zu sehen.';
-  return 'Angemeldet als <b>' + esc(ME.name) + '</b> · <a href="#" onclick="logout();return false" style="color:var(--g)">Abmelden</a>';
+  return 'Angemeldet als <b>' + esc(ME.name) + '</b> · ' + (ME.admin ? '<a href="admin.html" style="color:var(--g)">Admin</a> · ' : '') + '<a href="#" onclick="logout();return false" style="color:var(--g)">Abmelden</a>';
 }
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();

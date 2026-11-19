@@ -12,6 +12,7 @@ if (html.includes('\x3c?')) throw new Error('Apps-Script-Platzhalter gefunden');
 if (html.includes('google.script.run')) throw new Error('google.script.run gefunden');
 writeFileSync(root + 'index.html', html);
 writeFileSync(root + 'engine.js', '// AUTOMATISCH ERZEUGT – Spielregeln zur Anzeige im Browser (verbindlich rechnet der Server)\n' + r('src/engine/daten.js') + '\n' + r('src/engine/engine.js'));
+writeFileSync(root + 'admin.html', r('src/admin/admin.html').replaceAll('__ENGINE_VERSION__', ver).replace('__P0__', () => r('src/ui/p0.js')).replace('__ADMIN__', () => r('src/admin/admin.js')));
 const layout = r('src/legal/_layout.html');
 for (const [k, t] of [['impressum', 'Impressum'], ['datenschutz', 'Datenschutz'], ['agb', 'AGB']]) writeFileSync(root + k + '.html', layout.replace('__TITLE__', t).replace('__BODY__', r('src/legal/' + k + '.body.html')));
 console.log('index.html', (html.length / 1024).toFixed(0), 'KB · engine.js gebaut · Version', ver);

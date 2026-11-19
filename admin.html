@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Admin · Amateur Manager</title>
+<style>
+body{margin:0;background:#0d110c;color:#e9ede6;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:14px 22px;background:#141b12;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;color:#8fc852;letter-spacing:.08em}header .sp{flex:1}header a{color:#a3aa9f;text-decoration:none}
+nav{display:flex;gap:6px}nav button{background:transparent;border:1px solid rgba(255,255,255,.12);color:#e9ede6;padding:7px 14px;border-radius:999px;cursor:pointer;font-weight:600}nav button.on{background:#8fc852;color:#14200c;border-color:#8fc852}
+#main{max-width:1200px;margin:0 auto;padding:22px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px;margin-bottom:14px}.card h3{margin:0 0 10px;font-size:15px}.card.err{color:#ff8a8a}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}.tile{background:rgba(143,200,82,.08);border:1px solid rgba(143,200,82,.25);border-radius:14px;padding:16px}.tile b{display:block;font-size:30px}.tile span{color:#a3aa9f;font-size:12px}
+table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left}.r{text-align:right}tr.sum td{font-weight:800}
+.muted{color:#a3aa9f;font-size:12px}.pill{margin-left:8px;font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08)}.pill.g{background:rgba(143,200,82,.2);color:#8fc852}.pill.y{background:rgba(240,194,75,.2);color:#f0c24b}
+.tk .msg{background:rgba(255,255,255,.05);border-radius:10px;padding:10px 12px;margin:8px 0;white-space:pre-wrap}.tk.done{opacity:.75}
+textarea,input{width:100%;box-sizing:border-box;background:#0b0f0a;color:#e9ede6;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:9px 11px;font:inherit}textarea{min-height:70px}
+.btn{display:inline-block;margin-top:8px;background:#8fc852;color:#14200c;border:0;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;text-decoration:none}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:10px}.row .btn{margin:0;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.slot{position:relative}.slot .th{height:96px;border-radius:10px;background:#0b0f0a center/cover no-repeat;border:1px dashed rgba(255,255,255,.18);display:grid;place-items:center;cursor:pointer;color:#a3aa9f;font-size:22px}.slot.has .th{border-style:solid;border-color:rgba(143,200,82,.4)}.slot .th:hover{border-color:#8fc852}
+.slot .lb{font-size:11px;color:#a3aa9f;margin-top:4px;line-height:1.3}.slot .x{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.65);color:#fff;border:0;border-radius:50%;width:22px;height:22px;cursor:pointer}
+.slot.add{height:96px;border-radius:10px;border:1px dashed rgba(143,200,82,.5);display:grid;place-items:center;cursor:pointer;color:#8fc852;font-weight:700}
+.toast{position:fixed;right:18px;bottom:18px;background:#1f2a18;border:1px solid #8fc852;color:#e9ede6;padding:10px 14px;border-radius:10px;z-index:99}.toast.err{border-color:#e25c5c}
+.spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:#8fc852;border-radius:50%;animation:s 1s linear infinite;margin:40px auto}@keyframes s{to{transform:rotate(360deg)}}
+</style></head><body>
+<header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a></header>
+<div id="main"><div class="spin"></div></div>
+<script src="engine.js?v=25.0.0"></script>
+<script>
+/* ===================================================================== Server-Anbindung (Supabase)
+ * Login (E-Mail, Google, Passwort vergessen), Datenbank-Zugriffe und Spiel-Server.
+ * Ohne externe Bibliothek: alles über die offizielle REST-Schnittstelle.
+ * Der Spielstand wird ausschließlich auf dem Server verändert – der Browser hält nur eine Kopie zur Anzeige. */
+var SB = window.AM_CONFIG || {
+  url: 'https://wnzrakcsfwxsckrucfan.supabase.co',
+  key: 'sb_publishable_xlzCh6qzM_Ve2r9PpOe5Sg_TlzWswH1'
+};
+var SESSION = null;            // { access_token, refresh_token, expires_at, user }
+var SAVEID = null, SAVEVER = null, JOKER_OK = false;
+var SESSKEY = 'am_session';
+
+function sbHeaders(extra) {
+  var h = { apikey: SB.key, 'Content-Type': 'application/json' };
+  if (SESSION && SESSION.access_token) h.Authorization = 'Bearer ' + SESSION.access_token;
+  for (var k in (extra || {})) h[k] = extra[k];
+  return h;
+}
+function sbErr(j, status) {
+  var m = (j && (j.error_description || j.msg || j.message || j.error)) || ('Fehler ' + status);
+  var map = {
+    'Invalid login credentials': 'E-Mail oder Passwort ist falsch.',
+    'Email not confirmed': 'Bitte bestätige zuerst deine E-Mail-Adresse (Link im Postfach).',
+    'User already registered': 'Diese E-Mail-Adresse ist schon registriert.',
+    'Password should be at least 6 characters.': 'Das Passwort muss mindestens 8 Zeichen haben.',
+    'Mindestalter 16 Jahre': 'Der Amateur Manager ist ab 16 Jahren.'
+  };
+  var e = new Error(map[m] || m); e.status = status; return e;
+}
+function sbFetch(path, opts) {
+  opts = opts || {};
+  return ensureFresh().then(function () {
+    return fetch(SB.url + path, { method: opts.method || 'GET', headers: sbHeaders(opts.headers), body: opts.body != null ? JSON.stringify(opts.body) : undefined });
+  }).then(function (res) {
+    return res.text().then(function (t) {
+      var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { j = t; }
+      if (!res.ok) throw sbErr(j, res.status);
+      return j;
+    });
+  });
+}
+
+/* ---------- Sitzung */
+function sessSave(s) {
+  SESSION = s && s.access_token ? { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at || (Math.floor(Date.now() / 1000) + (s.expires_in || 3600)), user: s.user || (SESSION && SESSION.user) || null } : null;
+  try { if (SESSION) localStorage.setItem(SESSKEY, JSON.stringify(SESSION)); else localStorage.removeItem(SESSKEY); } catch (e) { }
+}
+function sessLoad() { try { var s = JSON.parse(localStorage.getItem(SESSKEY) || 'null'); if (s && s.refresh_token) SESSION = s; } catch (e) { SESSION = null; } return SESSION; }
+var REFRESHING = null;
+function ensureFresh() {
+  if (!SESSION || !SESSION.refresh_token) return Promise.resolve();
+  if (SESSION.expires_at - 60 > Date.now() / 1000) return Promise.resolve();
+  if (REFRESHING) return REFRESHING;
+  REFRESHING = fetch(SB.url + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: SESSION.refresh_token }) })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) { sessSave(null); throw sbErr(j, r.status); } sessSave(j); }); })
+    .finally(function () { REFRESHING = null; });
+  return REFRESHING;
+}
+
+/* ---------- Login & Registrierung */
+function authSignUp(email, password, meta) {
+  return fetch(SB.url + '/auth/v1/signup', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, password: password, data: meta || {}, options: { emailRedirectTo: location.origin + location.pathname } }) })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw sbErr(j, r.status); if (j.access_token) sessSave(j); return j; }); });
+}
+function authSignIn(email, password) {
+  return fetch(SB.url + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, password: password }) })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw sbErr(j, r.status); sessSave(j); return j; }); });
+}
+function authGoogle() {
+  location.href = SB.url + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(location.origin + location.pathname);
+}
+function authRecover(email) {
+  return fetch(SB.url + '/auth/v1/recover?redirect_to=' + encodeURIComponent(location.origin + location.pathname), { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
+    .then(function (r) { if (!r.ok) return r.json().then(function (j) { throw sbErr(j, r.status); }); });
+}
+function authSetPassword(pw) { return sbFetch('/auth/v1/user', { method: 'PUT', body: { password: pw } }); }
+function authSignOut() {
+  var t = SESSION && SESSION.access_token; sessSave(null); SAVEID = null;
+  if (t) fetch(SB.url + '/auth/v1/logout', { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + t } }).catch(function () { });
+}
+// Rückkehr von Google / Bestätigungs- / Passwort-Link: Daten stehen im #-Teil der Adresse
+function authFromUrl() {
+  var h = location.hash.replace(/^#/, ''); if (!h) return null;
+  var q = {}; h.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) q[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); });
+  if (!q.access_token && !q.error) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  if (q.error) return { error: q.error_description || q.error };
+  sessSave({ access_token: q.access_token, refresh_token: q.refresh_token, expires_in: +q.expires_in || 3600 });
+  return { type: q.type || 'login' };
+}
+
+/* ---------- Datenbank */
+function rest(path, opts) { return sbFetch('/rest/v1/' + path, opts); }
+function rpc(fn, args) { return sbFetch('/rest/v1/rpc/' + fn, { method: 'POST', body: args || {} }); }
+function myProfile() { return rest('profiles?select=*&id=eq.' + SESSION.user.id).then(function (a) { return a && a[0] || null; }); }
+function loadUser() { return sbFetch('/auth/v1/user').then(function (u) { SESSION.user = u; sessSave(SESSION); return u; }); }
+
+/* ---------- Spiel-Server */
+function game(op, body) {
+  body = body || {}; body.op = op;
+  return sbFetch('/functions/v1/game', { method: 'POST', body: body });
+}
+// Aktionen laufen nacheinander (nie zwei gleichzeitig), damit nichts verloren geht
+var ACTQ = Promise.resolve(), BUSY = 0;
+function serverAct(action, params) {
+  var p = ACTQ.then(function () {
+    BUSY++; busyShow();
+    return game('act', { saveId: SAVEID, version: SAVEVER, action: action, params: params || {} });
+  }).then(function (j) {
+    BUSY--; busyShow(); SAVEVER = j.version; JOKER_OK = !!j.joker; S = j.state; return j.r || {};
+  }, function (e) {
+    BUSY--; busyShow();
+    if (e.status === 409) { reloadGame(); }
+    if (e.status === 401) { toast('Bitte neu einloggen.', true); }
+    throw e;
+  });
+  ACTQ = p.catch(function () { });
+  return p;
+}
+function serverJoker() {
+  return game('joker', { saveId: SAVEID }).then(function (j) { SAVEVER = j.version; JOKER_OK = false; S = j.state; return j.r || {}; });
+}
+function reloadGame() {
+  if (!SAVEID) return Promise.resolve();
+  return game('load', { saveId: SAVEID }).then(function (j) { SAVEVER = j.version; JOKER_OK = !!j.joker; S = j.state; V = MGR.view(S, D); render(true); toast('Spielstand neu geladen.'); });
+}
+var BUSYT = null;
+function busyShow() {
+  clearTimeout(BUSYT);
+  BUSYT = setTimeout(function () { document.documentElement.classList.toggle('srvbusy', BUSY > 0); }, BUSY > 0 ? 350 : 0);
+}
+// Herzschlag für „online“-Statistik
+setInterval(function () { if (SESSION && document.visibilityState === 'visible') rpc('heartbeat').catch(function () { }); }, 120000);
+
+/* ---------- Kompatibilität: frühere Server-Aufrufe (Apps Script) auf Supabase umgelenkt */
+var DEV_NAME = 'Entwickler', WA_IDS = {}, WA_NAMES = {};
+function seedOf(id) { var h = 0; id = String(id || ''); for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 997; return h; }
+function boardRow(m) {
+  var s = m.summary || {}, b = {};
+  for (var k in s) b[k] = s[k];
+  b.full = m.display_name; b.pic = m.avatar_path || ''; b.avatar = seedOf(m.id); b.xp = Number(m.xp) || 0; b.mlvl = levelOf(b.xp).lvl;
+  b.liga = m.league_name || s.liga || ''; b.status = s.fired ? 'Entlassen' : ''; b.id = m.id;
+  return b;
+}
+function managers() {
+  return rpc('manager_directory').then(function (rows) {
+    rows = rows || []; WA_IDS = {}; WA_NAMES = {};
+    rows.forEach(function (m) { WA_IDS[m.display_name] = m.id; WA_NAMES[m.id] = m.display_name; });
+    return rows;
+  });
+}
+var API = {
+  apiHome: function () {
+    if (!SESSION) return Promise.resolve({ ok: true, board: [], me: null, stats: null });
+    return managers().then(function (rows) { return { ok: true, board: rows.map(boardRow).filter(function (b) { return b.games > 0 || b.days > 0; }), me: ME ? { name: ME.name, vorname: ME.vorname } : null }; });
+  },
+  apiWaContacts: function () {
+    return Promise.all([managers(), rest('wa_favorites?select=contact')]).then(function (a) {
+      var list = a[0].filter(function (m) { return m.id !== SESSION.user.id; }).map(function (m) { return { name: m.display_name, liga: m.league_name || '', avatar: seedOf(m.id), pic: m.avatar_path || '' }; });
+      list.sort(function (x, y) { return x.name.localeCompare(y.name); });
+      list.unshift({ name: DEV_NAME, liga: 'Feedback & Fragen', avatar: 0, pic: '', dev: true });
+      var fav = (a[1] || []).map(function (r) { return r.contact; }).filter(function (n) { return n !== DEV_NAME; }); fav.unshift(DEV_NAME);
+      return { ok: true, list: list, me: ME ? ME.name : '', fav: fav };
+    });
+  },
+  apiWaSync: function (tok, since) {
+    since = Number(since) || 0; var iso = new Date(since).toISOString(), me = SESSION.user.id;
+    var q1 = rest('wa_messages?select=id,from_user,to_user,body,read_at,created_at&or=' + encodeURIComponent('(created_at.gt."' + iso + '",read_at.is.null)') + '&order=created_at.asc&limit=500');
+    var q2 = rest('feedback_tickets?select=id,ticket_no,message,answer,answered_at,answer_read_at,created_at&order=created_at.asc&limit=200');
+    return Promise.all([q1, q2, Object.keys(WA_NAMES).length ? null : managers()]).then(function (a) {
+      var out = [];
+      (a[0] || []).forEach(function (m) { var mine = m.from_user === me, ts = Date.parse(m.created_at); if (ts <= since && (mine || m.read_at)) return; out.push({ id: 'w' + m.id, ts: ts, mine: mine, other: WA_NAMES[mine ? m.to_user : m.from_user] || '?', text: m.body, read: !!m.read_at || mine }); });
+      (a[1] || []).forEach(function (t) {
+        var ts = Date.parse(t.created_at), tk = 'T' + t.ticket_no;
+        if (ts > since) out.push({ id: 'fb' + t.id, ts: ts, mine: true, other: DEV_NAME, text: t.message, read: true, ticket: tk });
+        if (t.answer) { var at = Date.parse(t.answered_at) || ts + 1000; if (at > since || !t.answer_read_at) out.push({ id: 'fa' + t.id, ts: at, mine: false, other: DEV_NAME, text: t.answer, read: !!t.answer_read_at, ticket: tk }); }
+      });
+      out.sort(function (x, y) { return x.ts - y.ts; });
+      return { ok: true, msgs: out, now: Date.now() };
+    });
+  },
+  apiWaSend: function (tok, toName, text) {
+    text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500); if (!text) return Promise.reject(new Error('Leere Nachricht.'));
+    if (toName === DEV_NAME) return rest('feedback_tickets', { method: 'POST', body: { user_id: SESSION.user.id, message: text } }).then(function () { return { ok: true, ts: Date.now() }; });
+    var to = WA_IDS[toName]; if (!to) return Promise.reject(new Error('Manager nicht gefunden.'));
+    return rest('wa_messages', { method: 'POST', body: { from_user: SESSION.user.id, to_user: to, body: text } }).then(function () { return { ok: true, ts: Date.now() }; });
+  },
+  apiWaRead: function (tok, withName) {
+    var now = new Date().toISOString();
+    if (withName === DEV_NAME) return rest('feedback_tickets?answer=not.is.null&answer_read_at=is.null', { method: 'PATCH', body: { answer_read_at: now } }).then(function () { return { ok: true }; });
+    var other = WA_IDS[withName]; if (!other) return Promise.resolve({ ok: true });
+    return rest('wa_messages?from_user=eq.' + other + '&to_user=eq.' + SESSION.user.id + '&read_at=is.null', { method: 'PATCH', body: { read_at: now } }).then(function () { return { ok: true }; });
+  },
+  apiWaFavSet: function (tok, list) {
+    list = (list || []).map(function (x) { return String(x).slice(0, 60); }).filter(function (x) { return x && x !== DEV_NAME; }).slice(0, 200);
+    return rest('wa_favorites?user_id=eq.' + SESSION.user.id, { method: 'DELETE' }).then(function () {
+      if (!list.length) return null;
+      return rest('wa_favorites', { method: 'POST', body: list.map(function (c) { return { user_id: SESSION.user.id, contact: c }; }) });
+    }).then(function () { return { ok: true }; });
+  },
+  apiSettings: function (tok, obj) {
+    obj = obj || {}; var up = {};
+    if ('lang' in obj) up.lang = /^(de|en|es|fr)$/.test(obj.lang) ? obj.lang : 'de';
+    if ('bg' in obj) up.bg_key = String(obj.bg || '').slice(0, 400) || null;
+    return rest('profiles?id=eq.' + SESSION.user.id, { method: 'PATCH', body: up }).then(function () {
+      ME.settings = ME.settings || {}; if ('lang' in up) ME.settings.lang = up.lang; if ('bg_key' in up) ME.settings.bg = up.bg_key || '';
+      return { ok: true, settings: ME.settings };
+    });
+  },
+  apiPic: function (tok, dataUrl) {
+    dataUrl = String(dataUrl || ''); if (dataUrl && (dataUrl.indexOf('data:image/') !== 0 || dataUrl.length > 45000)) return Promise.reject(new Error('Bild zu groß.'));
+    return rest('profiles?id=eq.' + SESSION.user.id, { method: 'PATCH', body: { avatar_path: dataUrl || null } }).then(function () { ME.pic = dataUrl; return { ok: true }; });
+  },
+  apiSalary: function () {
+    return managers().then(function (rows) {
+      var me = SESSION.user.id;
+      var list = rows.filter(function (m) { return m.summary && m.summary.sal > 0; }).map(function (m) { var s = m.summary; return { name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '' }; });
+      list.sort(function (a, b) { return b.sal - a.sal; }); list.forEach(function (x, i) { x.rank = i + 1; });
+      var mine = list.filter(function (x) { return x.me; })[0] || null; list.forEach(function (x) { if (!x.me) delete x.me; });
+      return { ok: true, top: list.slice(0, 3), all: list, mine: mine && mine.rank > 3 ? mine : null, myRank: mine ? mine.rank : null, total: list.length };
+    });
+  },
+  apiDeleteAccount: function (tok, confirm) {
+    return game('deleteAccount', { confirm: String(confirm || '').trim().toUpperCase() }).then(function () { authSignOut(); return { ok: true }; });
+  },
+  apiWappen: function () { return Promise.resolve({ ok: true, w: {} }); },
+  apiHandoff: function () { return Promise.resolve({ ok: false, error: 'Auf dem Handy einfach mit Google oder E-Mail anmelden.' }); },
+  apiHandoffUse: function () { return Promise.resolve({ ok: false, error: 'Bitte mit Google oder E-Mail anmelden.' }); }
+};
+function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  if (!API[fn]) return Promise.reject(new Error('Unbekannter Aufruf: ' + fn));
+  return API[fn].apply(null, args).catch(function (e) { if (e && e.status === 401) return { ok: false, relogin: true, error: 'Bitte neu einloggen.' }; return { ok: false, error: (e && e.message) || String(e) }; });
+}
+
+/* ---------- Bilder (Supabase Storage, Bucket „media“) – tauschbar über die Admin-Seite, ohne neuen Code */
+var MEDIA = [];
+function mediaUrl(path) { return SB.url + '/storage/v1/object/public/media/' + String(path).split('/').map(encodeURIComponent).join('/'); }
+function loadMedia() {
+  return fetch(SB.url + '/rest/v1/media?select=key,path&order=key&limit=3000', { headers: { apikey: SB.key } })
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (rows) { MEDIA = rows || []; if (D) applyMedia(D, MEDIA); return MEDIA; })
+    .catch(function () { return []; });
+}
+// Schlüssel „gruppe.name“ → Stelle in den Spieldaten
+function applyMedia(D, rows) {
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad'].forEach(function (g) { D.imgs[g] = {}; });
+  D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
+  (rows || []).forEach(function (m) {
+    var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);
+    if (D.imgs[g]) D.imgs[g][k] = u;
+    else if (g === 'ausbau') { if (D.items && D.items[k]) D.items[k].img = u; }
+    else if (g === 'camp') (D.camps || []).forEach(function (c) { if (c.id === k) c.img = u; });
+    else if (g === 'priv') D.privImg[k] = u;
+    else if (g === 'rel') D.relImgs.push(u);
+    else if (D.media[g]) D.media[g].push(u);
+  });
+}
+
+/* Amateur Manager – Admin-Seite: Übersicht, Feedback, Bilder */
+var BG = [['titel', 'Titelbild Startseite (ganze Breite)'], ['publisher', 'Publisher-Logo oben rechts'], ['entwickler', 'Profilbild „Entwickler“ im Chat'],
+  ['saisonziel', 'Popup Saisonziel'], ['hauptsponsor', 'Popup Hauptsponsor'], ['ausstatter', 'Popup Ausstatter'], ['budget', 'Popup Saisonbudget'], ['presse', 'Popup Pressekonferenz'], ['vorbereitung', 'Popup Saisonvorbereitung'],
+  ['aufstieg', 'Saisonabschluss Aufstieg'], ['klassenerhalt', 'Saisonabschluss Klassenerhalt'], ['abstieg', 'Saisonabschluss Abstieg'], ['entlassung', 'Entlassung'], ['talent', 'Popup Neues Talent / Sterne'],
+  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'],
+  ['krypto_gewinn', 'Fazit Krypto mit Gewinn'], ['krypto_verlust', 'Fazit Krypto mit Verlust'], ['aktie_gewinn', 'Fazit Aktie mit Gewinn'], ['aktie_verlust', 'Fazit Aktie mit Verlust'],
+  ['karte_academy', 'Hintergrund Karte Academy-Campus'], ['karte_verein', 'Hintergrund Karte Vereinsgelände'], ['karte_med', 'Hintergrund Karte Med-Abteilung']];
+var SCOUT = [['region', 'Regionales Scout-Netzwerk'], ['video', 'Video-Analyse-Software'], ['daten', 'Talent-Datenbank'], ['sichtung', 'Leistungsdiagnostik & Sichtungstage'], ['tw', 'Torwart-Spezialscout'], ['abwehr', 'Abwehr-Scout'], ['sturm', 'Offensiv-Scout'], ['intl', 'Internationales Scouting']];
+var MASC = [['adler', 'Adler'], ['baer', 'Bär'], ['fuchs', 'Fuchs'], ['eule', 'Eule'], ['pferd', 'Pferd'], ['panther', 'Panther'], ['katze', 'Katze'], ['krake', 'Krake'], ['gorilla', 'Gorilla'], ['schildkroete', 'Schildkröte'], ['nashorn', 'Nashorn'], ['elefant', 'Elefant'], ['stier', 'Stier'], ['wolf', 'Wolf'], ['dachs', 'Dachs'], ['gepard', 'Gepard'], ['loewe', 'Löwe'], ['hai', 'Hai'], ['falke', 'Falke'], ['tiger', 'Tiger']];
+var FANS = [['autogramm', 'Autogrammstunde'], ['training', 'Öffentliches Training'], ['umfrage', 'Fan-Umfrage'], ['fanclub', 'Fanclub-Besuch'], ['stammtisch', 'Fan-Stammtisch'], ['social', 'Social-Media-Gewinnspiel'], ['freibier', 'Freibier-Runde'], ['bus', 'Fanbus Auswärtsspiel'], ['schal', 'Schal-Aktion'], ['camp', 'Kinder-Fußballcamp']];
+var LISTS = [['hintergrund', 'Hintergrundbilder (Auswahl in den Einstellungen)'], ['kauf', 'Spielerkauf (zufällig)'], ['verkauf', 'Spielerverkauf (zufällig)'], ['gif', 'Clips im Livestream (GIF)'], ['rel', 'Partnerbilder (Privatleben)']];
+var D0 = null, MAP = {}, SECTION = 'over';
+
+function $(s) { return document.querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function toast(t, err) { var el = document.createElement('div'); el.className = 'toast' + (err ? ' err' : ''); el.textContent = t; document.body.appendChild(el); setTimeout(function () { el.remove(); }, 3500); }
+function dt(s) { return s ? new Date(s).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '–'; }
+function eur(c) { return ((c || 0) / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }); }
+
+function start() {
+  sessLoad(); authFromUrl();
+  if (!SESSION) return gate('Bitte zuerst im Spiel anmelden – dann diese Seite neu laden.');
+  myProfile().then(function (p) {
+    if (!p || !p.is_admin) return gate('Kein Zugriff. Diese Seite ist nur für den Entwickler.');
+    var X = MGR_DATA; D0 = MGR.normalize({ regeln: X.REGELN, ligen: X.LIGEN, ausbau: X.AUSBAU, camps: X.CAMPS, events: X.EVENTS, konfig: X.KONFIG, mails: X.MAILS, vornamen: X.VORNAMEN, nachnamen: X.NACHNAMEN });
+    $('#who').textContent = p.display_name; nav('over');
+  }).catch(function (e) { gate('Fehler: ' + e.message); });
+}
+function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a></div>'; }
+function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg })[k](); }
+
+/* ---------- Übersicht */
+function showOver() {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  rpc('admin_overview').then(function (o) {
+    var rev = o.revenue_cents || {}, tot = Object.keys(rev).reduce(function (a, k) { return a + rev[k]; }, 0);
+    var tile = function (n, l) { return '<div class="tile"><b>' + n + '</b><span>' + l + '</span></div>'; };
+    $('#main').innerHTML = '<div class="tiles">' + tile(o.users_total, 'Nutzer gesamt') + tile(o.online_now, 'Gerade online') + tile(o.peak_online, 'Höchststand gleichzeitig') + tile(o.saves_total, 'Spielstände') + tile(o.tickets_open, 'Offene Tickets') + '</div>' +
+      '<div class="card"><h3>Umsatz</h3><table><tr><th>Modus</th><th class="r">Umsatz</th></tr>' + [['single', 'Single Mode'], ['club', 'Create a Club'], ['multi', 'Multiplayer']].map(function (m) { return '<tr><td>' + m[1] + '</td><td class="r">' + eur(rev[m[0]]) + '</td></tr>'; }).join('') + '<tr class="sum"><td>Gesamt</td><td class="r">' + eur(tot) + '</td></tr></table><p class="muted">In der Testphase ist alles kostenlos.</p></div>';
+  }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+}
+
+/* ---------- Feedback */
+function showFb() {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  rpc('admin_tickets').then(function (rows) {
+    if (!rows.length) { $('#main').innerHTML = '<div class="card"><p class="muted">Noch kein Feedback.</p></div>'; return; }
+    $('#main').innerHTML = rows.map(function (t) {
+      return '<div class="card tk' + (t.answer ? ' done' : '') + '"><div class="tkh"><b>T' + t.ticket_no + '</b> · ' + esc(t.user_name || '?') + ' <span class="muted">' + dt(t.created_at) + '</span>' + (t.answer ? '<span class="pill g">beantwortet' + (t.answer_read_at ? ' · gelesen' : '') + '</span>' : '<span class="pill y">offen</span>') + '</div>' +
+        '<div class="msg">' + esc(t.message) + '</div><textarea id="a' + t.id + '" placeholder="Antwort – erscheint beim Spieler im Entwickler-Chat">' + esc(t.answer || '') + '</textarea><button class="btn" onclick="answer(' + t.id + ')">' + (t.answer ? 'Antwort ändern' : 'Antworten') + '</button></div>';
+    }).join('');
+  }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+}
+function answer(id) {
+  var txt = $('#a' + id).value.trim(); if (!txt) return toast('Bitte eine Antwort eingeben.', true);
+  rest('feedback_tickets?id=eq.' + id, { method: 'PATCH', body: { answer: txt } }).then(function () { toast('Antwort gesendet ✓'); showFb(); }).catch(function (e) { toast(e.message, true); });
+}
+
+/* ---------- Bilder */
+function loadMap() { return fetch(SB.url + '/rest/v1/media?select=key,path,updated_at&order=key&limit=3000', { headers: sbHeaders() }).then(function (r) { return r.json(); }).then(function (rows) { MAP = {}; (rows || []).forEach(function (m) { MAP[m.key] = m; }); }); }
+function showImg() {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  loadMap().then(function () {
+    var grp = function (title, g, list, note) { return '<div class="card"><h3>' + title + '</h3>' + (note ? '<p class="muted">' + note + '</p>' : '') + '<div class="grid">' + list.map(function (x) { return slot(g + '.' + x[0], x[1]); }).join('') + '</div></div>'; };
+    var items = (D0.itemList || []).map(function (it) { return [it.id, it.name + ' (' + it.cat + ')']; });
+    var camps = (D0.camps || []).map(function (c) { return [c.id, c.name]; });
+    var shop = (MGR.SHOP || []).map(function (s) { return [s[0], s[2] + ' (' + s[1] + ')']; });
+    var stad = Object.keys(MAP).filter(function (k) { return k.indexOf('stad.') === 0; }).map(function (k) { return [k.slice(5), k.slice(5)]; });
+    $('#main').innerHTML =
+      '<div class="card"><p class="muted">Klick auf ein Feld, um ein Bild hochzuladen oder zu ersetzen. Bilder werden automatisch verkleinert (max. 2000 px). Änderungen sind sofort im Spiel sichtbar (Seite neu laden).</p></div>' +
+      grp('Titel- & Popup-Bilder', 'bg', BG) +
+      grp('Maskottchen', 'masc', MASC, 'Quadratisch sieht am besten aus.') + grp('Scouting-Tools', 'scout', SCOUT) + grp('Fan-Aktionen', 'fans', FANS) +
+      grp('Ausbau & Erweiterungen', 'ausbau', items) + grp('Trainingslager', 'camp', camps) + grp('Privat-Shop', 'priv', shop) +
+      '<div class="card"><h3>Stadionbilder (Eintrittskarte)</h3><p class="muted">Vereinsname exakt wie im Spiel.</p><div class="row"><input id="stn" placeholder="Vereinsname, z. B. SV Wachtberg"><button class="btn" onclick="pickNamed()">Bild wählen</button></div><div class="grid">' + stad.map(function (x) { return slot('stad.' + x[0], x[1]); }).join('') + '</div></div>' +
+      LISTS.map(function (l) { var ks = Object.keys(MAP).filter(function (k) { return k.indexOf(l[0] + '.') === 0; }); return '<div class="card"><h3>' + l[1] + '</h3><div class="grid">' + ks.map(function (k) { return slot(k, ''); }).join('') + '<div class="slot add" onclick="pickList(\'' + l[0] + '\')"><span>＋ Bilder hinzufügen</span></div></div></div>'; }).join('');
+  });
+}
+function slot(key, label) {
+  var m = MAP[key], u = m ? mediaUrl(m.path) : '';
+  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + '</div>';
+}
+function chooser(multi, cb) { var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.multiple = !!multi; i.onchange = function () { cb(Array.prototype.slice.call(i.files)); }; i.click(); }
+function pick(key) { chooser(false, function (f) { if (f[0]) upload(key, f[0]).then(showImg); }); }
+function pickNamed() { var n = $('#stn').value.trim(); if (!n) return toast('Bitte Vereinsnamen eingeben.', true); pick('stad.' + n); }
+function pickList(g) { chooser(true, function (fs) { var n = Date.now(), p = Promise.resolve(); fs.forEach(function (f, i) { p = p.then(function () { return upload(g + '.' + (n + i), f); }); }); p.then(showImg); }); }
+// Verkleinern (GIFs bleiben unverändert, damit die Animation erhalten bleibt)
+function shrink(file) {
+  if (file.type === 'image/gif') return Promise.resolve({ blob: file, ext: 'gif', type: 'image/gif' });
+  return new Promise(function (res, rej) {
+    var img = new Image(); img.onload = function () {
+      var s = Math.min(1, 2000 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      var png = file.type === 'image/png'; c.toBlob(function (b) { b ? res({ blob: b, ext: png ? 'png' : 'webp', type: png ? 'image/png' : 'image/webp' }) : rej(new Error('Bild konnte nicht gelesen werden.')); }, png ? 'image/png' : 'image/webp', 0.86);
+    }; img.onerror = function () { rej(new Error('Bild konnte nicht gelesen werden.')); }; img.src = URL.createObjectURL(file);
+  });
+}
+function upload(key, file) {
+  toast('Lade hoch …');
+  return shrink(file).then(function (o) {
+    var path = key.replace(/[^\w.-]+/g, '_') + '-' + Date.now() + '.' + o.ext;
+    return ensureFresh().then(function () {
+      return fetch(SB.url + '/storage/v1/object/media/' + encodeURIComponent(path), { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': o.type, 'x-upsert': 'true' }, body: o.blob });
+    }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('Upload fehlgeschlagen: ' + t); }); })
+      .then(function () { var old = MAP[key]; return rest('media', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: key, path: path, updated_at: new Date().toISOString() } }).then(function () { if (old) removeFile(old.path); }); })
+      .then(function () { toast('Gespeichert ✓'); });
+  }).catch(function (e) { toast(e.message, true); });
+}
+function removeFile(path) { return ensureFresh().then(function () { return fetch(SB.url + '/storage/v1/object/media', { method: 'DELETE', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: [path] }) }); }).catch(function () { }); }
+function delImg(key) {
+  if (!confirm('Bild entfernen? Im Spiel erscheint dann wieder die Standardgrafik.')) return;
+  var m = MAP[key]; rest('media?key=eq.' + encodeURIComponent(key), { method: 'DELETE' }).then(function () { if (m) removeFile(m.path); toast('Entfernt.'); showImg(); }).catch(function (e) { toast(e.message, true); });
+}
+start();
+
+</script>
+</body></html>

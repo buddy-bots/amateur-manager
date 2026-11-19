@@ -698,10 +698,10 @@ var MGR = (function () {
   function homeStadion(S) { var L = locOf(S); return L ? 'Sportpark ' + L.ort : 'Waldstadion'; }
   function regFix(S) { if (!S) return; if (S.follow0 == null && S.follow != null) S.follow0 = S.follow; ['kit', 'ball'].forEach(function (k) { var B = k === 'ball' ? BALL_BRANDS : KIT_BRANDS; if (S[k] && B[S[k].brand]) S[k].name = B[S[k].brand]; (S[k + 'Offers'] || []).forEach(function (o) { if (B[o.brand]) o.name = B[o.brand]; }); }); if (S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); (S.cups || []).forEach(function (c) { if (c.k === 'kp' && c.name !== 'Kreispokal') c.name = 'Kreispokal'; }); }
   // Ortskoordinaten: orte = { Name: [[lat, lon, Land], …] }, part = Index der Namensteile; nur Treffer im passenden Bundesland
-  var VB_LAND = { Mittelrhein: ['Nordrhein-Westfalen'], Niederrhein: ['Nordrhein-Westfalen'], Westfalen: ['Nordrhein-Westfalen'], Rheinland: ['Rheinland-Pfalz'], 'Südwest': ['Rheinland-Pfalz'], 'RV Südwest': ['Rheinland-Pfalz', 'Saarland'] };
+  var VB_LAND = { Mittelrhein: ['Nordrhein-Westfalen'], Niederrhein: ['Nordrhein-Westfalen'], Westfalen: ['Nordrhein-Westfalen'], Rheinland: ['Rheinland-Pfalz'], 'Südwest': ['Rheinland-Pfalz'], 'RV Südwest': ['Rheinland-Pfalz', 'Saarland'], 'RV West': ['Nordrhein-Westfalen'], DFB: [] };
   function geoIndex(orte) { var part = {}; Object.keys(orte).forEach(function (k) { k.split(/[-\s]+/).forEach(function (p) { if (p.length > 3) (part[p] = part[p] || []).push.apply(part[p], orte[k]); }); }); return part; }
   function geoFind(orte, part, name, verband, kreis) {
-    var lands = VB_LAND[verband] || [], pickL = function (L) { if (!L) return null; for (var i = 0; i < lands.length; i++) for (var j = 0; j < L.length; j++) if (L[j][2] === lands[i]) return [L[j][0], L[j][1]]; return null; };
+    var lands = VB_LAND[verband] || [], pickL = function (L) { if (!L || !L.length) return null; if (!lands.length) return [L[0][0], L[0][1]]; for (var i = 0; i < lands.length; i++) for (var j = 0; j < L.length; j++) if (L[j][2] === lands[i]) return [L[j][0], L[j][1]]; return null; };
     var t = clubTown(name), k = String(kreis || '').replace(/^Kreis\s+/, '').split(/[-\/\s]/)[0];
     return pickL(orte[t]) || pickL(orte[t.replace(/-.*$/, '')]) || pickL(part[t]) || pickL(orte[k]) || pickL(part[k]) || null;
   }
@@ -785,7 +785,8 @@ var MGR = (function () {
   function buildWorldReg(S, D, reg) {
     S.world = { lv: {}, pool: {}, last: {} };
     for (var l = 1; l <= D.maxLvl; l++) {
-      var src = l <= 4 && !reg.teams[l] ? (D.teams[l] || []) : (reg.teams[l] || []).map(function (n) { return { n: n, b: null }; });
+      var base4 = {}; (D.teams[l] || []).forEach(function (t) { base4[t.n] = t; });
+      var src = l <= 4 && !reg.teams[l] ? (D.teams[l] || []) : (reg.teams[l] || []).map(function (n) { return base4[n] || { n: n, b: null }; });
       var list = src.filter(function (t) { return t.n !== S.club; }).map(function (t) { var x = mkTeam(D, l, t); if (l >= 5 || MR_TOP.indexOf(t.n) >= 0) x.r = 1; return x; });
       var pool = (l <= 4 && !reg.teams[l] ? (D.pool[l] || []) : (reg.pool[l] || []).map(function (n) { return { n: n, b: null }; })).filter(function (t) { return t.n !== S.club; }).map(function (t) { var x = mkTeam(D, l, t); if (l >= 5) x.r = 1; return x; });
       S.world.pool[l] = pool;
@@ -3534,5 +3535,5 @@ var MGR = (function () {
     if (!S.refHint && ((S.mcnt || {}).game || 0) >= 10) { S.refHint = 1; infoMail(S, 'Amateur Manager', '🤝 Gemeinsam macht’s mehr Spaß', 'Schon zehn Pflichtspiele – stark! Wusstest du, dass du Freunde einladen kannst? Für jede Anmeldung bekommst du XP, und wenn deine Freunde eine ganze Saison spielen, gibt es Joker und Sterne für deinen Spielstand. Deinen persönlichen Link findest du unter ⚙️ Einstellungen → Freunde einladen.'); }
     return r; }
   function wrapD(fn) { return function (S, D) { regFix(S); var a = Array.prototype.slice.call(arguments); a[1] = dOf(S, D); return fn.apply(null, a); }; }
-  return { dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
+  return { VB_LAND: VB_LAND, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
 })();

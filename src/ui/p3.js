@@ -127,7 +127,7 @@ function tHome() {
   var c1 = compBox() + topBox1('lt', '⭐ Leistungsträger') + topBox1('tore', '⚽ Torschützen') + topBox1('vorl', '👟 Vorlagengeber') + injBox() + loanBox() + contractBox1() + buildBox();
   var c2 = partnerBox() + '<div style="margin-bottom:12px">' + ticketHTML(n) + '</div>' + (n && n.comp !== 'liga' && n.comp !== 'test' && n.comp !== 'rel' ? cupExcerpt(n) : tableExcerpt()) + '<div class="box"><h3>📅 Letzte Spiele</h3>' + (played.length ? played.map(gameLine).join('') : '<div class="muted small">Noch keine Spiele in dieser Saison.</div>') + '</div>';
   var c3 = mailsBox() + feedBox();
-  return L4(c1, S2(c2, c3), misBox() + mgrSide() + clubSide());
+  return L4(c1, S2(c2, c3), mgrSide() + misBox() + clubSide());
 }
 /* ---------- Missionen: kleine Übersicht (zwei Kreise) und eigene Seite unter Manager */
 function donut(p, col, lbl, sub, lock) { var r = 26, c = 2 * Math.PI * r, d = Math.max(0, Math.min(1, p)) * c; return '<div class="mdon' + (lock ? ' lock' : '') + '"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>' + (lock ? '' : '<circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + d.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 32 32)"/>') + '<text x="32" y="36" text-anchor="middle" font-size="13" font-weight="900" fill="currentColor">' + (lock ? '🔒' : Math.round(p * 100) + '%') + '</text></svg><b>' + lbl + '</b><span class="xs muted">' + sub + '</span></div>'; }

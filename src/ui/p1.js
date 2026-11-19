@@ -76,6 +76,7 @@ var SND = {
   coin: function () { beep(988, .07, 'square', .05); beep(1319, .18, 'square', .05, .07); },
   ding: function () { beep(1568, .25, 'sine', .07); },
   joker: function () { [392, 523, 659, 784, 1047, 1319].forEach(function (f, i) { beep(f, .14, 'sawtooth', .05, i * .07); }); beep(1568, .5, 'triangle', .07, .45); noise(.5, 4000, 800, .15, .45); },
+  sign: function () { [523, 659, 784, 1047, 1319].forEach(function (f, i) { beep(f, .18, 'triangle', .1, i * .08); }); beep(1568, .45, 'sine', .09, .42); noise(.4, 3000, 900, .12, .4); },
   rewind: function () { for (var i = 0; i < 14; i++) beep(1400 - i * 70, .06, 'square', .04, i * .06); noise(.9, 3000, 300, .2); }
 };
 
@@ -346,7 +347,7 @@ function homeInfo() {
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
   $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '' + (function () { var ts = titleSrc(), ph = ts === 'PH'; return '<img class="titleimg' + (ph ? ' ph' : '') + '" src="' + (ph ? TITLEIMG : ts) + '" onload="if(!this.classList.contains(\'ph\'))this.style.opacity=1;titleFit()" onerror="if(this.src!==TITLEIMG){this.classList.remove(\'ph\');this.src=TITLEIMG}" style="opacity:0;transition:opacity .4s" alt="Amateur Manager">'; })() + '' +
-    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button></div>' +
+    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button><button onclick="langPick()" title="Sprache / Language">' + ({ de: '🇩🇪', en: '🇬🇧', es: '🇪🇸', fr: '🇫🇷' }[(userSet && userSet().lang) || 'de'] || '🌍') + '</button></div>' +
     '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a></div></div>';
 }
 function refreshHome() {
@@ -396,7 +397,7 @@ function levelOf(xp) { return MGR.levelOf(xp || 0); }
 /* ---------- Vollbild */
 function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 var ICO = (function () { var w = function (p) { return '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
-  return { fs: w('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'), fsx: w('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'), save: w('<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><rect x="7" y="13" width="10" height="6" rx="1"/>'), power: w('<path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>'), gear: w('<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>') }; })();
+  return { home: w('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/>'), fs: w('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'), fsx: w('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'), save: w('<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><rect x="7" y="13" width="10" height="6" rx="1"/>'), power: w('<path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>'), gear: w('<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>') }; })();
 function fsBtn(cls) { return '<button class="icbtn fsb ' + (cls || '') + '" onclick="toggleFs()" title="Vollbild">' + (fsOn() ? ICO.fsx : ICO.fs) + '</button>'; }
 function toggleFs() {
   var d = document, el = d.documentElement;
@@ -514,7 +515,7 @@ function newGameSetup() {
   var opts = ['TW', 'RV', 'LV', 'IV', 'DM', 'ZM', 'OM', 'LM', 'RM', 'LA', 'ST', 'RA'].map(function (k) { return '<option value="' + k + '" ' + (k === 'ST' ? 'selected' : '') + '>Ja – ' + MGR.DPN[k] + ' (' + k + ')</option>'; }).join('');
   CP = { land: '', kreis: '', team: null };
   pop('<div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div>' +
-    '<label>Dein Verein</label><input id="cpq" placeholder="🔎 Verein suchen …" autocomplete="off" oninput="cpSearch(this.value)"><div id="cphits"></div><div id="cpsel"></div>' +
+    '<label>Dein Verein</label><div class="cpqw"><input id="cpq" placeholder="🔎 Verein suchen …" autocomplete="off" oninput="this.parentNode.classList.toggle(\'has\', !!this.value);cpSearch(this.value)"><button class="qx" type="button" onclick="cpQx()" title="Löschen">✕</button></div><div id="cphits"></div><div id="cpsel"></div>' +
     (can ? '<label>Spielertrainer: Du selbst als Superspieler</label><select id="selfpos"><option value="">Nein, nur Manager</option>' + opts + '</select>' : '<div class="hint">🔒 Ab Manager-Level ' + sl + ' kannst du dich selbst als Superspieler in den Kader holen.</div>') +
     '<button class="pri" style="width:100%;margin-top:14px" onclick="createGame()">Los geht’s</button>', { white: true, y: 70 });
   var mf = $('#demapf') || document.createElement('div'); mf.id = 'demapf'; mf.innerHTML = deMap(); document.body.appendChild(mf);
@@ -527,6 +528,7 @@ var BLAND = {
   'Nordrhein-Westfalen': { vb: ['Mittelrhein', 'Niederrhein', 'Westfalen'], k: 'NRW', ab: 'WDFV', c: ['#2a8a3e', '#ffffff', '#d52b1e'] },
   'Rheinland-Pfalz': { vb: ['Rheinland', 'Südwest', 'RV Südwest'], k: 'RLP', ab: 'FVR · SWFV', c: ['#1a1a1a', '#d4202a', '#f2c200'] }
 };
+function cpLands() { return (CP.land ? [CP.land] : Object.keys(BLAND)).map(encodeURIComponent).join(','); }
 function cpVbs() { var L = BLAND[CP.land]; if (L) return L.vb; var a = []; Object.keys(BLAND).forEach(function (k) { a = a.concat(BLAND[k].vb); }); return a; }
 function cpSel() {
   var t = CP.team, el = $('#cpsel'); if (!el) return;
@@ -536,8 +538,8 @@ var CPQT = null;
 function cpSearch(q) {
   clearTimeout(CPQT); q = q.trim(); if (q.length < 3) { if (CP.kreis) cpKreisList(); else $('#cphits').innerHTML = ''; return; }
   CPQT = setTimeout(function () {
-    var qq = encodeURIComponent(q.replace(/[*,()]/g, ' ')), vb = cpVbs().map(encodeURIComponent).join(',');
-    rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&ligen_staffeln.verband=in.(' + vb + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
+    var qq = encodeURIComponent(q.replace(/[*,()]/g, ' '));
+    rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
       CP.hits = rows;
       $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
     }).catch(function (e) { $('#cphits').innerHTML = '<div class="xs muted">' + esc(e.message) + '</div>'; });
@@ -551,9 +553,8 @@ function cpPick(i) {
 }
 function cpKreis(k) { CP.kreis = k; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = k ? '🔎 Verein im Kreis ' + kName(k) + ' suchen …' : '🔎 Verein in ' + CP.land + ' suchen …'; if (q.value.trim().length >= 3) cpSearch(q.value); else if (k) cpKreisList(); else $('#cphits').innerHTML = ''; } }
 function cpKreisList() {
-  var vb = cpVbs().map(encodeURIComponent).join(',');
   $('#cphits').innerHTML = '<div class="xs muted" style="margin-top:6px">Lade Vereine …</div>';
-  rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&ligen_staffeln.verband=in.(' + vb + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
+  rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv,klasse)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
     rows.sort(function (a, b) { return (a.ligen_staffeln.ebene - b.ligen_staffeln.ebene) || a.name.localeCompare(b.name, 'de'); }); CP.krows = rows; CP.kgrp = ''; cpKreisDraw();
   });
 }
@@ -561,17 +562,19 @@ function cpKreisList() {
 function cpKreisDraw() {
   var rows = CP.krows || [], el = $('#cphits'); if (!el) return;
   if (!rows.length) { el.innerHTML = '<div class="xs muted" style="margin-top:6px">Keine Vereine gefunden.</div>'; return; }
-  if (!CP.kgrp) { var G = [], seen = {}; rows.forEach(function (t) { var n = t.ligen_staffeln.name; if (!seen[n]) { seen[n] = { n: n, c: 0, e: t.ligen_staffeln.ebene }; G.push(seen[n]); } seen[n].c++; });
+  if (!CP.kgrp) { var G = [], seen = {}; rows.forEach(function (t) { var n = ligaKl(t.ligen_staffeln); if (!seen[n]) { seen[n] = { n: n, c: 0, e: t.ligen_staffeln.ebene }; G.push(seen[n]); } seen[n].c++; });
     el.innerHTML = '<div class="xs muted" style="margin:8px 0 4px">Wähle die Liga:</div><div class="cphits tall">' + G.map(function (g, i) { return '<button class="cphit lg" onclick="CP.kgrp=CP.kgl[' + i + '];cpKreisDraw()"><span class="lgn" title="Spielklasse (Ebene)">' + g.e + '</span><span><b>' + esc(g.n) + '</b><span class="xs muted">' + g.c + (g.c === 1 ? ' Verein' : ' Vereine') + ' aus dem Kreis</span></span><span class="chev">›</span></button>'; }).join('') + '</div>'; CP.kgl = G.map(function (g) { return g.n; }); return; }
-  CP.hits = rows.filter(function (t) { return t.ligen_staffeln.name === CP.kgrp; });
-  el.innerHTML = '<div class="row" style="gap:8px;margin:8px 0 4px"><button class="sm" onclick="CP.kgrp=\'\';cpKreisDraw()">‹ Ligen</button><b class="small">' + esc(CP.kgrp) + '</b></div><div class="cphits tall">' + CP.hits.map(function (t, i) { return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b></span></button>'; }).join('') + '</div>';
+  CP.hits = rows.filter(function (t) { return ligaKl(t.ligen_staffeln) === CP.kgrp; });
+  el.innerHTML = '<div class="row" style="gap:8px;margin:8px 0 4px"><button class="sm" onclick="CP.kgrp=\'\';cpKreisDraw()">‹ Ligen</button><b class="small">' + esc(CP.kgrp) + '</b></div><div class="cphits tall">' + CP.hits.map(function (t, i) { return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b>' + (t.ligen_staffeln.name !== CP.kgrp ? '<span class="xs muted">' + esc(t.ligen_staffeln.name) + '</span>' : '') + '</span></button>'; }).join('') + '</div>';
 }
-function mapRedraw() { var el = $('#demapf'); if (el) el.innerHTML = deMap(); }
+// Spielklasse ohne Staffel/Gruppe: alle Kreisliga-A-Staffeln eines Kreises zusammen usw.
+function ligaKl(st) { var k = String(st.klasse || st.name || '').replace(/ \(Verband\)$/, ''), vb = st.verband; if (k === 'Verbandsliga') k = vb === 'Mittelrhein' ? 'Mittelrheinliga' : vb === 'Westfalen' ? 'Westfalenliga' : 'Verbandsliga'; if (/^(Oberliga|Regionalliga|3\. Liga|2\. Bundesliga|Bundesliga)/.test(st.name || '') && !/^(Kreisliga|Bezirksliga|Landesliga)/.test(k)) return st.name; return k; }
+function mapRedraw() { var el = $('#demapf'); if (!el) return; if (CP.land) { if (!el.dataset.top) { el.dataset.top = Math.round(el.getBoundingClientRect().top); el.style.top = el.dataset.top + 'px'; el.style.transform = 'none'; } } else { delete el.dataset.top; el.style.top = ''; el.style.transform = ''; } el.innerHTML = deMap(); }
 function cpLand(n) { if (n && !BLAND[n]) return toast(n + ': Coming soon – bald spielbar!'); CP.land = n; CP.kreis = ''; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; if (!LITE && !navigator.maxTouchPoints) q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
 function cpCounts() {
   if (CPN) return; CPN = {};
   Object.keys(BLAND).forEach(function (k) {
-    ensureFresh().then(function () { return fetch(SB.url + '/rest/v1/ligen_teams?select=id,ligen_staffeln!inner(verband)&aktiv=eq.true&ligen_staffeln.verband=in.(' + BLAND[k].vb.map(encodeURIComponent).join(',') + ')', { headers: sbHeaders({ Prefer: 'count=exact', Range: '0-0' }) }); }).then(function (r) {
+    ensureFresh().then(function () { return fetch(SB.url + '/rest/v1/ligen_teams?select=id&aktiv=eq.true&land=eq.' + encodeURIComponent(k), { headers: sbHeaders({ Prefer: 'count=exact', Range: '0-0' }) }); }).then(function (r) {
       var m = /\/(\d+)/.exec(r.headers.get('content-range') || ''); CPN[k] = m ? +m[1] : 0; mapRedraw();
     }).catch(function () {});
   });
@@ -598,7 +601,7 @@ function deMap() {
     var L = BLAND[l[0]], cx = l[2], cy = Math.round(l[3] * MAPK), n = CPN && CPN[l[0]] != null ? CPN[l[0]].toLocaleString('de-DE') + ' Teams' : '…', walls = '';
     flat += '<path d="' + l[1] + '" transform="' + sc + '" fill="#000" opacity=".45" filter="url(#mblur)"/>';
     for (var j = MAPLIFT; j >= 1; j -= 2) walls += '<path d="' + l[1] + '" transform="translate(0 ' + (j - MAPLIFT) + ') ' + sc + '" fill="' + (j > MAPLIFT / 2 ? '#2f5d18' : '#3d7420') + '"/>';
-    AIRL.push('<g class="lift" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + ' – antippen</title>' + walls + '<path class="top" d="' + l[1] + '" transform="translate(0 ' + (-MAPLIFT) + ') ' + sc + '"/>' +
+    AIRL.push('<g class="lift" onmouseenter="this.ownerSVGElement.classList.add(\'hov\')" onmouseleave="this.ownerSVGElement.classList.remove(\'hov\')" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + ' – antippen</title>' + walls + '<path class="top" d="' + l[1] + '" transform="translate(0 ' + (-MAPLIFT) + ') ' + sc + '"/>' +
       '<g class="lbadge" transform="translate(' + cx + ' ' + (cy - MAPLIFT - 4) + ')"><path d="M0 -30 19 -24v13c0 11-8 18-19 22-11-4-19-11-19-22v-13z" fill="' + L.c[0] + '" stroke="#fff" stroke-width="2.2"/><path d="M-19 -12h38v7h-38z" fill="' + L.c[1] + '"/><path d="M-19 -5h38v6h-38z" fill="' + L.c[2] + '"/><text y="-16" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + L.k + '</text>' +
       '<rect x="-40" y="15" width="80" height="30" rx="15" fill="rgba(12,18,10,.82)" stroke="rgba(185,242,122,.55)"/><text y="27" text-anchor="middle" font-size="8.5" font-weight="800" fill="#cfe9b4" font-family="Arial,sans-serif" letter-spacing=".4">' + esc(L.ab) + '</text><text y="39.5" text-anchor="middle" font-size="10.5" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + n + '</text></g>' + (CP.team && CP.land === l[0] ? mapPin(MAPLIFT) : '') + '</g>');
   });
@@ -610,7 +613,7 @@ function deMapLand(land) {
   var l = DEMAP.l.filter(function (x) { return x[0] === land; })[0], K = DEMAP.k[land], bx = pathBox(l[1]), w = bx[2] - bx[0], h = bx[3] - bx[1], pad = w * 0.06, lift = w * 0.035, sc = 'scale(1 ' + MAPK + ')', fs = w / 44;
   var walls = ''; for (var j = 6; j >= 1; j--) walls += '<path d="' + l[1] + '" transform="translate(0 ' + (lift * j / 6 - lift) + ') ' + sc + '" fill="' + (j > 3 ? '#2f5d18' : '#3d7420') + '"/>';
   var kre = '', lab = '';
-  K.forEach(function (k, i) { var on = CP.kreis === k[0], dim = CP.kreis && !on; kre += '<path class="kr' + (on ? ' on' : '') + (dim ? ' dim' : '') + (i % 2 ? ' alt' : '') + '" d="' + k[2] + '" transform="translate(0 ' + (-lift) + ') ' + sc + '" onclick="cpKreis(\'' + esc(k[0]).replace(/'/g, "\\'") + '\')"><title>Kreis ' + esc(kName(k[0])) + '</title></path>';
+  K.forEach(function (k, i) { var on = CP.kreis === k[0], dim = CP.kreis && !on; kre += '<g class="krg"><path class="kr' + (on ? ' on' : '') + (dim ? ' dim' : '') + (i % 2 ? ' alt' : '') + '" d="' + k[2] + '" transform="translate(0 ' + (-lift) + ') ' + sc + '" onclick="cpKreis(\'' + esc(k[0]).replace(/'/g, "\\'") + '\')"><title>Kreis ' + esc(kName(k[0])) + '</title></path></g>';
     var kb = pathBox(k[2]); if ((!dim && (kb[2] - kb[0]) > w * 0.1) || on) lab += '<text class="krl' + (on ? ' on' : '') + '" x="' + k[3] + '" y="' + (k[4] * MAPK - lift).toFixed(1) + '" font-size="' + (on ? fs * 1.25 : fs).toFixed(2) + '" text-anchor="middle">' + esc(kName(k[0])) + '</text>'; });
   return '<div class="mapbar"><button onclick="cpLand(\'\')">← Deutschland</button><b>' + esc(land) + '</b>' + (CP.kreis ? '<span>Kreis ' + esc(kName(CP.kreis)) + ' <a href="javascript:void 0" onclick="cpKreis(\'\')">✕</a></span>' : '<span class="muted">Tipp auf deinen Kreis</span>') + '</div>' +
     '<svg class="zoom" viewBox="' + (bx[0] - pad).toFixed(1) + ' ' + (bx[1] - pad - lift).toFixed(1) + ' ' + (w + pad * 2).toFixed(1) + ' ' + (h + pad * 2 + lift).toFixed(1) + '">' + mapDefs() + '<path d="' + l[1] + '" transform="' + sc + '" fill="#000" opacity=".45" filter="url(#mblur)"/>' + walls + kre + lab + mapPin(lift, w / 260) + '</svg>';
@@ -619,10 +622,10 @@ function createGame() {
   if (!CP.team) return toast('Bitte zuerst deinen Verein suchen.', true);
   var sp = $('#selfpos') ? $('#selfpos').value : '';
   loading(true); game('new', { self: sp ? { pos: sp } : null, team: CP.team.id }).then(function (r) {
-    loading(false); SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state;
-    closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
-    V = MGR.view(S, D); render();
-    dailyKick().then(function () { render(true); afterUpdate(); });
+    SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state; NOTE = { levelUp: null };
+    // erst alles laden, dann Spiel und Saisonziel zusammen zeigen (kein kurzes Aufblitzen des Spielmenüs)
+    var go2 = function () { loading(false); closePop(); ST.tab = 'home'; ST.screen = 'game'; V = MGR.view(S, D); render(); afterUpdate(); };
+    dailyKick().then(go2, go2);
   }).catch(function (x) { loading(false); toast(x.message, true); });
 }
 function startLoad() {
@@ -715,3 +718,6 @@ function refCopy() { var l = location.origin + '/?ref=' + BONUSI.code; (navigato
 function refMis(k) { loading(true); game('refMission', { k: k }).then(function (I) { loading(false); toast('Belohnung gutgeschrieben – im Spiel einlösen.', false, '🎁 Mission geschafft'); bonusDraw(I); }).catch(function (x) { loading(false); toast(x.message, true); }); }
 function misClaim(k) { act('misClaim', { k: k }, { quiet: true }).then(function (r) { if (!r) return; var t = String(r.info || ''), i = t.indexOf(': '); toast(i > 0 ? t.slice(i + 2) : t, false, '🎯 ' + (i > 0 ? t.slice(2, i) : 'Mission')); if ($('#pop')) closePop(); render(true); }); }
 function bonusRedeem() { act('bonusRedeem', {}, { quiet: true }).then(function (r) { if (!r) return; toast(String(r.info || '').replace(/^🎁\s*/, ''), false, '🎁 Bonus'); BONUSI.credit = { j: 0, h: 0 }; render(true); bonusDraw(BONUSI); }); }
+
+function langPick() { pop('<h2 style="padding:0">🌍 Sprache · Language</h2><div class="grid g2" style="gap:8px;margin-top:10px">' + [['de', '🇩🇪 Deutsch'], ['en', '🇬🇧 English'], ['es', '🇪🇸 Español'], ['fr', '🇫🇷 Français']].map(function (x) { return '<button class="' + (((userSet().lang) || 'de') === x[0] ? 'pri' : '') + '" onclick="setLang(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>', { white: true }); }
+function cpQx() { var q = $('#cpq'); if (!q) return; q.value = ''; q.parentNode.classList.remove('has'); cpSearch(''); }

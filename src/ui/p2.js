@@ -103,7 +103,7 @@ function introSet(k) {
     var u = imgOf('bg', k); bg.style.backgroundImage = u ? 'linear-gradient(rgba(0,0,0,.15),rgba(0,0,0,.35)),url("' + u + '")' : '';
     if (u && introSet.last !== u) { introSet.last = u; var im = new Image(); im.onload = function () { var nh = Math.round((document.documentElement.clientWidth || 1200) * im.naturalHeight / im.naturalWidth); if (Math.abs((window.INTROH || 0) - nh) > 4) { window.INTROH = nh; var p = $('#pop'); if (p && document.body.classList.contains('intro')) p.style.top = Math.max(10, Math.round((nh - p.offsetHeight) / 2)) + 'px'; } }; im.src = u; }
     bg.className = u ? 'img' : 'art'; b.classList.remove('build'); b.classList.add('intro');
-    if (!$('#introback')) { var ib = document.createElement('div'); ib.id = 'introback'; ib.innerHTML = fsBtn() + '<button class="icbtn wide" onclick="quit()" title="Zurück zum Hauptmenü – dein Spiel ist gespeichert">⌂ Hauptmenü</button>'; b.appendChild(ib); }
+    if (!$('#introback')) { var ib = document.createElement('div'); ib.id = 'introback'; ib.innerHTML = fsBtn() + '<button class="icbtn" onclick="quit()" title="Zurück zum Hauptmenü – dein Spiel ist gespeichert">' + ICO.home + '</button>'; b.appendChild(ib); }
   } else if (b.classList.contains('intro')) {
     b.classList.remove('intro'); b.classList.add('build'); if (bg) bg.classList.add('out'); var ib2 = $('#introback'); if (ib2) ib2.remove();
     setTimeout(function () { b.classList.remove('build'); var x = $('#introbg'); if (x) x.remove(); if (V && V.daily && V.daily.open) afterUpdate(); }, 2600);
@@ -311,7 +311,7 @@ function spPop(msg0) {
 function spDo(a, i) {
   var p = { i: i }; if (a === 'spAccept') p.yrs = V.spOffers[i].yrs;
   act(a, p, { quiet: true, norender: true }).then(function (r) { if (!r) return; NW = {};
-  if (a === 'spAccept') { closePop(); render(true); SND.coin && SND.coin(); fxCard('Hauptsponsor', splitInfo(r.info.replace('Hauptsponsor: ', '')), LASTX, LASTY); xpFx(5, LASTX, LASTY); rewardFx(LASTX, LASTY); setTimeout(afterUpdate, 900); return; }
+  if (a === 'spAccept') { closePop(); render(true); SND.sign && SND.sign(); fxCard('Hauptsponsor', splitInfo(r.info.replace('Hauptsponsor: ', '')), LASTX, LASTY); xpFx(5, LASTX, LASTY); rewardFx(LASTX, LASTY); setTimeout(afterUpdate, 900); return; }
   spPop(r.info); });
 }
 /* ---------- Ausstatter */
@@ -539,8 +539,8 @@ function goalPick(k, ev) {
   var dm = V.wealth - cash0, df = V.fans - fans0;
   var ch = []; if (dm) ch.push('+' + eur(dm) + ' Zuschuss'); if (df) ch.push('Fans +' + df);
   toast(ch.length ? ch.join(' · ') : 'Keine Sofort-Effekte', false, '🎯 Saisonziel: ' + V.goal);
-  $('#pop').innerHTML = '<div style="text-align:center;padding:10px 0"><div style="font-size:54px;animation:popin .5s cubic-bezier(.2,1.6,.4,1)">' + ({ aufstieg: '🚀', oben: '📈', mitte: '🛡️', erhalt: '🧱' }[k] || '🎯') + '</div><h2 style="padding:0;margin-top:6px">' + esc(V.goal) + '</h2><div class="small muted" style="margin:6px 0 10px">Der Vorstand hat dein Saisonziel notiert.' + (k === 'aufstieg' ? ' Das ganze Dorf träumt vom Aufstieg!' : k === 'erhalt' ? ' Kein Druck – aber verfehlen wäre peinlich.' : '') + '</div>' +
-    (ch.length ? ch.map(function (c) { return '<span class="pill g" style="margin:3px;animation:popin .6s ease">' + esc(c) + '</span>'; }).join('') : '<span class="pill">Keine Sofort-Effekte</span>') + '<div style="margin-top:16px"><button class="pri" onclick="closePop();render(true);afterUpdate()">Los geht’s</button></div></div>';
+  closePop(); render(true); afterUpdate();
+
   });
 }
 function popBan(key, ic, title, sub) { var u = imgOf('bg', key) || (key === 'aufstieg' ? imgOf('bg', 'saisonende') : ''); if (u) return '<div class="popban" style="background-image:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.75)),url(&quot;' + u + '&quot;)"><div><h2 style="padding:0;margin:0;color:#fff">' + esc(title) + '</h2>' + (sub ? '<div class="small" style="color:rgba(255,255,255,.85)">' + esc(sub) + '</div>' : '') + '</div></div>'; return '<div class="row" style="gap:12px;align-items:center;margin-bottom:6px"><span style="font-size:34px;line-height:1">' + ic + '</span><div><h2 style="padding:0;margin:0">' + esc(title) + '</h2>' + (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div></div>'; }

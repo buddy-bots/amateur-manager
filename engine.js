@@ -377,7 +377,7 @@ var MGR = (function () {
   var FOCUSPOS = { technik: 'MF', abschluss: 'ST', abwehr: 'AB', torwart: 'TW' };
   var GOALS = { aufstieg: 'Aufstieg', oben: 'Oberes Drittel', mitte: 'Gesichertes Mittelfeld', erhalt: 'Klassenerhalt' };
   var CUPS = {
-    kp: { name: 'Kreispokal Bonn', dates: ['08-12', '09-09', '10-14', '11-11', '04-07', '05-13'], prize: [0, 0, 300, 500, 1000, 2000] },
+    kp: { name: 'Kreispokal', dates: ['08-12', '09-09', '10-14', '11-11', '04-07', '05-13'], prize: [0, 0, 300, 500, 1000, 2000] },
     mrp: { name: 'Bitburger-Pokal', dates: ['08-19', '10-07', '11-18', '03-10', '04-14', '05-29'], prize: [1500, 3000, 5000, 8000, 12000, 20000] },
     dfb: { name: 'DFB-Pokal', dates: ['08-15', '10-28', '12-09', '02-03', '04-21', '05-22'], prize: [230000, 460000, 920000, 1800000, 3600000, 5000000] }
   };
@@ -994,7 +994,7 @@ var MGR = (function () {
     return '';
   }
   function homeStadion(S) { var L = locOf(S); return L ? 'Sportpark ' + L.ort : 'Waldstadion'; }
-  function regFix(S) { if (S && S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); }
+  function regFix(S) { if (!S) return; if (S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); (S.cups || []).forEach(function (c) { if (c.k === 'kp' && c.name !== 'Kreispokal') c.name = 'Kreispokal'; }); }
   function adjOf(o) { return /e$/.test(o) ? o + 'r' : o + 'er'; }
   var LOCC = {};
   function locOf(S) {
@@ -1394,7 +1394,7 @@ var MGR = (function () {
     pend(S, { type: 'goal', title: 'Saisonziel ' + S.season + '/' + String(S.season + 1).slice(2), text: 'Der Vorstand schätzt den Kader auf Platz ' + myR + ' von ' + n + ' ein und schlägt „' + GOALS[sug] + '“ vor. Ein höheres Ziel bringt mehr Geld und Fan-Begeisterung, aber der Druck steigt.', opts: Object.keys(GOALS).map(function (k) { return { k: k, label: GOALS[k] + (k === sug ? ' (Vorschlag)' : '') }; }) });
   }
   var VPOKAL = { Mittelrhein: 'Bitburger-Pokal', Niederrhein: 'Niederrheinpokal', Westfalen: 'Westfalenpokal', Rheinland: 'Rheinlandpokal', 'Südwest': 'Verbandspokal Südwest' };
-  function cupName(S, k) { var c = CUPS[k]; if (!S.reg) return c.name; if (k === 'kp') return S.reg.kreis ? 'Kreispokal ' + S.reg.kreis : 'Kreispokal'; if (k === 'mrp') return VPOKAL[S.reg.verband] || c.name; return c.name; }
+  function cupName(S, k) { var c = CUPS[k]; if (!S.reg) return c.name; if (k === 'kp') return 'Kreispokal'; if (k === 'mrp') return VPOKAL[S.reg.verband] || c.name; return c.name; }
   function newCup(S, k) { var c = CUPS[k]; return { k: k, name: cupName(S, k), alive: true, rn: 0, games: [], next: null, field: null, hist: [], ties: [], dates: c.dates.map(function (x, i) { var d = sd(S.season, x); return (i === 5 || (k === 'dfb' && i === 0)) ? toDow(d, 6) : toDow(d, 3); }) }; }
   function drawCup(S, D, c) {
     if (!c.alive || c.rn >= 6) { c.next = null; return; }
@@ -2559,6 +2559,7 @@ var MGR = (function () {
     if (S.fired && a !== 'noop') err('Du wurdest entlassen. Starte ein neues Spiel.');
     switch (a) {
       case 'noop': break;
+      case 'setCrest': { var ci = String(p.img || ''); if (ci && (!/^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(ci) || ci.length > 80000)) err('Das Bild ist zu groß oder kein PNG/JPG/WebP.'); S.crest = ci || null; info = ci ? '🛡️ Neues Wappen gespeichert.' : 'Wappen zurückgesetzt.'; break; }
       case 'sim': {
         if (S.pending.length) err('Erst die offene Entscheidung treffen.');
         if (S.seasonRep && !S.seasonRep.ack) err('Erst den Saisonbericht ansehen.');

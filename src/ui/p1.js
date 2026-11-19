@@ -202,11 +202,14 @@ function genLogo(n) {
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116"><defs><clipPath id="' + id + '"><path d="' + P + '"/></clipPath></defs><g clip-path="url(#' + id + ')"><rect width="100" height="120" fill="' + c[0] + '"/>' + fill + '<rect width="100" height="120" fill="url(#g' + id + ')" opacity=".25"/></g><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></linearGradient><path d="' + P + '" fill="none" stroke="#fff" stroke-width="5"/><text x="50" y="' + (shape === 1 ? 70 : 68) + '" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="' + fs + '" fill="' + txt + '" stroke="rgba(0,0,0,.45)" stroke-width="2.5" paint-order="stroke" text-anchor="middle">' + ini + '</text></svg>';
   return (GENLOGO[n] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
 }
-function ownLogo() { return S && S.reg ? genLogo(S.club) : SVWLOGO; }
-function wkey(n) { return !(S && S.reg) && n === ((S && S.club) || (D && D.club)) ? '__svw' : n; }
+function ownLogo() { if (S && S.crest) return S.crest; return genLogo((S && S.club) || (D && D.club) || 'Verein'); }
+// Eigenes Wappen hochladen: auf 160 px verkleinert, als WebP im Spielstand gespeichert
+function crestUpload() { var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/png,image/jpeg,image/webp,image/svg+xml'; i.onchange = function () { var f = i.files && i.files[0]; if (!f) return; if (f.size > 8e6) return toast('Bild zu groß (max. 8 MB).', true); var rd = new FileReader(); rd.onload = function () { var im = new Image(); im.onload = function () { var m = 160, sc = Math.min(1, m / Math.max(im.width, im.height)), w = Math.max(1, Math.round(im.width * sc)), h = Math.max(1, Math.round(im.height * sc)); var c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(im, 0, 0, w, h); var url = c.toDataURL('image/webp', 0.86); if (url.indexOf('data:image/webp') !== 0) url = c.toDataURL('image/png'); act('setCrest', { img: url }); }; im.onerror = function () { toast('Bild konnte nicht gelesen werden.', true); }; im.src = rd.result; }; rd.readAsDataURL(f); }; i.click(); }
+function crestReset() { act('setCrest', { img: '' }); }
+function wkey(n) { return n === ((S && S.club) || (D && D.club)) ? '__svw' : n; }
 function needCrest(key) {}
 function crest(n, cls) {
-  var key = wkey(n); if (key === '__svw' || (S && S.reg && n === S.club)) return '<img class="' + (cls || 'wp') + '" src="' + ownLogo() + '" alt="">';
+  var key = wkey(n); if (key === '__svw') return '<img class="' + (cls || 'wp') + '" src="' + ownLogo() + '" alt="">';
   return '<img class="' + (cls || 'wp') + '" src="' + genLogo(n) + '" alt="">';
 }
 var ELOGO = "data:image/png;base64,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";
@@ -503,65 +506,67 @@ function modePop() {
 function newGameSetup() {
   var lv = levelOf(ME.xp), sl = MGR.featLvl('spielertrainer'), can = lv.lvl >= sl, col = lvCol(lv.lvl);
   var opts = ['TW', 'RV', 'LV', 'IV', 'DM', 'ZM', 'OM', 'LM', 'RM', 'LA', 'ST', 'RA'].map(function (k) { return '<option value="' + k + '" ' + (k === 'ST' ? 'selected' : '') + '>Ja – ' + MGR.DPN[k] + ' (' + k + ')</option>'; }).join('');
-  pop('<div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div><label>Verein</label><select id="cpv" onchange="cpVerband(this.value)"><option value="">' + esc(D.club) + ' – ' + esc(D.lv[D.startLvl].short) + ' (Standard)</option><option value="Mittelrhein">Echter Verein – Verband Mittelrhein</option><option value="Niederrhein">Echter Verein – Verband Niederrhein</option><option value="Westfalen">Echter Verein – Verband Westfalen</option><option value="Rheinland">Echter Verein – Verband Rheinland</option><option value="Südwest">Echter Verein – Verband Südwest</option></select>' +
-    '<input id="cpq" placeholder="🔎 Oder direkt Verein suchen (z. B. Schmallenberg) …" style="margin-top:8px" oninput="cpSearch(this.value)"><div id="cphits"></div><div id="cpx"></div>' +
-    '<div class="small muted" id="cptxt" style="margin-top:10px">Du übernimmst den <b style="color:var(--t)">' + esc(D.club) + '</b> in der <b style="color:var(--t)">' + esc(D.lv[D.startLvl].short) + '</b> als Manager.</div>' +
+  CP = { land: '', team: null };
+  pop('<div class="ngwrap"><div class="ngl"><div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div>' +
+    '<label>Dein Verein</label><input id="cpq" placeholder="🔎 Verein suchen …" autocomplete="off" oninput="cpSearch(this.value)"><div id="cphits"></div><div id="cpsel"></div>' +
     (can ? '<label>Spielertrainer: Du selbst als Superspieler</label><select id="selfpos"><option value="">Nein, nur Manager</option>' + opts + '</select>' : '<div class="hint">🔒 Ab Manager-Level ' + sl + ' kannst du dich selbst als Superspieler in den Kader holen.</div>') +
-    '<button class="pri" style="width:100%;margin-top:14px" onclick="createGame()">Los geht’s</button>', { white: true });
+    '<button class="pri" style="width:100%;margin-top:14px" onclick="createGame()">Los geht’s</button></div><div class="ngr" id="cpmap">' + deMap() + '</div></div>', { white: true, xwide: true });
+  cpSel(); cpCounts();
 }
-/* Vereinswahl: Verband → Liga → Staffel → Mannschaft (echte Daten aus fussball.de) */
-var CP = { vb: '', st: [], team: null };
-function cpTxt() { var t = CP.team; $('#cptxt').innerHTML = t ? 'Du übernimmst <b style="color:var(--t)">' + esc(t.name) + '</b> in der <b style="color:var(--t)">' + esc(t.liga) + '</b> als Manager.' : CP.vb ? 'Wähle Liga, Staffel und Mannschaft – oder suche direkt nach dem Namen.' : 'Du übernimmst den <b style="color:var(--t)">' + esc(D.club) + '</b> in der <b style="color:var(--t)">' + esc(D.lv[D.startLvl].short) + '</b> als Manager.'; }
-function cpVerband(vb) {
-  CP = { vb: vb, st: [], team: null }; cpTxt();
-  if (!vb) { $('#cpx').innerHTML = ''; return Promise.resolve(); }
-  $('#cpx').innerHTML = '<div class="small muted" style="margin-top:8px">Lade Ligen …</div>';
-  return rest('ligen_staffeln?select=id,ebene,klasse,name&aktiv=eq.true&verband=in.(' + encodeURIComponent(vb) + (vb === 'Rheinland' || vb === 'Südwest' ? ',' + encodeURIComponent('RV Südwest') : '') + ')&order=ebene,name').then(function (rows) {
-    CP.st = rows || []; if (!CP.st.length) { $('#cpx').innerHTML = '<div class="small muted" style="margin-top:8px">Für diesen Verband sind noch keine Ligen hinterlegt.</div>'; return; }
-    var eb = [], seen = {}; CP.st.forEach(function (r) { if (!seen[r.ebene]) { seen[r.ebene] = 1; eb.push(r); } });
-    $('#cpx').innerHTML = '<div class="row" style="gap:8px;margin-top:8px"><select id="cpe" onchange="cpEbene(this.value)"><option value="">Liga wählen</option>' + eb.map(function (r) { return '<option value="' + r.ebene + '">' + esc(cpKl(r.klasse, vb)) + '</option>'; }).join('') + '</select><select id="cps" onchange="cpStaffel(this.value)" disabled><option>Staffel</option></select></div>' +
-      '<select id="cpt" onchange="cpTeam(this.value)" disabled style="margin-top:8px"><option>Mannschaft</option></select>';
-  }).catch(function (e) { $('#cpx').innerHTML = '<div class="small muted" style="margin-top:8px">' + esc(e.message) + '</div>'; });
-}
-function cpKl(k, vb) { k = String(k).replace(/ \(Verband\)$/, ''); return k === 'Verbandsliga' ? (vb === 'Mittelrhein' ? 'Mittelrheinliga' : vb === 'Westfalen' ? 'Westfalenliga' : k) : k; }
-function cpEbene(e) {
-  var list = CP.st.filter(function (r) { return String(r.ebene) === String(e); }), sel = $('#cps');
-  CP.team = null; cpTxt(); $('#cpt').disabled = true; $('#cpt').innerHTML = '<option>Mannschaft</option>';
-  sel.disabled = !list.length; sel.innerHTML = '<option value="">Staffel wählen</option>' + list.map(function (r) { return '<option value="' + r.id + '">' + esc(r.name) + '</option>'; }).join('');
-  if (list.length === 1) { sel.value = list[0].id; cpStaffel(list[0].id); }
-}
-function cpStaffel(id, pick) {
-  var sel = $('#cpt'); CP.team = null; cpTxt(); if (!id) return;
-  sel.disabled = true; sel.innerHTML = '<option>Lade …</option>';
-  rest('ligen_teams?select=id,name&aktiv=eq.true&staffel_id=eq.' + encodeURIComponent(id) + '&order=name').then(function (rows) {
-    sel.disabled = false; sel.innerHTML = '<option value="">Mannschaft wählen</option>' + rows.map(function (t) { return '<option value="' + t.id + '">' + esc(t.name) + '</option>'; }).join('');
-    if (pick) { sel.value = pick; cpTeam(pick); }
-  });
-}
-function cpTeam(id) {
-  var o = $('#cpt').selectedOptions[0], st = CP.st.filter(function (r) { return r.id === $('#cps').value; })[0];
-  CP.team = id ? { id: id, name: o.textContent, liga: st ? st.name : '' } : null; cpTxt();
+/* Vereinswahl: Suche über alle verfügbaren Verbände, auf der Karte das Bundesland antippen grenzt die Suche ein */
+var CP = { land: '', team: null }, CPN = null;
+var BLAND = {
+  'Nordrhein-Westfalen': { vb: ['Mittelrhein', 'Niederrhein', 'Westfalen'], k: 'NRW', ab: 'WDFV', c: ['#2a8a3e', '#ffffff', '#d52b1e'] },
+  'Rheinland-Pfalz': { vb: ['Rheinland', 'Südwest', 'RV Südwest'], k: 'RLP', ab: 'FVR · SWFV', c: ['#1a1a1a', '#d4202a', '#f2c200'] }
+};
+function cpVbs() { var L = BLAND[CP.land]; if (L) return L.vb; var a = []; Object.keys(BLAND).forEach(function (k) { a = a.concat(BLAND[k].vb); }); return a; }
+function cpSel() {
+  var t = CP.team, el = $('#cpsel'); if (!el) return;
+  el.innerHTML = t ? '<div class="cpcard"><img src="' + genLogo(t.name) + '" alt=""><div><b>' + esc(t.name) + '</b><div class="xs muted">' + esc(t.liga) + '</div></div><button class="x2" onclick="CP.team=null;cpSel()" title="Andere Wahl">✕</button></div>' : '<div class="xs muted" style="margin-top:8px">' + (CP.land ? 'Suche jetzt deinen Verein in ' + esc(CP.land) + '.' : 'Tipp auf dein Bundesland oder such direkt nach deinem Verein.') + '</div>';
 }
 var CPQT = null;
 function cpSearch(q) {
   clearTimeout(CPQT); q = q.trim(); if (q.length < 3) { $('#cphits').innerHTML = ''; return; }
   CPQT = setTimeout(function () {
-    var qq = encodeURIComponent(q.replace(/[*,()]/g, ' '));
-    rest('ligen_teams?select=id,name,staffel_id,ligen_staffeln!inner(name,verband,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true' + (CP.vb ? '&ligen_staffeln.verband=in.(' + encodeURIComponent(CP.vb) + (CP.vb === 'Rheinland' || CP.vb === 'Südwest' ? ',' + encodeURIComponent('RV Südwest') : '') + ')' : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
-      $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(\'' + t.id + '\',\'' + t.staffel_id + '\',\'' + esc(st.verband || '') + '\')"><b>' + esc(t.name) + '</b><span class="xs muted">' + esc((st.name || '') + ' · ' + (st.verband || '')) + '</span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
-    });
-  }, 300);
+    var qq = encodeURIComponent(q.replace(/[*,()]/g, ' ')), vb = cpVbs().map(encodeURIComponent).join(',');
+    rest('ligen_teams?select=id,name,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&ligen_staffeln.verband=in.(' + vb + ')&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
+      CP.hits = rows;
+      $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
+    }).catch(function (e) { $('#cphits').innerHTML = '<div class="xs muted">' + esc(e.message) + '</div>'; });
+  }, 280);
 }
-function cpPick(tid, sid, vb) {
-  if (vb === 'RV Südwest') vb = CP.vb === 'Rheinland' ? 'Rheinland' : 'Südwest';
-  if (vb && vb !== CP.vb) { $('#cpv').value = vb; return cpVerband(vb).then(function () { cpPick(tid, sid); }); }
-  var st = CP.st.filter(function (r) { return r.id === sid; })[0]; if (!st) return;
-  $('#cpe').value = st.ebene; cpEbene(st.ebene); $('#cps').value = sid; cpStaffel(sid, tid); $('#cphits').innerHTML = ''; $('#cpq').value = '';
+function cpPick(i) {
+  var t = (CP.hits || [])[i]; if (!t) return;
+  CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '' };
+  $('#cphits').innerHTML = ''; $('#cpq').value = ''; cpSel();
+  var vb = (t.ligen_staffeln || {}).verband; Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; $('#cpmap').innerHTML = deMap(); } });
+}
+function cpLand(n) { if (!BLAND[n]) return toast(n + ' kommt noch – bald spielbar!'); CP.land = CP.land === n ? '' : n; $('#cpmap').innerHTML = deMap(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
+function cpCounts() {
+  if (CPN) return; CPN = {};
+  Object.keys(BLAND).forEach(function (k) {
+    ensureFresh().then(function () { return fetch(SB.url + '/rest/v1/ligen_teams?select=id,ligen_staffeln!inner(verband)&aktiv=eq.true&ligen_staffeln.verband=in.(' + BLAND[k].vb.map(encodeURIComponent).join(',') + ')', { headers: sbHeaders({ Prefer: 'count=exact', Range: '0-0' }) }); }).then(function (r) {
+      var m = /\/(\d+)/.exec(r.headers.get('content-range') || ''); CPN[k] = m ? +m[1] : 0; var el = $('#cpmap'); if (el) el.innerHTML = deMap();
+    }).catch(function () {});
+  });
+}
+// 3D-Karte: Länder als SVG, nach hinten gekippt und mit einer Seitenwand (gestapelte, dunklere Kopien)
+function deMap() {
+  if (typeof DEMAP === 'undefined') return '';
+  var W = DEMAP.w, H = DEMAP.h, side = '', top = '', badges = '';
+  DEMAP.l.forEach(function (l) { var av = !!BLAND[l[0]], on = CP.land === l[0];
+    for (var k = 7; k >= 1; k--) side += '<path d="' + l[1] + '" transform="translate(0 ' + k + ')" fill="' + (av ? (on ? '#4f8a26' : '#3d6e1f') : '#8d938b') + '"/>';
+    top += '<g class="land' + (av ? ' av' : '') + (on ? ' on' : '') + '" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + (av ? '' : ' – bald verfügbar') + '</title><path d="' + l[1] + '"/></g>';
+    if (av) { var L = BLAND[l[0]], cx = l[2], cy = l[3], n = CPN && CPN[l[0]] != null ? CPN[l[0]].toLocaleString('de-DE') + ' Teams' : '…';
+      badges += '<g class="lbadge" onclick="cpLand(\'' + l[0] + '\')" transform="translate(' + cx + ' ' + (cy - 6) + ')"><path d="M0 -34 22 -27v15c0 13-9 21-22 26-13-5-22-13-22-26v-15z" fill="' + L.c[0] + '" stroke="#fff" stroke-width="2.5"/><path d="M-22 -14h44v8h-44z" fill="' + L.c[1] + '"/><path d="M-22 -6h44v7h-44z" fill="' + L.c[2] + '" clip-path="none"/><text y="-17" text-anchor="middle" font-size="10" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + L.k + '</text>' +
+        '<rect x="-44" y="18" width="88" height="34" rx="9" fill="rgba(20,28,16,.88)"/><text y="32" text-anchor="middle" font-size="10" font-weight="800" fill="#cfe9b4" font-family="Arial,sans-serif">' + esc(L.ab) + '</text><text y="46" text-anchor="middle" font-size="11" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + n + '</text></g>'; }
+  });
+  return '<div class="de3d"><svg viewBox="-10 -40 ' + (W + 20) + ' ' + (H + 60) + '" aria-label="Deutschlandkarte">' + side + top + badges + '</svg></div><div class="xs muted" style="text-align:center;margin-top:4px">Grün = spielbar · weitere Bundesländer folgen</div>';
 }
 function createGame() {
+  if (!CP.team) return toast('Bitte zuerst deinen Verein suchen.', true);
   var sp = $('#selfpos') ? $('#selfpos').value : '';
-  if ($('#cpv') && $('#cpv').value && !CP.team) return toast('Bitte zuerst eine Mannschaft wählen.', true);
-  loading(true); game('new', { self: sp ? { pos: sp } : null, team: $('#cpv') && $('#cpv').value ? CP.team.id : null }).then(function (r) {
+  loading(true); game('new', { self: sp ? { pos: sp } : null, team: CP.team.id }).then(function (r) {
     loading(false); SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state;
     closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
     V = MGR.view(S, D); render();

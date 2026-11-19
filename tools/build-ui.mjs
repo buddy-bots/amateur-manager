@@ -6,7 +6,7 @@ const r = (p) => readFileSync(root + p, 'utf8');
 const pkg = JSON.parse(r('package.json'));
 const ver = pkg.engineVersion;
 const head = r('src/ui/head.html').replaceAll('__ENGINE_VERSION__', ver);
-const parts = ['p0', 'p1', 'p2', 'p3', 'p5', 'p4'].map((p) => r('src/ui/' + p + '.js'));
+const parts = ['p0', 'pmap', 'p1', 'p2', 'p3', 'p5', 'p4'].map((p) => r('src/ui/' + p + '.js'));
 const html = head + '\n' + parts.join('\n');
 if (html.includes('\x3c?')) throw new Error('Apps-Script-Platzhalter gefunden');
 if (html.includes('google.script.run')) throw new Error('google.script.run gefunden');

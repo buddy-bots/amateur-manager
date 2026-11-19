@@ -121,7 +121,7 @@ function tFans() {
   h += '<div class="hint">Tipp: Im Kalender kannst du außerdem Fan-Tage, Kidsdays und einmal im Jahr eine Spendengala ansetzen – auch an Spieltagen.</div>';
   return L4(fcBox(), h, C4);
 }
-function fanDo(k, ev) { var r = act('fanAct', { k: k }, { quiet: true }); if (!r) return; xpFx(1, ev.pageX, ev.pageY); fxCard('Fan-Aktion', splitInfo(r.info.replace(/^[^:]*: /, '→ ').replace(/\.$/, '')), ev.pageX, ev.pageY); }
+function fanDo(k, ev) { act('fanAct', { k: k }, { quiet: true }).then(function (r) { if (!r) return; xpFx(1, ev.pageX, ev.pageY); fxCard('Fan-Aktion', splitInfo(r.info.replace(/^[^:]*: /, '→ ').replace(/\.$/, '')), ev.pageX, ev.pageY); }); }
 /* ---------- Med. Abteilung */
 var MEDIC = { physio: '💆', arzt: '🩺', reha: '🛁', lab: '📈', ernaehrung: '🥗', mrt: '🧲', pool: '🏊', therapeut: '🧠', ortho: '🦴', auge: '👁️', zahn: '🦷' };
 var FXN = { rec: 'Erholung', heal: 'Ausfallzeit', inj: 'Verletzungsrisiko', moral: 'Moral', dev: 'Entwicklung' };
@@ -333,7 +333,7 @@ function hollyBox() {
   var L = V.holly || [];
   return h + (L.length ? L.map(function (x, i) { return '<div class="hoff"><div class="row" style="gap:10px"><span style="font-size:26px">' + x.ic + '</span><div style="flex:1;min-width:0"><b class="small">' + esc(x.n) + '</b><div class="xs muted">' + esc(x.type) + ' · bis ' + dFull(x.exp) + '</div></div></div>' + fBar('✨ Effekt', x.eff * 100, eur(x.cost) + '/Monat') + '<button class="pri" style="width:100%;margin-top:6px" onclick="act(\'hollySign\',{i:' + i + '})">Verpflichten</button></div>'; }).join('') : '<div class="small muted">Gerade ist kein Star verfügbar. Im Lauf eines Jahres melden sich 1–3 Weltstars.</div>') + '</div>';
 }
-function ballGet() { var r = act('ballOffers', {}, { quiet: true, norender: true }); if (!r) return; renderTab(); kitPop('ball'); }
+function ballGet() { act('ballOffers', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; renderTab(); kitPop('ball'); }); }
 function pitchPop() { var P = V.infra.pitch; pop('<h2>Kunstrasen erneuern?</h2><div class="small muted">Eigenanteil <b class="neg">' + eur(P.cost.own) + '</b> (Zuschuss ' + eur(P.cost.sub) + '). <span class="gelb">🏗️ 45 Tage Bauzeit.</span></div><button class="pri" style="width:100%;margin-top:14px" onclick="act(\'pitch\',{})">Bestellen</button>'); }
 
 /* ===================================================================== Manager */
@@ -365,7 +365,7 @@ function mgrPop(i) {
 /* ---------- WhatsApp unter Managern */
 var WA = { contacts: null, msgs: {}, since: 0, open: null, tab: 'chats', timer: null, busy: false, me: null };
 function waFavs() { var r0 = waFavs0(); return [WA_DEV].concat(r0.filter(function (x) { return x !== WA_DEV; })); }
-function waFavs0() { if (WA.fav) return WA.fav; var f = (V && V.waFav) || []; if (!f.length && !WA.mig) { WA.mig = true; try { var old = JSON.parse(localStorage.getItem('svwm_wafav') || '[]'); if (old.length) { old.forEach(function (n) { MGR.act(S, D, 'waFav', { n: n, on: true }); }); V = MGR.view(S, D); f = V.waFav || []; } } catch (e) {} } return f; }
+function waFavs0() { if (WA.fav) return WA.fav; var f = (V && V.waFav) || []; if (!f.length && !WA.mig) { WA.mig = true; } return f; }
 function waIsFav(n) { return waFavs().indexOf(n) >= 0; }
 function waFav(n) { var was = waIsFav(n); act('waFav', { n: n, on: !was }, { quiet: true, norender: true }); var fl = waFavs().filter(function (x) { return x !== n; }); if (!was) fl.push(n); WA.fav = fl; if (TOKEN) call('apiWaFavSet', TOKEN, fl).catch(function () {}); toast(was ? 'Aus Favoriten entfernt.' : '★ Zu Favoriten hinzugefügt.'); waDraw(); }
 function waUnread() { var n = 0; Object.keys(WA.msgs).forEach(function (k) { var m = WA.msgs[k]; if (!m.mine && !m.read) n++; }); return n; }
@@ -542,7 +542,7 @@ function famBox(P) {
   return h + '</div>';
 }
 function confirm0(t) { return true; }
-function donateGo() { var x = LASTX, y = LASTY; var r = act('donate', { to: $('#donTo').value, amount: +$('#donAm').value }, { quiet: true }); if (r && r.info) fxCard('Spende', splitInfo((r.info.split('→')[1] || r.info).trim()), x, y); }
+function donateGo() { var x = LASTX, y = LASTY; act('donate', { to: $('#donTo').value, amount: +$('#donAm').value }, { quiet: true }).then(function (r) { if (r && r.info) fxCard('Spende', splitInfo((r.info.split('→')[1] || r.info).trim()), x, y); }); }
 function giftPop() { pop('<h2>🎁 Geschenk</h2><div class="grid g3" style="gap:8px">' + [['klein', 'Blumen', 80, 3], ['mittel', 'Wellness-Tag', 400, 7], ['gross', 'Wochenendtrip', 2000, 14]].map(function (g) { return '<button onclick="act(\'famGift\',{tier:\'' + g[0] + '\'})">' + g[1] + '<div class="xs neg">' + eur(g[2]) + '</div><div class="xs pos">Beziehung +' + g[3] + '</div></button>'; }).join('') + '</div>'); }
 function famResPop() {
   var R = V.priv.fam.res;
@@ -748,11 +748,11 @@ function talkBox(home) {
   return '<div class="box talkb" style="margin:0"><h2 style="text-align:center">Ansprache</h2><div class="small muted" style="margin:0 0 10px;text-align:center">Die Jungs sitzen in der Kabine – was gibst du ihnen mit?</div>' +
     (T ? '<div class="hint" style="text-align:center;font-size:15px">' + esc((TALKS.filter(function (x) { return x[0] === T.k; })[0] || [0, ''])[1]) + '<br>' + (T.b >= 0.6 ? 'Die Mannschaft brennt! 🔥' : T.b < 0 ? 'Kam nicht so gut an 😬' : 'Die Jungs nicken konzentriert.') + '</div>' : '<div class="grid g2" style="gap:8px">' + TALKS.filter(function (t) { return (V.talkOpts || ['ruhig', 'feuer', 'taktik', 'spass']).indexOf(t[0]) >= 0; }).map(function (t) { return '<button style="padding:14px 8px;font-weight:800" title="' + esc(t[2]) + '" onclick="talkDo(\'' + t[0] + '\',event)">' + t[1] + '</button>'; }).join('') + '</div>') + '</div>';
 }
-function talkDo(k, ev) { var r = act('talk', { k: k }, { quiet: true, norender: true }); if (!r) return; toast(r.info); if (V.talk && V.talk.b >= 0.6) rewardFx(ev.pageX, ev.pageY); preMatch(); }
+function talkDo(k, ev) { act('talk', { k: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return; toast(r.info); if (V.talk && V.talk.b >= 0.6) rewardFx(ev.pageX, ev.pageY); preMatch(); }); }
 function kickOff() { try { pileClear(); } catch (e) {}
-  try { if (V && V.jokers > 0) { JOKSNAP = JSON.stringify(S); JOKDATE = S.date; } } catch (e) { JOKSNAP = null; }
-  try { MGR.act(S, D, 'liveStart', {}); } catch (e) { return toast(e.message, true); }
-  DIRTY = true; V = MGR.view(S, D); LIVE.evN = 0; LIVE.paused = false; var fs0 = !!S.prefFast; try { if (!fs0) fs0 = localStorage.getItem('svwm_fast') === '1'; } catch (e) {} LIVE.fast = fs0; LIVE.ms = fs0 ? 250 : 1333; liveScreen(true);
+  liveAct('liveStart', {}).then(function () {
+  LIVE.evN = 0; LIVE.paused = false; var fs0 = !!S.prefFast; try { if (!fs0) fs0 = localStorage.getItem('svwm_fast') === '1'; } catch (e) {} LIVE.fast = fs0; LIVE.ms = fs0 ? 250 : 1333; liveScreen(true);
+  }, function (e) { toast((e && e.message) || String(e), true); });
 }
 function liveScreen(first) {
   ST.screen = 'live'; stopIg(); closePop(); window.scrollTo(0, 0);
@@ -949,12 +949,16 @@ function liveControls() {
 function liveRun() {
   clearTimeout(LIVE.timer); if (!V.live || V.live.done) return;
   if (V.live.pause || LIVE.paused || LIVE.hold) { liveDraw(); return; }
-  LIVE.timer = setTimeout(function () { liveStepOnce(); liveRun(); }, LIVE.ms);
+  var t0 = Date.now();
+  LIVE.timer = setTimeout(function () { liveStepOnce().then(function () { liveRun(); }); }, LIVE.ms);
 }
-function liveAct(a, p) { var r = MGR.act(S, D, a, p || {}); if (r && r.levelUp) NOTE.levelUp = r.levelUp; DIRTY = true; V = MGR.view(S, D); return r; }
+// Live-Aktionen laufen auf dem Server; der nächste Spielminuten-Schritt startet erst nach der Antwort
+function liveAct(a, p) { return serverAct(a, p || {}).then(function (r) { if (r && r.levelUp) NOTE.levelUp = r.levelUp; V = MGR.view(S, D); return r; }); }
 function liveStepOnce(force) {
   var L0 = V.live; var gf0 = L0.gf, ga0 = L0.ga, ev0 = L0.ev.length;
-  try { liveAct('liveStep', { to: L0.min + 1 }); } catch (e) { if (!force) { toast(e.message, true); return; } }
+  return liveAct('liveStep', { to: L0.min + 1 }).then(function () { liveStepShow(gf0, ga0, ev0); }, function (e) { if (!force) toast((e && e.message) || String(e), true); });
+}
+function liveStepShow(gf0, ga0, ev0) {
   var L = V.live; var nev = L.ev.slice(ev0);
   if (L.gf > gf0) SND.goal(); else if (L.ga > ga0) beep(200, .4, 'sawtooth', .05);
   if (nev.some(function (e) { return e.k === 'ht' || e.k === 'ft'; })) SND.whistle();
@@ -965,10 +969,10 @@ function liveStepOnce(force) {
   if (big && !L.done && !(L.pause && /^pen/.test(L.pause.type))) { evPop(big); clearTimeout(LIVE.timer); }
 }
 function livePause() { LIVE.paused = true; clearTimeout(LIVE.timer); liveDraw(); }
-function liveResume() { LIVE.paused = false; if (V.live.pause && /^(ht|inj|et|et2)$/.test(V.live.pause.type)) { liveStepOnce(true); } liveRun(); }
-function liveFast() { LIVE.fast = !LIVE.fast; LIVE.ms = LIVE.fast ? 250 : 1333; S.prefFast = LIVE.fast; DIRTY = true; try { localStorage.setItem('svwm_fast', LIVE.fast ? '1' : '0'); } catch (e) {} liveDraw(); liveRun(); }
-function liveInstant() { clearTimeout(LIVE.timer); var o = $('.evpop'); if (o) o.remove(); LIVE.hold = false; try { liveAct('liveAuto', {}); } catch (e) { return toast(e.message, true); } SND.whistle(); liveDraw(); }
-function livePen(dir) { try { liveAct('livePen', { dir: dir }); } catch (e) { return toast(e.message, true); } if (V.live.pause && V.live.pause.ok) SND.goal(); liveDraw(); }
+function liveResume() { LIVE.paused = false; if (V.live.pause && /^(ht|inj|et|et2)$/.test(V.live.pause.type)) { liveStepOnce(true).then(liveRun); return; } liveRun(); }
+function liveFast() { LIVE.fast = !LIVE.fast; LIVE.ms = LIVE.fast ? 250 : 1333; S.prefFast = LIVE.fast; uiFlag('prefFast', LIVE.fast); try { localStorage.setItem('svwm_fast', LIVE.fast ? '1' : '0'); } catch (e) {} liveDraw(); liveRun(); }
+function liveInstant() { clearTimeout(LIVE.timer); var o = $('.evpop'); if (o) o.remove(); LIVE.hold = false; liveAct('liveAuto', {}).then(function () { SND.whistle(); liveDraw(); }, function (e) { toast((e && e.message) || String(e), true); }); }
+function livePen(dir) { liveAct('livePen', { dir: dir }).then(function () { if (V.live.pause && V.live.pause.ok) SND.goal(); liveDraw(); }, function (e) { toast((e && e.message) || String(e), true); }); }
 function subRecs(L, on, bl, subsLeft) {
   if (subsLeft <= 0 || L.done || !bl.length) return '';
   var cand = on.map(function (p, i) { var st = p.st || {}; var played = (L.min || 0) - (st.from || 0); var bad = (st.gr || 5) + (p.fit < 60 ? (60 - p.fit) / 12 : 0) + (st.y ? 0.4 : 0) - (st.sub && played < 25 ? 3 : 0); return { p: p, i: i, bad: bad }; }).filter(function (x) { return x.p.pos !== 'TW' || (x.p.st && x.p.st.gr > 6.2); }).sort(function (a, b) { return b.bad - a.bad; });
@@ -1010,13 +1014,13 @@ function subPop(slot) {
   livePause();
   pop('<h2>Wechsel' + (out ? ': ' + esc(out.n) + ' raus' : '') + '</h2><div class="xs muted">Position ' + esc(slotPos) + ' · noch ' + (L.maxSubs - L.subs) + ' Wechsel</div><div class="plist" style="margin-top:6px">' + (bench.length ? bench.map(function (p) { var f = p.pos === slotPos ? 100 : p.pos2 === slotPos ? 90 : null; return '<div class="pl" onclick="doSub(' + slot + ',' + p.id + ')"><span class="pb ' + p.pos + '">' + p.pos + '</span><div><b>' + esc(p.n) + '</b><div class="meta">' + tStars(p.tal) + '<span>Fit ' + p.fit + '</span>' + (f ? '<span class="pill ' + (f === 100 ? 'g' : 'y') + '">' + f + ' %</span>' : '<span class="pill r">fremd</span>') + '</div></div>' + strBox(p.str) + '</div>'; }).join('') : '<div class="muted small">Keine Spieler auf der Bank.</div>') + '</div>');
 }
-function doSub(slot, pid) { try { liveAct('liveSub', { slot: slot, pid: pid }); } catch (e) { return toast(e.message, true); } closePop(); SND.click(); liveDraw(); }
+function doSub(slot, pid) { liveAct('liveSub', { slot: slot, pid: pid }).then(function () { closePop(); SND.click(); liveDraw(); }, function (e) { toast((e && e.message) || String(e), true); }); }
 function liveClose() {
   clearTimeout(LIVE.timer); LIVE.paused = false; LIVE.ms = 1333; LIVE.fast = false;
   var L = V.live, md = null, before = null;
   if (L && L.comp === 'liga') { try { var lv = MGR.leagueView(S, D, V.lvl); Object.keys(lv.byMd).forEach(function (k) { if (lv.byMd[k].some(function (f) { return f.svw && f.d === L.d; })) md = +k; }); if (md) before = MGR.tableBefore(S, D, md); } catch (e) {} }
-  var r = act('liveClose', {}, { quiet: true, norender: true }); if (r && r.levelUp) NOTE.levelUp = r.levelUp; ST.tab = 'home'; ST.screen = 'game'; render(); window.scrollTo(0, 0);
-  if (before) postMatchPop(md, before); else afterUpdate();
+  act('liveClose', {}, { quiet: true, norender: true }).then(function (r) { if (r && r.levelUp) NOTE.levelUp = r.levelUp; ST.tab = 'home'; ST.screen = 'game'; render(); window.scrollTo(0, 0);
+  if (before) postMatchPop(md, before); else afterUpdate(); });
 }
 function postMatchPop(md, before) {
   var lv = MGR.leagueView(S, D, V.lvl); var now = lv.rows; var n = now.length, rh = 34;
@@ -1042,15 +1046,15 @@ function settingsPop(tab) {
     '<div class="setsec"><div class="setlbl">🌍 ' + T('Sprache') + '</div><div class="row" style="gap:8px">' + [['de', '🇩🇪 Deutsch'], ['en', '🇬🇧 English']].map(function (x) { return '<button class="' + (lang === x[0] ? 'pri' : 'sm') + '" style="flex:1" onclick="setLang(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>' +
     '<div class="setsec"><div class="setlbl">🖼️ ' + T('Hintergrundbild') + '</div>' + th + '</div>' +
     '<div class="setsec"><div class="setlbl">🗑️ Spielstand</div><button class="sm" style="width:100%" onclick="delPop()">Nur den Spielstand löschen</button></div>' +
-    '<div class="setsec danger"><div class="setlbl">⚠️ Account löschen</div><div class="xs" style="margin-bottom:8px">Löscht deinen Manager komplett: Trainerinfos, Spielstände, Bestenliste und dein Profilbild. Das kann nicht rückgängig gemacht werden.</div><input id="dap" type="password" inputmode="numeric" maxlength="4" placeholder="PIN zur Bestätigung" style="width:100%"><button class="red" style="width:100%;margin-top:8px" onclick="delAccount()">Account endgültig löschen</button></div></div>', { wide: true });
+    '<div class="setsec danger"><div class="setlbl">⚠️ Account löschen</div><div class="xs" style="margin-bottom:8px">Löscht deinen Manager komplett: Trainerinfos, Spielstände, Bestenliste und dein Profilbild. Das kann nicht rückgängig gemacht werden.</div><input id="dap" placeholder="Zur Bestätigung LÖSCHEN eingeben" style="width:100%" autocomplete="off"><button class="red" style="width:100%;margin-top:8px" onclick="delAccount()">Account endgültig löschen</button></div></div>', { wide: true });
 }
 function setLang(l) { setSave({ lang: l }); I18N.apply(); closePop(); if (ST.screen === 'game') render(); else startScreen(); toast(l === 'en' ? 'Language: English' : 'Sprache: Deutsch'); }
 function setBg(u) { setSave({ bg: u }); applyBg(); settingsPop(); }
 function delAccount() {
-  var pin = ($('#dap') || {}).value; if (!pin) return toast('Bitte PIN eingeben.', true);
-  pop('<h2>Wirklich löschen?</h2><div class="warnbox">Dein kompletter Account wird gelöscht – alle Spielstände, Trainerinfos und dein Profilbild.</div><div class="row" style="gap:8px;margin-top:12px"><button class="sm" style="flex:1" onclick="settingsPop()">Abbrechen</button><button class="red" style="flex:1" onclick="delAccountGo(\'' + String(pin).replace(/\D/g, '') + '\')">Ja, löschen</button></div>');
+  var pin = (($('#dap') || {}).value || '').trim().toUpperCase(); if (pin !== 'LÖSCHEN') return toast('Bitte zur Bestätigung LÖSCHEN eingeben.', true);
+  pop('<h2>Wirklich löschen?</h2><div class="warnbox">Dein kompletter Account wird gelöscht – alle Spielstände, Trainerinfos und dein Profilbild.</div><div class="row" style="gap:8px;margin-top:12px"><button class="sm" style="flex:1" onclick="settingsPop()">Abbrechen</button><button class="red" style="flex:1" onclick="delAccountGo(\'LÖSCHEN\')">Ja, löschen</button></div>');
 }
-function delAccountGo(pin) { loading(true); call('apiDeleteAccount', TOKEN, pin).then(function (r) { loading(false); if (!r.ok) return toast(r.error, true); closePop(); DIRTY = false; setToken(null); ME = null; S = null; V = null; HOME = null; try { localStorage.removeItem('svwm_set'); } catch (e) {} startScreen(); window.scrollTo(0, 0); toast('Account gelöscht.'); }).catch(function (e) { loading(false); toast(String(e), true); }); }
+function delAccountGo(pin) { loading(true); call('apiDeleteAccount', TOKEN, pin).then(function (r) { loading(false); if (!r.ok) return toast(r.error, true); closePop(); DIRTY = false; ME = null; SAVEID = null; S = null; V = null; HOME = null; try { localStorage.removeItem('svwm_set'); } catch (e) {} startScreen(); window.scrollTo(0, 0); toast('Account gelöscht.'); }).catch(function (e) { loading(false); toast(String(e), true); }); }
 
 /* ---------- Sprache (Englisch über Wörterbuch) */
 var I18N = {
@@ -1114,15 +1118,18 @@ function starIntroPop() {
 function starIntroOk() { SKIPRAIN |= 2; closePop(); act('starIntroOk', {}, { quiet: true }); setTimeout(function () { try { SND.level(); } catch (e) {} chipFly('.stchip', '⭐', '+½'); }, 120); }
 
 /* ---------- Tägliche Login-Belohnung (7 Tage) */
-function dailyKick() { if (!S || !MGR) return; var d = new Date(), td = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); try { MGR.act(S, D, 'dailyCheck', { today: td }); V = MGR.view(S, D); DIRTY = true; } catch (e) {} }
+function dailyKick() { if (!S || !MGR) return Promise.resolve(); return serverAct('dailyCheck', {}).then(function () { V = MGR.view(S, D); }, function () { }); }
 function dailyPop() {
   var Dl = V.daily; if (!Dl) return; var n = Dl.streak;
   var tiles = [1, 2, 3, 4, 5, 6, 7].map(function (i) { var past = i < n, cur = i === n, main = i === 7; return '<div class="dtile' + (past ? ' done' : '') + (cur ? ' cur' : '') + (main ? ' main' : '') + '"' + (cur ? ' onclick="dailyTake(this)"' : '') + '><small>Tag ' + i + '</small><div class="dic">' + (past ? '✖' : cur ? (main ? '🏆' : '🎁') : main ? '🏆' : '❔') + '</div>' + (cur ? '<b>Antippen!</b>' : past ? '<span>abgeholt</span>' : '<span>' + (main ? 'Hauptpreis' : '???') + '</span>') + '</div>'; }).join('');
   pop('<div style="text-align:center"><h2 style="padding:0">🎁 Tägliche Belohnung</h2><div class="small muted" style="margin-bottom:12px">Jeden Tag einloggen – an Tag 7 wartet der Hauptpreis. Verpasst du einen Tag, geht es wieder bei Tag 1 los.</div><div class="dgrid">' + tiles + '</div></div>', { lock: true, wide: true });
 }
 function dailyTake(el) {
-  var r; try { r = MGR.act(S, D, 'dailyClaim', {}); } catch (e) { return toast(String(e.message || e), true); }
-  V = MGR.view(S, D); DIRTY = true; var pz = V.dailyLast || {}; el.classList.add('reveal'); el.onclick = null; el.querySelector('.dic').textContent = pz.ic || '🎁'; el.querySelector('b').textContent = pz.txt || '';
+  el.onclick = null;
+  serverAct('dailyClaim', {}).then(function () { dailyShow(el); }, function (e) { toast(String((e && e.message) || e), true); });
+}
+function dailyShow(el) {
+  V = MGR.view(S, D); var pz = V.dailyLast || {}; el.classList.add('reveal'); el.onclick = null; el.querySelector('.dic').textContent = pz.ic || '🎁'; el.querySelector('b').textContent = pz.txt || '';
   try { SND.coin(); } catch (e) {}
   setTimeout(function () { closePop(); render(); setTimeout(function () { var tg = pz.t === 'joker' ? '.jokchip' : pz.t === 'star' ? '.stchip' : pz.t === 'club' ? '.kpi.fin' : pz.t === 'xp' ? '.lvbox' : pz.t === 'priv' ? '#tabs button[data-g="managerG"]' : '#tabs button[data-g="home"]'; SKIPRAIN |= 3; chipFly(tg, pz.ic || '🎁', pz.t === 'joker' ? '+1' : pz.t === 'star' ? '+½' : '+'); }, 150); }, 1300);
 }

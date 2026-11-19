@@ -12,6 +12,15 @@ Live unter <https://amateur-manager.de>.
 | `supabase/migrations/` | Datenbank-Schema mit Zugriffsregeln (Supabase, Region Frankfurt). |
 | `supabase/functions/` | Server-Funktionen (Engine, Admin, Bezahlung). |
 
+## Bauen
+
+```
+node tools/build-engine.mjs   # Engine für die Server-Funktion (wird beim Deploy automatisch gebaut)
+node tools/build-ui.mjs       # index.html, engine.js und Rechtstexte für GitHub Pages
+```
+
+`index.html`, `engine.js` und die Rechtstexte im Hauptordner sind erzeugte Dateien – geändert wird in `src/`.
+
 ## Branches
 
 - `main` – das, was auf amateur-manager.de läuft

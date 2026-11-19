@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amateur Manager</title>
+<meta name="description" content="Der Fußballmanager für den Amateurfußball – übernimm deinen Verein bis hinunter zur Kreisliga D.">
 <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--gruen:#8fc852;--g:#8fc852;--r:#e25c5c;--y:#f0c24b;--o:#f0954b;--b:#6fb3e6;--t:#f2f4f0;--m:#a3aa9f;--flaeche:rgba(255,255,255,.055);--flaeche2:rgba(255,255,255,.09);--linie:rgba(255,255,255,.07)}
@@ -574,12 +575,20 @@ body.shake #app{animation:shake .6s}@keyframes shake{10%,90%{transform:translate
 .scdots{display:flex;gap:8px}.scdot{width:26px;height:26px;border-radius:50%;border:2px dashed rgba(255,255,255,.25)}.scdot.free{border:2px solid #4fa3e0;background:rgba(79,163,224,.15)}.scdot.used{border:2px solid #8fc852;background:#8fc852;box-shadow:0 0 10px rgba(143,200,82,.5)}.scbars{display:flex;align-items:flex-end;gap:4px;height:80px;margin-top:10px}.scbars>div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}.scbars i{display:block;width:100%;background:linear-gradient(#e25c5c,#8a2d2d);border-radius:4px 4px 0 0}.scbars small{font-size:9px;opacity:.6}.scplus{padding:2px 8px!important;min-width:0;font-weight:900}.mcard.lockd{opacity:.55;filter:grayscale(.6)}
 .globew{display:flex;justify-content:center;margin:8px 0}.globew canvas{width:100%;max-width:520px;aspect-ratio:1;cursor:grab;touch-action:none}.ycinfo{background:rgba(127,127,127,.1);border-radius:12px;padding:8px 12px;min-height:44px}.ycrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ycchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}.ycchip{font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(127,127,127,.12);border:1px solid var(--linie);color:var(--t);cursor:pointer}.ycchip.on{border-color:#8fc852;background:rgba(143,200,82,.18)}
 .cert{background:linear-gradient(135deg,#f7f0dc,#e9dcb8);border-radius:10px;padding:10px;color:#3a2e14}.certin{border:3px double #b08d3c;border-radius:6px;padding:18px 16px;text-align:center;position:relative}.certin .muted{color:#6b5a32!important;opacity:1}.certlogo{height:42px}.certh{font-family:Georgia,serif;font-size:28px;letter-spacing:.12em;text-transform:uppercase;color:#7a5a12;margin:6px 0}.certn{font-family:Georgia,serif;font-size:22px;font-weight:700;margin:6px 0;border-bottom:1px solid #b08d3c;display:inline-block;padding:0 18px}.certc{font-weight:800;font-size:16px;margin:6px 0}.certseal{position:absolute;right:12px;bottom:8px;width:46px;height:46px;border-radius:50%;background:radial-gradient(#e2b93b,#a07818);display:grid;place-items:center;font-size:22px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;font-weight:700;padding:11px;border-radius:10px}
+.gbtn:hover{background:#f6f8fa}
+.orline{display:flex;align-items:center;gap:10px;margin:14px 0 6px;color:var(--m);font-size:12px}.orline:before,.orline:after{content:"";flex:1;height:1px;background:var(--linie)}
+label.chk{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.4;margin-top:10px;font-weight:500}label.chk input{width:auto;margin-top:2px;flex:0 0 auto}label.chk a{color:var(--g)}
+.modes{display:flex;flex-direction:column;gap:10px;margin-top:10px}.modec{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;border:1px solid var(--linie);background:rgba(127,127,127,.06);cursor:pointer;transition:transform .15s,box-shadow .15s}.modec:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.18)}.modec>div:nth-child(2){flex:1;min-width:0}.modec .mic{font-size:30px;width:44px;text-align:center}.modec.off{opacity:.45;filter:grayscale(.8);cursor:not-allowed}.modec.off:hover{transform:none;box-shadow:none}
+.saves{display:flex;flex-direction:column;gap:8px;margin-top:10px}.savec{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--linie);background:rgba(127,127,127,.06)}.savec .sic{font-size:24px}
+.legal{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;opacity:.75}.legal a{color:#fff;text-decoration:none;margin:0 4px}.legal a:hover{text-decoration:underline}
+html.srvbusy body{cursor:progress}html.srvbusy:after{content:"";position:fixed;top:0;left:0;height:3px;width:30%;background:var(--g);z-index:9999;animation:srvbar 1s linear infinite}@keyframes srvbar{0%{left:-30%}100%{left:100%}}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<?!= include('Engine') ?>
-<script>var HANDOFF = '<?= h ?>', TITLEURL = '<?= title ?>', VERSION = '<?= ver ?>', PUBURL = '<?= pub ?>';</script>
+<script src="engine.js?v=__ENGINE_VERSION__"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v__ENGINE_VERSION__';</script>
 <script>

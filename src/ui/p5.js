@@ -233,7 +233,7 @@ function mgPick(t) {
   var keys = Object.keys(MGS), recent = (S && S.mgRecent) || [];
   var fit = keys.filter(function (k) { var tg = MGS[k].tags; return tg === 'all' || tg.split(' ').indexOf(t) >= 0; });
   var pool = fit.filter(function (k) { return recent.indexOf(k) < 0; }); if (pool.length < 3) pool = keys.filter(function (k) { return recent.indexOf(k) < 0; }); if (!pool.length) pool = keys;
-  var k = pool[Math.floor(Math.random() * pool.length)]; if (S) { S.mgRecent = [k].concat(recent).slice(0, 12); DIRTY = true; } return k;
+  var k = pool[Math.floor(Math.random() * pool.length)]; if (S) { S.mgRecent = [k].concat(recent).slice(0, 12); uiFlag('mgRecent', S.mgRecent); } return k;
 }
 function mgStart(t, f, diff) {
   var g = mgPick(t); var G = MGS[g]; MG = { t: t, f: f, g: g, score: 0, done: false, diff: diff || null };

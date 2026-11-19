@@ -1,5 +1,5 @@
 /* ===================================================================== Basis */
-var TOKEN = null; try { TOKEN = localStorage.getItem('svwm_token'); } catch (e) {}
+var TOKEN = 'supabase'; // frühere Sitzungs-ID, nur noch als Platzhalter für alte Aufrufe
 var RAW = null, D = null, S = null, V = null, ME = null, HOME = null, DIRTY = false, SAVEDXP = 0, LASTY = 120, LASTX = 200, AUTOSAVE = null, SIMRUN = false;
 var NOTE = { levelUp: null };
 var ST = { tab: 'home', boardPage: 0, calMonth: null, ligaLvl: null, md: null, trSeg: 'markt', kSort: 'pos', topSeg: 'lt', igIdx: 0, mailOpen: null, vitLvl: null, screen: 'game' };
@@ -45,10 +45,7 @@ function toast(t, err) {
   setTimeout(function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 350); }, 5000);
 }
 function loading(on) { var el = $('#ld'); if (on && !el) { el = document.createElement('div'); el.id = 'ld'; el.className = 'ld'; el.innerHTML = '<div class="spin" style="margin:6px auto"></div>'; el.style.top = Math.max(10, LASTY - 30) + 'px'; document.body.appendChild(el); } if (!on && el) el.remove(); }
-function call(fn) {
-  var args = Array.prototype.slice.call(arguments, 1);
-  return new Promise(function (res, rej) { var r = google.script.run.withSuccessHandler(res).withFailureHandler(function (e) { rej(e); }); r[fn].apply(r, args); });
-}
+
 /* Sounds */
 var audio = null;
 function ac() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); return audio; } catch (e) { return null; } }
@@ -233,24 +230,41 @@ function teamColor(n) {
 
 /* ===================================================================== Startseite */
 function boot() {
+  sessLoad();
+  D = MGR.normalize(defaultRaw());
+  var back = authFromUrl();
   startScreen();
-  if (typeof HANDOFF === 'string' && /^\w{10,}$/.test(HANDOFF)) { loading(true); call('apiHandoffUse', HANDOFF).then(function (r) { loading(false); HANDOFF = ''; if (!r || !r.ok) return toast((r && r.error) || 'QR-Code ungültig.', true); setToken(r.token); toast('📱 Willkommen auf dem Handy – dein Spiel wird geladen …'); afterAuth('load'); }).catch(function (e) { loading(false); toast(String(e), true); }); }
-  window.addEventListener('beforeunload', function (e) { if (S && DIRTY) { e.preventDefault(); e.returnValue = ''; } });
+  if (back && back.error) toast(back.error, true);
+  if (back && back.type === 'recovery') { newPwPop(); return; }
+  if (SESSION) {
+    loadUser().then(function () { return profileReady(); }).then(function (ok) {
+      if (back && ok) toast('Willkommen, ' + ME.vorname + '!');
+      refreshHome();
+      if (ok && LAST_INTENT) { var i = LAST_INTENT; LAST_INTENT = null; if (i === 'new') startNew(); else startLoad(); }
+    }).catch(function (e) { if (e && (e.status === 401 || e.status === 403)) authSignOut(); refreshHome(); });
+  } else refreshHome();
 }
+// Grunddaten (Ligen, Regeln …) – identisch mit denen des Servers
+function defaultRaw() { var X = MGR_DATA; return { regeln: X.REGELN, ligen: X.LIGEN, ausbau: X.AUSBAU, camps: X.CAMPS, events: X.EVENTS, konfig: X.KONFIG, mails: X.MAILS, vornamen: X.VORNAMEN, nachnamen: X.NACHNAMEN }; }
+var LAST_INTENT = null;
+try { LAST_INTENT = sessionStorage.getItem('am_intent'); sessionStorage.removeItem('am_intent'); } catch (e) { }
 function homeInfo() {
-  var me = HOME && HOME.me, st = HOME && HOME.stats;
-  return me ? 'Angemeldet als ' + esc(me.vorname) + '<br>Spielstart ' + dShort((me.started || '').slice(0, 10)) + '<br>Zuletzt gespeichert ' + dtShort(me.saved)
-    : st ? 'Manager-Profile ' + num(st.profiles) + '<br>Laufende Spiele ' + num(st.games) + '<br>Zuletzt gespeichert ' + dtShort(st.lastSave) : 'Lade …';
+  if (!SESSION || !ME) return 'Melde dich an, um mitzuspielen und die Bestenliste zu sehen.';
+  return 'Angemeldet als <b>' + esc(ME.name) + '</b> · <a href="#" onclick="logout();return false" style="color:var(--g)">Abmelden</a>';
 }
 function startScreen() { document.body.classList.remove('gbg');
-  V = null; S = null; ST.screen = 'start'; stopAutosave(); stopIg();
-  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION && VERSION.indexOf('\x3c?') < 0 ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + (typeof PUBURL === 'string' && PUBURL && PUBURL.indexOf('\x3c?') < 0 ? '<div class="pubbadge"><img src="' + driveImg(PUBURL, 400) + '" alt="Publisher"></div>' : '') + '<img class="titleimg" src="' + (typeof TITLEURL === 'string' && /^https?:/.test(TITLEURL) ? driveImg(TITLEURL, 2000) : TITLEIMG) + '" onerror="if(this.src!==TITLEIMG)this.src=TITLEIMG" alt="Wachtberg Manager"><div class="tboard"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span></div>' +
-    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button></div></div>';
-  call('apiHome', TOKEN || '').then(function (r) {
-    if (!r || !r.ok) { $('#board').innerHTML = '<div class="muted small">Bestenliste nicht verfügbar.</div>'; return; }
-    HOME = r; if (TOKEN && !r.me) setToken(null);
-    if (ST.screen === 'start') drawBoard();
-  }).catch(function () { var b = $('#board'); if (b) b.innerHTML = '<div class="muted small">Bestenliste nicht verfügbar.</div>'; });
+  V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
+  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + '<img class="titleimg" src="' + (imgOf('bg', 'titel') || TITLEIMG) + '" onerror="if(this.src!==TITLEIMG)this.src=TITLEIMG" alt="Amateur Manager"><div class="tboard"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span><div class="xs muted" id="homeinfo" style="margin-top:6px">' + homeInfo() + '</div></div>' +
+    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button></div>' +
+    '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a></div></div>';
+}
+function refreshHome() {
+  var hi = $('#homeinfo'); if (hi) hi.innerHTML = homeInfo();
+  if (!SESSION || !ME) { var b = $('#board'); if (b) b.innerHTML = '<div class="muted small" style="padding:6px 0">🏆 Die Bestenliste siehst du nach dem Anmelden.</div>'; return; }
+  call('apiHome').then(function (r) {
+    if (!r || !r.ok) { var b = $('#board'); if (b) b.innerHTML = '<div class="muted small">Bestenliste nicht verfügbar.</div>'; return; }
+    HOME = r; if (ST.screen === 'start') drawBoard();
+  });
 }
 function drawBoard() {
   var B = (HOME && HOME.board) || [], per = 5, pages = Math.max(1, Math.ceil(B.length / per)); ST.boardPage = Math.min(ST.boardPage, pages - 1);
@@ -288,41 +302,110 @@ function avatarHTML(id, pic, size, name) { size = size || 40; return '<span clas
 var FEM = /^(Frau|Laura|Julia|Lena|Sarah|Anna|Lisa|Marie|Sophie|Katharina|Nina|Jana|Christina|Vanessa|Melanie|Svenja|Leonie|Carina|Elif|Aylin|Natalia|Maria|Sabine|Petra|Claudia|Monika|Andrea|Ursula|Gabi|Heike|Kerstin|Tanja|Stefanie|Nicole|Sandra|Familie Schäfer)\b/;
 function mailPortrait(from, size) { var h = 0; for (var i = 0; i < from.length; i++) h = (h * 31 + from.charCodeAt(i)) % 10007; var g = FEM.test(from) ? 'w' : /Förderverein|Stiftung|Kegelclub|Ortsbauern|Fanclub|Vorstand|Kassenwart|Personalabteilung|Prüfungsamt|Hausbank|Academy|Vermieter|Mannschaftsarzt|Scout|Sportdirektor|Berater|Unternehmer|Mäzen|Spieler|Gönner|Verband|Staffel|Presse|Zeitung/.test(from) ? (h % 4 === 0 ? 'w' : 'm') : (h % 3 === 0 ? 'w' : 'm'); return '<span class="av" style="width:' + size + 'px;height:' + size + 'px">' + portrait(h, g, size) + '</span>'; }
 function levelOf(xp) { return MGR.levelOf(xp || 0); }
-function setToken(t) { TOKEN = t; try { if (t) localStorage.setItem('svwm_token', t); else localStorage.removeItem('svwm_token'); } catch (e) {} }
+/* ---------- Anmeldung */
+var BYEARS = (function () { var y = new Date().getFullYear(), o = ''; for (var i = y - 16; i >= y - 90; i--) o += '<option value="' + i + '">' + i + '</option>'; return o; })();
+function consentHTML() {
+  return '<label class="chk"><input type="checkbox" id="cTerms"><span>Ich akzeptiere die <a href="agb.html" target="_blank">AGB</a> und habe die <a href="datenschutz.html" target="_blank">Datenschutzerklärung</a> gelesen.</span></label>' +
+    '<label class="chk"><input type="checkbox" id="cPatch"><span>Mir ist klar, dass Spiel-Updates (Patches) teilweise nur in <b>neu gestarteten</b> Spielen wirken.</span></label>';
+}
 function authPop(intent) {
-  var title = intent === 'new' ? 'Neues Spiel' : 'Spiel laden';
-  pop('<h2>' + title + '</h2><div class="seg" style="margin:6px 0 4px"><button id="aL" class="' + (intent === 'load' ? 'on' : '') + '" onclick="authTab(\'L\')">Login</button><button id="aR" class="' + (intent === 'new' ? 'on' : '') + '" onclick="authTab(\'R\')">Neu registrieren</button></div>' +
-    '<div id="fL" style="display:' + (intent === 'load' ? 'block' : 'none') + '"><label>Name oder E-Mail</label><input id="li" autocomplete="username"><label>PIN</label><input id="lp" type="password" inputmode="numeric" maxlength="4" onkeydown="if(event.key===\'Enter\')doLogin(\'' + intent + '\')"><button class="pri" style="width:100%;margin-top:14px" onclick="doLogin(\'' + intent + '\')">Einloggen</button><div class="xs muted" style="margin-top:8px">PIN vergessen? Der Admin kann sie im Sheet zurücksetzen.</div></div>' +
-    '<div id="fR" style="display:' + (intent === 'new' ? 'block' : 'none') + '"><label>Vor- und Nachname</label><input id="rn" autocomplete="name"><label>E-Mail (Pflicht)</label><input id="re" type="email" autocomplete="email"><div class="grid g2" style="gap:8px"><div><label>PIN (4 Ziffern)</label><input id="rp" inputmode="numeric" maxlength="4" type="password"></div><div><label>PIN wiederholen</label><input id="rp2" inputmode="numeric" maxlength="4" type="password"></div></div><button class="pri" style="width:100%;margin-top:12px" onclick="doReg(\'' + intent + '\')">Profil anlegen</button></div>', { white: true });
+  LAST_INTENT = intent || null;
+  pop('<h2>Anmelden</h2><div class="small muted" style="margin-bottom:10px">Melde dich an, um zu spielen. Dein Spiel wird automatisch gespeichert.</div>' +
+    '<button class="gbtn" onclick="googleLogin()"><svg viewBox="0 0 48 48" width="18" height="18"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Mit Google anmelden</button>' +
+    '<div class="orline"><span>oder mit E-Mail</span></div>' +
+    '<div class="seg" style="margin:6px 0 4px"><button id="aL" class="on" onclick="authTab(\'L\')">Login</button><button id="aR" onclick="authTab(\'R\')">Registrieren</button></div>' +
+    '<div id="fL"><label>E-Mail</label><input id="li" type="email" autocomplete="email"><label>Passwort</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"><button class="pri" style="width:100%;margin-top:14px" onclick="doLogin()">Einloggen</button><div class="xs" style="margin-top:8px"><a href="#" onclick="forgotPop();return false" style="color:var(--g)">Passwort vergessen?</a></div></div>' +
+    '<div id="fR" style="display:none"><label>Vor- und Nachname</label><input id="rn" autocomplete="name" maxlength="40"><label>E-Mail</label><input id="re" type="email" autocomplete="email"><label>Geburtsjahr</label><select id="rb"><option value="">Bitte wählen</option>' + BYEARS + '</select><div class="xs muted" style="margin-top:4px">Der Amateur Manager ist ab 16 Jahren.</div><div class="grid g2" style="gap:8px"><div><label>Passwort (mind. 8 Zeichen)</label><input id="rp" type="password" autocomplete="new-password"></div><div><label>Passwort wiederholen</label><input id="rp2" type="password" autocomplete="new-password"></div></div>' + consentHTML() + '<button class="pri" style="width:100%;margin-top:12px" onclick="doReg()">Konto anlegen</button></div>', { white: true });
 }
 function authTab(k) { $('#fL').style.display = k === 'L' ? 'block' : 'none'; $('#fR').style.display = k === 'R' ? 'block' : 'none'; $('#aL').classList.toggle('on', k === 'L'); $('#aR').classList.toggle('on', k === 'R'); }
-function doReg(intent) {
-  var n = $('#rn').value, e = $('#re').value, p = $('#rp').value, p2 = $('#rp2').value;
-  if (p !== p2) return toast('Die PINs stimmen nicht überein.', true);
-  loading(true); call('apiRegister', n, e, p).then(function (r) { loading(false); if (!r.ok) return toast(r.error, true); setToken(r.token); afterAuth(intent); }).catch(function (e) { loading(false); toast(String(e), true); });
-}
-function doLogin(intent) {
-  loading(true); call('apiLogin', $('#li').value, $('#lp').value).then(function (r) { loading(false); if (!r.ok) return toast(r.error, true); setToken(r.token); afterAuth(intent); }).catch(function (e) { loading(false); toast(String(e), true); });
-}
-function startNew() { if (TOKEN) afterAuth('new'); else authPop('new'); }
-function startLoad() { if (TOKEN) afterAuth('load'); else authPop('load'); }
-function afterAuth(intent) {
-  var y = LASTY; loading(true);
-  call('apiInit', TOKEN).then(function (r) {
+function googleLogin() { try { if (LAST_INTENT) sessionStorage.setItem('am_intent', LAST_INTENT); } catch (e) { } authGoogle(); }
+function doReg() {
+  var n = $('#rn').value.trim(), e = $('#re').value.trim(), b = +$('#rb').value, p = $('#rp').value, p2 = $('#rp2').value;
+  if (n.length < 2) return toast('Bitte deinen Namen eingeben.', true);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return toast('Bitte eine gültige E-Mail-Adresse eingeben.', true);
+  if (!b) return toast('Bitte dein Geburtsjahr wählen.', true);
+  if (new Date().getFullYear() - b < 16) return toast('Der Amateur Manager ist ab 16 Jahren.', true);
+  if (p.length < 8) return toast('Das Passwort muss mindestens 8 Zeichen haben.', true);
+  if (p !== p2) return toast('Die Passwörter stimmen nicht überein.', true);
+  if (!$('#cTerms').checked || !$('#cPatch').checked) return toast('Bitte beide Häkchen setzen.', true);
+  try { localStorage.setItem('am_pendreg', JSON.stringify({ e: e.toLowerCase(), n: n, b: b })); } catch (x) { }
+  loading(true);
+  authSignUp(e, p, { display_name: n }).then(function (j) {
     loading(false);
-    if (r.relogin) { setToken(null); return authPop(intent); }
-    if (!r.ok) return toast(r.error, true);
-    RAW = r.raw; ME = r.me; D = MGR.normalize(RAW);
-    var st = null; if (r.state) { try { st = JSON.parse(r.state); } catch (e) { st = null; } if (st && st.v !== 2) st = null; }
-    if (intent === 'load') {
-      if (st) return enterGame(st);
-      return pop('<h2>Kein Spielstand</h2><div class="muted">Für ' + esc(ME.vorname) + ' ist noch kein Spiel gespeichert.</div><button class="pri" style="width:100%;margin-top:14px" onclick="newGameSetup()">Neues Spiel starten</button>', { white: true, y: y });
-    }
-    if (st) return pop('<h2>Spielstand überschreiben?</h2><div class="warnbox" style="margin-top:8px">Du hast schon ein laufendes Spiel (' + esc(D.lv[st.lvl] ? D.lv[st.lvl].short : '') + ', Saison ' + st.season + '/' + String(st.season + 1).slice(2) + '). Ein neues Spiel überschreibt es endgültig. Dein Manager-Level bleibt.</div><div class="row" style="margin-top:14px"><button class="red" style="flex:1" onclick="newGameSetup()">Ja, neu starten</button><button style="flex:1" onclick="closePop()">Abbrechen</button></div>', { white: true, y: y });
-    newGameSetup(y);
-  }).catch(function (e) { loading(false); toast(String(e), true); });
+    if (SESSION) return afterLogin();
+    pop('<div style="text-align:center"><div style="font-size:44px">📬</div><h2>Fast geschafft!</h2><div class="small">Wir haben dir eine E-Mail an <b>' + esc(e) + '</b> geschickt. Klicke auf den Link darin, um dein Konto zu bestätigen – danach geht es direkt los.</div><div class="xs muted" style="margin-top:10px">Keine Mail? Schau im Spam-Ordner nach.</div><button class="pri" style="margin-top:14px" onclick="closePop()">OK</button></div>', { white: true });
+  }).catch(function (x) { loading(false); toast(x.message, true); });
 }
-function newGameSetup(y) {
+function doLogin() {
+  var e = $('#li').value.trim(), p = $('#lp').value; if (!e || !p) return toast('Bitte E-Mail und Passwort eingeben.', true);
+  loading(true); authSignIn(e, p).then(function () { loading(false); afterLogin(); }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+function afterLogin() {
+  closePop();
+  return profileReady().then(function (ok) {
+    refreshHome(); if (!ok) return;
+    toast('Willkommen, ' + ME.vorname + '!');
+    var i = LAST_INTENT; LAST_INTENT = null; if (i === 'new') startNew(); else if (i === 'load') startLoad();
+  }).catch(function (x) { toast(x.message, true); });
+}
+function forgotPop() {
+  pop('<h2>Passwort vergessen</h2><div class="small muted">Gib deine E-Mail-Adresse ein. Du bekommst einen Link, mit dem du ein neues Passwort festlegst.</div><label>E-Mail</label><input id="fe" type="email" value="' + esc(($('#li') || {}).value || '') + '"><button class="pri" style="width:100%;margin-top:12px" onclick="doForgot()">Link senden</button>', { white: true });
+}
+function doForgot() { var e = $('#fe').value.trim(); if (!e) return; loading(true); authRecover(e).then(function () { loading(false); closePop(); toast('📬 Link ist unterwegs – schau in dein Postfach.'); }).catch(function (x) { loading(false); toast(x.message, true); }); }
+function newPwPop() {
+  pop('<h2>Neues Passwort</h2><label>Neues Passwort (mind. 8 Zeichen)</label><input id="np" type="password" autocomplete="new-password"><label>Wiederholen</label><input id="np2" type="password" autocomplete="new-password"><button class="pri" style="width:100%;margin-top:12px" onclick="doNewPw()">Speichern</button>', { white: true, lock: true });
+}
+function doNewPw() {
+  var p = $('#np').value; if (p.length < 8) return toast('Mindestens 8 Zeichen.', true); if (p !== $('#np2').value) return toast('Die Passwörter stimmen nicht überein.', true);
+  loading(true); authSetPassword(p).then(function () { loading(false); toast('Passwort geändert ✓'); afterLogin(); }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+function logout() { authSignOut(); ME = null; HOME = null; startScreen(); refreshHome(); toast('Abgemeldet.'); }
+// Profil laden; fehlen Alter/Zustimmungen (z. B. nach Google-Login), wird nachgefragt
+function profileReady() {
+  return myProfile().then(function (p) {
+    if (!p) throw new Error('Profil nicht gefunden.');
+    var nm = p.display_name || 'Manager';
+    ME = { id: p.id, name: nm, vorname: nm.split(' ')[0], xp: Number(p.xp) || 0, pic: p.avatar_path || '', avatar: seedOf(p.id), admin: !!p.is_admin, settings: { lang: p.lang || 'de', bg: p.bg_key || '' } };
+    try { if (typeof applyBg === 'function') applyBg(); } catch (e) { }
+    if (p.terms_accepted_at && p.patch_note_accepted_at && p.birth_year) return true;
+    var pend = null; try { pend = JSON.parse(localStorage.getItem('am_pendreg') || 'null'); } catch (e) { }
+    var em = (SESSION.user && SESSION.user.email || '').toLowerCase();
+    if (pend && pend.e === em) {
+      return rpc('complete_profile', { p_display_name: pend.n, p_birth_year: pend.b, p_terms: true, p_patch_note: true }).then(function () { try { localStorage.removeItem('am_pendreg'); } catch (e) { } ME.name = pend.n; ME.vorname = pend.n.split(' ')[0]; return true; });
+    }
+    completePop(nm); return false;
+  });
+}
+function completePop(nm) {
+  pop('<h2>Willkommen beim Amateur Manager!</h2><div class="small muted">Nur noch kurz ein paar Angaben, dann geht es los.</div><label>Dein Name im Spiel</label><input id="cn" maxlength="40" value="' + esc(nm) + '"><label>Geburtsjahr</label><select id="cb"><option value="">Bitte wählen</option>' + BYEARS + '</select><div class="xs muted" style="margin-top:4px">Der Amateur Manager ist ab 16 Jahren.</div>' + consentHTML() + '<button class="pri" style="width:100%;margin-top:12px" onclick="doComplete()">Los geht’s</button><button style="width:100%;margin-top:8px" onclick="logout();closePop()">Abmelden</button>', { white: true, lock: true });
+}
+function doComplete() {
+  var n = $('#cn').value.trim(), b = +$('#cb').value;
+  if (n.length < 2) return toast('Bitte deinen Namen eingeben.', true);
+  if (!b) return toast('Bitte dein Geburtsjahr wählen.', true);
+  if (new Date().getFullYear() - b < 16) return toast('Der Amateur Manager ist ab 16 Jahren.', true);
+  if (!$('#cTerms').checked || !$('#cPatch').checked) return toast('Bitte beide Häkchen setzen.', true);
+  loading(true); rpc('complete_profile', { p_display_name: n, p_birth_year: b, p_terms: true, p_patch_note: true }).then(function () { loading(false); afterLogin(); }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+/* ---------- Spielmodus & Spielstände */
+function needLogin(intent) { if (SESSION && ME) return false; authPop(intent); return true; }
+function startNew() {
+  if (needLogin('new')) return;
+  loading(true); game('init').then(function (r) {
+    loading(false); SAVES = r.saves || [];
+    if (SAVES.length >= 3) return pop('<h2>Alle Spielstand-Plätze belegt</h2><div class="small muted">Du kannst bis zu 3 Spiele gleichzeitig haben. Lösche zuerst einen Spielstand unter „Spiel laden“.</div><button class="pri" style="width:100%;margin-top:14px" onclick="closePop();startLoad()">Spielstände anzeigen</button>', { white: true });
+    modePop();
+  }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+var SAVES = [];
+function modePop() {
+  var card = function (ic, t, d, on, js) { return '<div class="modec' + (on ? '' : ' off') + '" ' + (on ? 'onclick="' + js + '"' : '') + '><div class="mic">' + ic + '</div><div><b>' + t + '</b><div class="xs muted">' + d + '</div></div>' + (on ? '<span class="pill g">Spielen</span>' : '<span class="pill">Bald</span>') + '</div>'; };
+  pop('<h2>Spielmodus wählen</h2><div class="modes">' +
+    card('⚽', 'Single Mode', 'Übernimm einen Verein und führe ihn nach oben.', true, 'closePop();newGameSetup()') +
+    card('🏗️', 'Create a Club', 'Gründe deinen eigenen Verein und starte ganz unten.', false) +
+    card('🤝', 'Multiplayer', 'Spiele gegen deine Freunde – live und gegeneinander.', false) + '</div>', { white: true });
+}
+function newGameSetup() {
   var lv = levelOf(ME.xp), sl = MGR.featLvl('spielertrainer'), can = lv.lvl >= sl, col = lvCol(lv.lvl);
   var opts = ['TW', 'RV', 'LV', 'IV', 'DM', 'ZM', 'OM', 'LM', 'RM', 'LA', 'ST', 'RA'].map(function (k) { return '<option value="' + k + '" ' + (k === 'ST' ? 'selected' : '') + '>Ja – ' + MGR.DPN[k] + ' (' + k + ')</option>'; }).join('');
   pop('<div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div><div class="small muted" style="margin-top:10px">Du übernimmst den <b style="color:var(--t)">' + esc(D.club) + '</b> in der <b style="color:var(--t)">' + esc(D.lv[D.startLvl].short) + '</b> als Manager.</div>' +
@@ -331,43 +414,57 @@ function newGameSetup(y) {
 }
 function createGame() {
   var sp = $('#selfpos') ? $('#selfpos').value : '';
-  try { S = MGR.newGame(D, { mgr: ME.vorname, full: ME.name, xp: ME.xp, mlvl: levelOf(ME.xp).lvl, self: sp ? { pos: sp } : null }); }
-  catch (e) { return toast(e.message, true); }
-  SAVEDXP = 0; closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
-  V = MGR.view(S, D); render(); startAutosave(); save(true, true); afterUpdate();
+  loading(true); game('new', { self: sp ? { pos: sp } : null }).then(function (r) {
+    loading(false); SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state;
+    closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
+    V = MGR.view(S, D); render();
+    dailyKick().then(function () { render(true); afterUpdate(); });
+  }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+function startLoad() {
+  if (needLogin('load')) return;
+  loading(true); game('init').then(function (r) {
+    loading(false); SAVES = r.saves || []; if (r.profile) ME.xp = Number(r.profile.xp) || 0;
+    if (!SAVES.length) return pop('<h2>Kein Spielstand</h2><div class="muted">Für ' + esc(ME.vorname) + ' ist noch kein Spiel gespeichert.</div><button class="pri" style="width:100%;margin-top:14px" onclick="closePop();startNew()">Neues Spiel starten</button>', { white: true });
+    pop('<h2>Spiel laden</h2><div class="saves">' + SAVES.map(function (s) {
+      return '<div class="savec"><div class="sic">⚽</div><div style="min-width:0;flex:1"><b>' + esc(s.club_name || 'Verein') + '</b><div class="xs muted">' + esc(lsh(s.league_name || '')) + (s.season ? ' · Saison ' + s.season + '/' + String(s.season + 1).slice(2) : '') + '</div><div class="xs muted">Zuletzt gespielt ' + dtShort((s.updated_at || '').slice(0, 16).replace('T', ' ')) + '</div></div><button class="pri sm" onclick="loadSave(\'' + s.id + '\')">Laden</button><button class="sm red" title="Löschen" onclick="delPop(\'' + s.id + '\')">🗑</button></div>';
+    }).join('') + '</div>', { white: true });
+  }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+function loadSave(id) {
+  loading(true); game('load', { saveId: id }).then(function (r) {
+    loading(false); SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = !!r.joker; enterGame(r.state);
+  }).catch(function (x) { loading(false); toast(x.message, true); });
 }
 function enterGame(st) {
-  S = st; S.xp = ME.xp; var l = levelOf(ME.xp).lvl; if (l > (S.mlvl || 1)) S.mlvl = l;
-  SAVEDXP = S.xpGame || 0; DIRTY = false; closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
-  V = MGR.view(S, D); dailyKick();
+  S = st; closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
+  V = MGR.view(S, D);
   if (S.live && !S.live.done) { liveScreen(); return; }
-  if (S.live && S.live.done) { act('liveClose', {}, { quiet: true }); }
-  render(); startAutosave(); afterUpdate();
+  render();
+  var go2 = function () { V = MGR.view(S, D); render(true); afterUpdate(); };
+  dailyKick().then(function () { if (S.live && S.live.done) act('liveClose', {}, { quiet: true }); else go2(); });
 }
 
-/* ===================================================================== Speichern */
-function startAutosave() { stopAutosave(); AUTOSAVE = setInterval(function () { if (S && DIRTY && !SIMRUN) save(true); }, 15 * 60 * 1000); }
-function stopAutosave() { if (AUTOSAVE) clearInterval(AUTOSAVE); AUTOSAVE = null; }
-function save(silent, isNew) {
+/* ===================================================================== Speichern (automatisch nach jeder Aktion auf dem Server) */
+function startAutosave() { }
+function stopAutosave() { }
+function save(silent) {
   if (!S) return Promise.resolve(false);
-  var xpNow = S.xpGame || 0, delta = xpNow - SAVEDXP; var json = JSON.stringify(S);
-  if (!silent) loading(true);
-  return call('apiSave', TOKEN, json, MGR.summary(S, D), delta, !!isNew).then(function (r) {
-    loading(false);
-    if (r.relogin) { toast('Bitte neu einloggen – Spielstand nicht gespeichert.', true); return false; }
-    if (!r.ok) { toast(r.error, true); return false; }
-    ME = r.me; SAVEDXP = xpNow; DIRTY = false; if (!silent) toast('Gespeichert ✓'); var t = $('#savebtn'); if (t) t.classList.remove('dirty'); return true;
-  }).catch(function (e) { loading(false); toast('Speichern fehlgeschlagen: ' + e, true); return false; });
+  return ACTQ.then(function () { if (!silent) toast('Gespeichert ✓ – dein Spiel wird nach jeder Aktion automatisch gesichert.'); var t = $('#savebtn'); if (t) t.classList.remove('dirty'); return true; });
 }
-function tlInfo() { return '<span style="font-size:10px">Zuletzt gespeichert ' + dtShort(ME && ME.saved) + (DIRTY ? ' · <span style="color:var(--y)">ungespeichert</span>' : '') + '</span>'; }
+function tlInfo() { return ''; }
 function quitPop() {
-  pop('<h2>Spiel beenden</h2><div class="muted small">Dein Spiel wird gespeichert und du kommst zurück zur Startseite. Zum Weiterspielen über „Spiel laden“ mit Name und PIN einloggen.</div><div class="row" style="margin-top:14px"><button class="pri" style="flex:1" onclick="quit()">Speichern & beenden</button><button style="flex:1" onclick="closePop()">Abbrechen</button></div>');
+  pop('<h2>Spiel beenden</h2><div class="muted small">Dein Spiel ist automatisch gespeichert. Du kommst zurück zur Startseite und kannst jederzeit über „Spiel laden“ weiterspielen.</div><div class="row" style="margin-top:14px"><button class="pri" style="flex:1" onclick="quit()">Zur Startseite</button><button style="flex:1" onclick="closePop()">Abbrechen</button></div>');
 }
-function quit() { closePop(); save(false).then(function (ok) { if (!ok) return; setToken(null); HOME = null; S = null; V = null; startScreen(); window.scrollTo(0, 0); }); }
-function delPop() {
-  pop('<h2>Spiel löschen</h2><div class="warnbox">Dein Spielstand und dein Eintrag in der Bestenliste werden gelöscht. Dein Manager-Level bleibt erhalten.</div><label>Zur Bestätigung deine PIN</label><input id="dp" type="password" inputmode="numeric" maxlength="4" onkeydown="if(event.key===\'Enter\')delGame()"><button class="red" style="width:100%;margin-top:12px" onclick="delGame()">Endgültig löschen</button>');
+function quit() { closePop(); save(true).then(function () { HOME = null; S = null; V = null; startScreen(); refreshHome(); window.scrollTo(0, 0); }); }
+function delPop(id) {
+  id = id || SAVEID;
+  pop('<h2>Spielstand löschen</h2><div class="warnbox">Dieser Spielstand wird endgültig gelöscht. Dein Manager-Level bleibt erhalten.</div><button class="red" style="width:100%;margin-top:12px" onclick="delGame(\'' + id + '\')">Endgültig löschen</button><button style="width:100%;margin-top:8px" onclick="closePop()">Abbrechen</button>', { white: true });
 }
-function delGame() {
-  loading(true); call('apiDelete', TOKEN, $('#dp').value).then(function (r) { loading(false); if (!r.ok) return toast(r.error, true); closePop(); DIRTY = false; S = null; V = null; HOME = null; startScreen(); window.scrollTo(0, 0); toast('Spiel gelöscht.'); }).catch(function (e) { loading(false); toast(String(e), true); });
+function delGame(id) {
+  loading(true); game('delete', { saveId: id }).then(function () {
+    loading(false); closePop(); toast('Spielstand gelöscht.');
+    if (id === SAVEID) { S = null; V = null; SAVEID = null; startScreen(); refreshHome(); window.scrollTo(0, 0); } else startLoad();
+  }).catch(function (x) { loading(false); toast(x.message, true); });
 }
 function lsh(n) { return String(n || '').replace(/,.*$/, '').replace(/\s+(Mittelrhein|Bonn|West)$/, ''); }

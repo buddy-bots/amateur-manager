@@ -65,7 +65,7 @@ function teamPop(name, lvl) {
   pop('<div class="row" style="gap:10px;padding-right:26px">' + crest(name) + '<div><h2 style="padding:0;margin:0">' + esc(name) + '</h2><div class="xs muted">' + esc(D.lv[lvl] ? D.lv[lvl].short : '') + ' · Ø Stärke Startelf ' + String(avg).replace('.', ',') + '</div></div></div><div class="plist" style="margin-top:10px;max-height:420px;overflow:auto">' +
     sq.map(function (p) { return '<div class="pl" style="cursor:default"><span class="pb ' + p.pos + '">' + p.pos + '</span><div><b>' + esc(p.n) + '</b><div class="meta">' + stars(p.tal, p.tal) + '<span>' + p.age + ' J.</span><span>MW ' + eurK(p.mw) + '</span></div></div><div class="row" style="gap:6px">' + strBox(p.str) + (has('transfers') ? '<button class="sm pri" onclick="scoutBuy(\'' + esc(name).replace(/'/g, "\\'") + '\',' + p.i + ')">Holen</button>' : '') + '</div></div>'; }).join('') + '</div>', { wide: true });
 }
-function scoutBuy(team, i) { var r = act('scoutAdd', { team: team, i: i }, { quiet: true, norender: true }); if (!r) return; V = MGR.view(S, D); var w = V.watch.filter(function (x) { return x.n === MGR.teamSquad(S, D, team)[i].n; })[0]; closePop(); if (w) buyPop(w.mid); else toast(r.info); }
+function scoutBuy(team, i) { var nm = MGR.teamSquad(S, D, team)[i].n; act('scoutAdd', { team: team, i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) return; var w = V.watch.filter(function (x) { return x.n === nm; })[0]; closePop(); if (w) buyPop(w.mid); else toast(r.info); }); }
 function zoneOf(rank, n, lvl) { var L = D.lv[lvl]; if (!L) return ''; var z = rank <= L.up ? 'up' : (L.upRel && rank <= L.up + L.upRel) ? 'uprel' : rank > n - L.down ? 'down' : (L.downRel && rank > n - L.down - L.downRel) ? 'downrel' : ''; if (lvl === 1 && z === 'up') z = ''; return z; }
 function attBox() {
   var A = V.attLog || []; if (!A.length) return kv('Zuschauerschnitt', '<span class="muted">noch kein Heimspiel</span>');
@@ -211,12 +211,13 @@ function reachBox() {
     '<div class="row sp xs" style="margin-top:5px"><span class="muted">Vermarktung</span><b style="color:' + (m >= 60 ? '#8fc852' : m >= 35 ? '#ffd34d' : '#ff6b6b') + '">' + m + ' / 100</b></div>' +
     '</div><div><div class="muted" style="margin:0 0 5px;font-size:10.5px">Pro Woche: 1× Content, 1× Werbung, 1× Flyer</div><div class="socg">' + btns + '</div>' + adrow + last + '</div></div>' + msH + '</div>';
 }
-function flyDo(ev) { var before = V.follow, r = act('flyer', {}, { quiet: true, norender: true }); if (!r) return; toast(r.info); var g = V.follow - before; if (g > 0) flyFollowers(ev.pageX, ev.pageY, before, g); else setTimeout(renderTab, 400); }
-function adDo(ev) { var before = V.follow, r = act('socialAd', {}, { quiet: true, norender: true }); if (!r) return; toast(r.info); var g = V.follow - before; if (g > 0) flyFollowers(ev.pageX, ev.pageY, before, g); else setTimeout(renderTab, 400); }
+function flyDo(ev) { var before = V.follow; act('flyer', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; toast(r.info); var g = V.follow - before; if (g > 0) flyFollowers(ev.pageX, ev.pageY, before, g); else setTimeout(renderTab, 400); }); }
+function adDo(ev) { var before = V.follow; act('socialAd', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; toast(r.info); var g = V.follow - before; if (g > 0) flyFollowers(ev.pageX, ev.pageY, before, g); else setTimeout(renderTab, 400); }); }
 function socialDo(k, ev) {
-  var before = V.follow, r = act('socialAct', { k: k }, { quiet: true, norender: true }); if (!r) return;
+  var before = V.follow; act('socialAct', { k: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return;
   var gain = V.follow - before; toast(r.info);
   if (gain > 0) { flyFollowers(ev.pageX, ev.pageY, before, gain); xpFx(1, ev.pageX, ev.pageY); } else setTimeout(renderTab, 600);
+  });
 }
 function flyFollowers(fx, fy, before, gain) {
   var tgt = $('#follownum'), ev = { pageX: fx, pageY: fy };
@@ -266,7 +267,7 @@ function replyMail(id, idx, ev) {
   env.innerHTML = '<svg viewBox="0 0 70 46"><rect x="1" y="1" width="68" height="44" rx="4" fill="#f2f4f0"/><path d="M1 3 L35 26 L69 3" fill="none" stroke="#8fc852" stroke-width="3"/></svg>';
   if (el) el.classList.add('fold'); SND.send();
   setTimeout(function () { document.body.appendChild(env); setTimeout(function () { env.remove(); }, 1100); }, 250);
-  setTimeout(function () { ST.mailOpen = null; var m = V.mails.filter(function (q) { return q.id === id; })[0]; var r = act('reply', { id: id, idx: idx }, { quiet: true }); if (r) xpFx(0.1, x, y - 30); if (r && r.info) fxCard(m ? m.subj || 'Antwort' : 'Antwort', splitInfo(r.info), x, y); }, 480);
+  setTimeout(function () { ST.mailOpen = null; var m = V.mails.filter(function (q) { return q.id === id; })[0]; act('reply', { id: id, idx: idx }, { quiet: true }).then(function (r) { if (r) xpFx(0.1, x, y - 30); if (r && r.info) fxCard(m ? m.subj || 'Antwort' : 'Antwort', splitInfo(r.info), x, y); }); }, 480);
 }
 function offerCard(m) {
   if (m.kind !== 'offer' || !m.data) return ''; var p = V.players.filter(function (q) { return q.id === m.data.pid; })[0]; if (!p) return '';
@@ -277,8 +278,9 @@ function offerCard(m) {
 function openMail(id, wasOpen) {
   if (wasOpen) { ST.mailOpen = -1; renderTab(); return; }
   var m = V.mails.filter(function (q) { return q.id === id; })[0];
-  if (m && m.info && !m.answered) { try { var rr = MGR.act(S, D, 'reply', { id: id, idx: -1 }); if (rr && rr.levelUp) NOTE.levelUp = rr.levelUp; DIRTY = true; V = MGR.view(S, D); } catch (e) {} }
-  ST.mailOpen = id; renderTab();
+  ST.mailOpen = id;
+  if (m && m.info && !m.answered) { act('reply', { id: id, idx: -1 }, { quiet: true, norender: true }).then(function () { renderTab(); }); }
+  renderTab();
 }
 function ackMail(id, ev) { var el = $('#mail' + id); if (el) el.classList.add('swoosh'); SND.swoosh(); setTimeout(function () { ST.mailOpen = -1; var m = V.mails.filter(function (q) { return q.id === id; })[0]; if (m && !m.answered) act('reply', { id: id, idx: -1 }, { quiet: true }); else render(true); }, 430); }
 
@@ -683,7 +685,7 @@ function reorderZone(dz, pid, tid, isB, y) {
   ids.splice(at, 0, pid);
   if (isB) act('bench', { ids: ids, ord: true }, { quiet: true }); else act('tribOrd', { ids: ids }, { quiet: true });
 }
-function benchSet(ids) { act('bench', { ids: ids }, { quiet: true }); if (ids === null) { S.lineup.bench = undefined; delete S.lineup.bench; V = MGR.view(S, D); render(); } }
+function benchSet(ids) { act('bench', { ids: ids }, { quiet: true }); }
 function benchMove(pid, toBench) { var b = (V.benchIds || []).slice(); var i = b.indexOf(pid); if (toBench) { if (i >= 0) return; if (b.length >= 9) return toast('Die Bank ist voll (9 Plätze).', true); b.push(pid); } else { if (i < 0) return; b.splice(i, 1); } act('bench', { ids: b }, { quiet: true }); }
 var DRAG = null;
 function initDrag() {
@@ -967,11 +969,12 @@ function tKal() {
 }
 function dayEvDo(ds, k) {
   if (k !== 'benefiz') return act('dayEvent', { d: ds, k: k });
-  var r = act('dayEvent', { d: ds, k: k }, { quiet: true }); if (!r || !r.reveal) return; var R0 = r.reveal, n = 3;
+  act('dayEvent', { d: ds, k: k }, { quiet: true }).then(function (r) { if (!r || !r.reveal) return; var R0 = r.reveal, n = 3;
   pop('<div style="text-align:center"><div class="xs muted" style="letter-spacing:.14em;font-weight:800">BENEFIZSPIEL · ' + dFull(ds) + '</div><h2 style="padding:0;margin:6px 0">Wer kommt ins Ländchen?</h2><div id="bfcd" style="font-size:72px;font-weight:900;color:#e8622c;line-height:1.1;margin:10px 0">3</div><div class="small muted">1.–3. Liga – die Lose sind gezogen …</div></div>', { lock: true });
   var t = setInterval(function () { n--; var el = $('#bfcd'); if (!el) return clearInterval(t); if (n > 0) { el.textContent = n; return; } clearInterval(t);
     $('#pop').innerHTML = '<div class="evw" style="text-align:center"><div class="xs muted" style="letter-spacing:.14em;font-weight:800">BENEFIZSPIEL · ' + dFull(ds) + '</div><div style="margin:14px auto 6px;width:90px;height:90px">' + crest(R0.opp, 'cbig') + '</div><h2 style="padding:0;margin:4px 0">' + esc(R0.opp) + '</h2><span class="pill y" style="font-size:13px">' + esc(R0.liga) + '</span><div class="small" style="margin:12px 0">Volle Hütte garantiert! Die Einnahmen gibt es nach dem Spiel – je höher die Liga des Gegners, desto mehr.</div><button class="pri" onclick="closePop();renderTab()">Super!</button></div>';
     try { fwBurst(); } catch (e) {} }, 1000);
+  });
 }
 function calNav(k) { var y = +ST.calMonth.slice(0, 4), m = +ST.calMonth.slice(5, 7) + k; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } ST.calMonth = y + '-' + String(m).padStart(2, '0'); renderTab(); }
 var TEST = { d: null, home: true };

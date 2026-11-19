@@ -47,7 +47,7 @@ function berlinDay() {
 }
 
 async function loadSave(userId: string, saveId: string) {
-  const { data, error } = await admin.from('saves').select('id, state, version, engine_version').eq('id', saveId).eq('user_id', userId).single();
+  const { data, error } = await admin.from('saves').select('id, state, version, engine_version, joker_snap, joker_date').eq('id', saveId).eq('user_id', userId).single();
   if (error || !data) throw new HttpError(404, 'Spielstand nicht gefunden.');
   return data;
 }
@@ -61,16 +61,38 @@ function prepare(S: any, profile: any) {
 
 function meta(S: any) {
   const v = MGR.view(S, D);
-  return { V: v, club: v.club || v.verein || null, league: v.liga || null, season: S.season || null };
+  return { club: v.club || null, league: v.liga || null, season: S.season || null };
 }
 
-async function persist(userId: string, saveId: string, S: any, version: number) {
+async function persist(userId: string, saveId: string, S: any, version: number, extra: Record<string, unknown> = {}) {
   const m = meta(S);
   const { data, error } = await admin.from('saves')
-    .update({ state: S, version: version + 1, summary: MGR.summary(S, D) || {}, club_name: m.club, league_name: m.league, season: m.season, updated_at: new Date().toISOString() })
+    .update({ state: S, version: version + 1, summary: MGR.summary(S, D) || {}, club_name: m.club, league_name: m.league, season: m.season, updated_at: new Date().toISOString(), ...extra })
     .eq('id', saveId).eq('user_id', userId).eq('version', version).select('version').single();
   if (error || !data) throw new HttpError(409, 'Der Spielstand wurde inzwischen an anderer Stelle geändert. Bitte neu laden.');
-  return { V: m.V, version: data.version };
+  return { state: S, version: data.version };
+}
+
+// Joker verfügbar: Snapshot vom heutigen Spieltag, Spiel vorbei
+function jokerOk(S: any, sv: any) {
+  return !!(sv.joker_snap && sv.joker_date === S.date && !S.live && (S.jokers || 0) > 0);
+}
+
+// "Weiter"-Lauf: simuliert Tag für Tag bis zum nächsten Halt (wie früher im Browser)
+function runSim(S: any, mode: string) {
+  const openMails = (V: any) => (V && V.mails ? V.mails.filter((m: any) => !m.answered).length : 0);
+  let V = MGR.view(S, D);
+  const mails0 = openMails(V), inbox0 = S.inbox && S.inbox.length ? S.inbox[0] : null;
+  let steps = 0, levelUp: any = null, info = '';
+  for (;;) {
+    const r = MGR.act(S, D, 'sim', { mode: 'day', auto: mode === 'match' });
+    steps++; if (r && r.levelUp && !levelUp) levelUp = r.levelUp; if (r && r.info) info = r.info;
+    V = MGR.view(S, D);
+    const stop = mode === 'day' || V.fired || V.twPop || V.cupPop || V.weekNeed || V.potsPop || V.unlockNote || V.posPop || V.trPop || V.kitNeed || V.trialRes || V.pressPending || V.spNeed || V.starPop || V.pending || V.blockMails || V.matchToday || V.seasonRep || V.needAlloc || levelUp || V.trainToday || (V.prep && (V.prep.need || V.prep.info)) || (V.priv && V.priv.fam && V.priv.fam.pend) || steps > 150 ||
+      (mode === 'event' && (openMails(V) > mails0 || (S.inbox[0] !== inbox0 && /^(ereignis|transfer|verein|erfolg)$/.test(S.inbox[0].k))));
+    if (stop) break;
+  }
+  return { steps, levelUp, info };
 }
 
 async function addXp(userId: string, profile: any, delta: number) {
@@ -96,6 +118,14 @@ async function handle(req: Request, userId: string, body: any) {
     const { data: saves } = await admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, updated_at').eq('user_id', userId).order('updated_at', { ascending: false });
     return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
   }
+  if (op === 'deleteAccount') {
+    if (body.confirm !== 'LÖSCHEN') throw new HttpError(400, 'Bitte zur Bestätigung LÖSCHEN eingeben.');
+    const { data: files } = await admin.storage.from('avatars').list(userId);
+    if (files && files.length) await admin.storage.from('avatars').remove(files.map((f: any) => userId + '/' + f.name));
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) throw new HttpError(500, 'Konto konnte nicht gelöscht werden.');
+    return { ok: true };
+  }
   if (!ready) throw new HttpError(403, 'Bitte zuerst das Profil vervollständigen.');
 
   if (op === 'new') {
@@ -109,7 +139,7 @@ async function handle(req: Request, userId: string, body: any) {
     const m = meta(S);
     const { data, error } = await admin.from('saves').insert({ user_id: userId, mode: 'single', engine_version: ENGINE_VERSION, state: S, summary: MGR.summary(S, D) || {}, club_name: m.club, league_name: m.league, season: m.season }).select('id, version').single();
     if (error) throw new HttpError(500, 'Spielstand konnte nicht angelegt werden.');
-    return { saveId: data.id, version: data.version, V: m.V };
+    return { saveId: data.id, version: data.version, state: S };
   }
 
   const saveId = String(body.saveId || '');
@@ -118,7 +148,7 @@ async function handle(req: Request, userId: string, body: any) {
   if (op === 'load') {
     const sv = await loadSave(userId, saveId);
     const S = prepare(sv.state, profile);
-    return { saveId, version: sv.version, engineVersion: sv.engine_version, V: MGR.view(S, D) };
+    return { saveId, version: sv.version, engineVersion: sv.engine_version, state: S, joker: jokerOk(S, sv) };
   }
   if (op === 'delete') {
     const { error } = await admin.from('saves').delete().eq('id', saveId).eq('user_id', userId);
@@ -132,13 +162,26 @@ async function handle(req: Request, userId: string, body: any) {
     if (body.version != null && Number(body.version) !== sv.version) throw new HttpError(409, 'Der Spielstand wurde inzwischen an anderer Stelle geändert. Bitte neu laden.');
     const S = prepare(sv.state, profile);
     const xpBefore = S.xpGame || 0;
+    const extra: Record<string, unknown> = {};
+    if (action === 'liveStart' && (S.jokers || 0) > 0) { extra.joker_snap = JSON.parse(JSON.stringify(S)); extra.joker_date = S.date; }
     let r: any;
-    try { r = MGR.act(S, D, action, sanitize(action, body.params)); }
+    try { r = action === 'run' ? runSim(S, String((body.params || {}).mode || 'day')) : MGR.act(S, D, action, sanitize(action, body.params)); }
     catch (e) { throw new HttpError(422, (e as Error).message || String(e)); }
+    if (!extra.joker_snap && sv.joker_date && sv.joker_date !== S.date) { extra.joker_snap = null; extra.joker_date = null; }
     await addXp(userId, profile, (S.xpGame || 0) - xpBefore);
     S.xp = Number(profile.xp) || 0;
-    const out = await persist(userId, saveId, S, sv.version);
-    return { r: r || {}, ...out };
+    const out = await persist(userId, saveId, S, sv.version, extra);
+    const jk = extra.joker_snap === undefined && jokerOk(S, sv);
+    return { r: r || {}, ...out, joker: jk };
+  }
+  if (op === 'joker') {
+    const sv = await loadSave(userId, saveId);
+    const S = prepare(sv.state, profile);
+    if (!jokerOk(S, sv)) throw new HttpError(422, 'Den Joker kannst du direkt nach einem Spiel einsetzen – bevor du weiterspielst.');
+    const S2 = prepare(JSON.parse(JSON.stringify(sv.joker_snap)), profile);
+    S2.jokers = (S.jokers || 1) - 1; if (S.jok) S2.jok = S.jok;
+    const out = await persist(userId, saveId, S2, sv.version, { joker_snap: null, joker_date: null });
+    return { r: { info: '🃏 Joker eingesetzt – das Spiel kann neu beginnen!' }, ...out, joker: false };
   }
   if (op === 'q') {
     const fn = String(body.fn || '');

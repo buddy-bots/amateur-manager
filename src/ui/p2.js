@@ -114,7 +114,8 @@ function mailJump() {
 }
 function openMails() { return V && V.mails ? V.mails.filter(function (m) { return !m.answered; }).length : 0; }
 function featNew(k) { if (!k || !S || !has(k)) return false; if (!S.featSeen) { S.featSeen = {}; GROUPS.forEach(function (g) { (g[2] || []).forEach(function (x) { if (x[2] && has(x[2])) S.featSeen[x[2]] = 1; }); }); } return !S.featSeen[k]; }
-function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; DIRTY = true; } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
+function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catch(function () { }); }
+function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {
   stopIg();
   var f = { privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews }[ST.tab] || tHome;
@@ -137,22 +138,22 @@ function decisionPop() {
     rotIdx(p.id, p.opts.length).map(function (i) { var o = p.opts[i]; return '<button onclick="decide(' + p.id + ',\'' + o.k + '\',event)">' + esc(o.label) + '</button>'; }).join('') + '</div></div>', { lock: true, auto: 1, cls: 'white' });
 }
 function decide(id, k, ev) {
-  var x = ev ? ev.pageX : LASTX, y = ev ? ev.pageY : LASTY; var it = V.pending; var r = act('decide', { id: id, choice: k }, { quiet: true });
-  if (r) fxCard(it.title, splitInfo(r.info), x, y);
+  var x = ev ? ev.pageX : LASTX, y = ev ? ev.pageY : LASTY; var it = V.pending; act('decide', { id: id, choice: k }, { quiet: true }).then(function (r) {
+  if (r) fxCard(it.title, splitInfo(r.info), x, y); });
 }
 
-/* ===================================================================== Aktionen (Engine läuft im Browser) */
+/* ===================================================================== Aktionen (laufen auf dem Server, Antwort ist der neue Spielstand) */
 function act(action, params, o) {
   o = o || {};
-  if (!S) return null; var r; var mailsBefore = openMails();
-  try { r = MGR.act(S, D, action, params || {}); }
-  catch (e) { toast(e.message || String(e), true); return null; }
-  DIRTY = true; V = MGR.view(S, D);
-  if (r.levelUp) NOTE.levelUp = r.levelUp;
-  if (!o.norender) { closePop(); render(true); }
-  if (r.info && !o.quiet) toast(r.info);
-  if (!o.norender) afterUpdate(mailsBefore);
-  return r;
+  if (!S) return Promise.resolve(null); var mailsBefore = openMails();
+  return serverAct(action, params || {}).then(function (r) {
+    V = MGR.view(S, D);
+    if (r.levelUp) NOTE.levelUp = r.levelUp;
+    if (!o.norender) { closePop(); render(true); }
+    if (r.info && !o.quiet) toast(r.info);
+    if (!o.norender) afterUpdate(mailsBefore);
+    return r;
+  }, function (e) { if (e && e.status !== 409) toast((e && e.message) || String(e), true); return null; });
 }
 function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (!V || ST.screen !== 'game') return;
@@ -194,7 +195,7 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (V.needAlloc) return allocPop();
   if (V.pending) return decisionPop();
   if (NOTE.levelUp) { var u = NOTE.levelUp; NOTE.levelUp = null; return levelUpPop(u); }
-  if (V.lastSigned) { var s = V.lastSigned; S.lastSigned = null; V.lastSigned = null; }
+  if (V.lastSigned) { var s = V.lastSigned; S.lastSigned = null; V.lastSigned = null; uiFlag('lastSigned'); }
   if (V.priv && V.priv.fam && V.priv.fam.res) return famResPop();
   if (V.priv && V.priv.fam && V.priv.fam.pend) return famNamePop();
   if (V.trainToday) return trainPop();
@@ -206,19 +207,13 @@ function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (V.blockMails) { toast('Erst die offenen Nachrichten beantworten.', true); go('home'); return; }
   if (V.trainToday) { trainPop(); return; }
   if (ST.tab !== 'home') { ST.tab = 'home'; render(true); }
-  SIMRUN = true; SND.click(); var mailsBefore = openMails(); var inbox0 = S.inbox.length ? S.inbox[0] : null; var steps = 0;
-  var stepFn = function () {
-    var r;
-    try { r = MGR.act(S, D, 'sim', { mode: 'day', auto: mode === 'match' }); } catch (e) { SIMRUN = false; toast(e.message, true); V = MGR.view(S, D); render(true); afterUpdate(mailsBefore); return; }
-    DIRTY = true; steps++; V = MGR.view(S, D); if (r.levelUp) NOTE.levelUp = r.levelUp;
+  SIMRUN = true; SND.click(); var mailsBefore = openMails();
+  serverAct('run', { mode: mode }).then(function (r) {
+    SIMRUN = false; V = MGR.view(S, D); if (r.levelUp) NOTE.levelUp = r.levelUp;
     var k = $('#kpis'), sr = $('#simrow');
     if (k) k.innerHTML = kpiHTML(); cal7Update(); if (sr) sr.innerHTML = simRowHTML();
-    var stop = mode === 'day' || V.fired || V.twPop || V.cupPop || V.weekNeed || V.potsPop || V.unlockNote || V.posPop || V.trPop || V.kitNeed || V.trialRes || V.pressPending || V.spNeed || V.starPop || V.pending || V.blockMails || V.matchToday || V.seasonRep || V.needAlloc || NOTE.levelUp || V.trainToday || (V.prep && (V.prep.need || V.prep.info)) || (V.priv && V.priv.fam && V.priv.fam.pend) || steps > 150 ||
-      (mode === 'event' && (openMails() > mailsBefore || (S.inbox[0] !== inbox0 && /^(ereignis|transfer|verein|erfolg)$/.test(S.inbox[0].k))));
-    if (stop) { SIMRUN = false; render(true); afterUpdate(mailsBefore); return; }
-    setTimeout(stepFn, 170);
-  };
-  stepFn();
+    render(true); afterUpdate(mailsBefore);
+  }, function (e) { SIMRUN = false; if (e && e.status !== 409) toast((e && e.message) || String(e), true); V = MGR.view(S, D); render(true); afterUpdate(mailsBefore); });
 }
 /* ---------- Pressekonferenz */
 function pressSVG() {
@@ -252,16 +247,16 @@ function pressAns(i) {
   setTimeout(function () { PRESS.busy = false; pressFinish(); }, 1300);
 }
 function pressFinish() {
-  var r = act('press', { a: PRESS.ans }, { quiet: true, norender: true }); if (!r) return; closePop(); render(true);
-  var agg = {}; splitInfo(r.info).forEach(function (x) { var m = x.match(/^(.*) ([+-]\d+)$/); if (m) agg[m[1]] = (agg[m[1]] || 0) + +m[2]; }); fxCard('Pressekonferenz', ['+5 XP'], LASTX, LASTY); setTimeout(function () { afterUpdate(); }, 900);
+  act('press', { a: PRESS.ans }, { quiet: true, norender: true }).then(function (r) { if (!r) return; closePop(); render(true);
+  var agg = {}; splitInfo(r.info).forEach(function (x) { var m = x.match(/^(.*) ([+-]\d+)$/); if (m) agg[m[1]] = (agg[m[1]] || 0) + +m[2]; }); fxCard('Pressekonferenz', ['+5 XP'], LASTX, LASTY); setTimeout(function () { afterUpdate(); }, 900); });
 }
 /* ---------- Hauptsponsor */
 var NW = {};
 function negoOffers(kind) { return kind === 'sp' ? V.spOffers : kind === 'ps' ? V.psOffers : kind === 'pv' ? V.pvOffers : kind === 'ball' ? V.ballOffers : V.kitOffers; }
 function negoRefresh(kind, m) { if (kind === 'sp') spPop(m); else if (kind === 'pv' || kind === 'ps') { renderTab(); if (m) toast(m); } else kitPop(kind, m); }
 function negoCtl(kind, i, what, v) { var o = negoOffers(kind)[i]; var yrs = what === 'y' ? Math.max(1, Math.min(3, o.yrs + v)) : o.yrs; if (what === 'y' && yrs === o.yrs) return toast(v > 0 ? 'Länger als 3 Jahre geht nicht.' : 'Mindestens 1 Jahr.', true); NW[kind + i] = { yrs: yrs, more: what === 'm' ? v : 0 }; negoGo(kind, i); }
-function negoGo(kind, i) { var o = negoOffers(kind)[i], w = NW[kind + i] || { yrs: o.yrs, more: 0 }; var r = act('nego', { kind: kind, i: i, yrs: w.yrs, more: w.more }, { quiet: true, norender: true }); if (!r) return; delete NW[kind + i]; if ((!V.kitNeed && kind === 'kit') || (!V.spNeed && kind === 'sp')) { closePop(); render(true); fxCard(kind === 'sp' ? 'Hauptsponsor' : 'Ausstatter', splitInfo(r.info), LASTX, LASTY); xpFx(5, LASTX, LASTY); setTimeout(afterUpdate, 900); return; }
-  if (/stimmt zu/.test(r.info)) rewardFx(LASTX, LASTY); negoRefresh(kind, r.info); }
+function negoGo(kind, i) { var o = negoOffers(kind)[i], w = NW[kind + i] || { yrs: o.yrs, more: 0 }; act('nego', { kind: kind, i: i, yrs: w.yrs, more: w.more }, { quiet: true, norender: true }).then(function (r) { if (!r) return; delete NW[kind + i]; if ((!V.kitNeed && kind === 'kit') || (!V.spNeed && kind === 'sp')) { closePop(); render(true); fxCard(kind === 'sp' ? 'Hauptsponsor' : 'Ausstatter', splitInfo(r.info), LASTX, LASTY); xpFx(5, LASTX, LASTY); setTimeout(afterUpdate, 900); return; }
+  if (/stimmt zu/.test(r.info)) rewardFx(LASTX, LASTY); negoRefresh(kind, r.info); }); }
 function negoCard(kind, o, i, head, valHtml, acceptJs, mcol) {
   if (o.gone) return '<div class="o" style="opacity:.45">' + head + '<div class="small" style="color:var(--r);font-weight:700">❌ Verhandlung abgebrochen</div></div>';
   var left = 3 - (o.nego || 0), mood = o.mood == null ? 100 : o.mood, mc = mood >= 65 ? 'var(--g)' : mood >= 35 ? 'var(--y)' : 'var(--r)';
@@ -284,9 +279,9 @@ function spPop(msg0) {
 }
 function spDo(a, i) {
   var p = { i: i }; if (a === 'spAccept') p.yrs = V.spOffers[i].yrs;
-  var r = act(a, p, { quiet: true, norender: true }); if (!r) return; NW = {};
+  act(a, p, { quiet: true, norender: true }).then(function (r) { if (!r) return; NW = {};
   if (a === 'spAccept') { closePop(); render(true); SND.coin && SND.coin(); fxCard('Hauptsponsor', splitInfo(r.info.replace('Hauptsponsor: ', '')), LASTX, LASTY); xpFx(5, LASTX, LASTY); rewardFx(LASTX, LASTY); setTimeout(afterUpdate, 900); return; }
-  spPop(r.info);
+  spPop(r.info); });
 }
 /* ---------- Ausstatter */
 function kitPop(kind, msg0) {
@@ -300,9 +295,9 @@ function kitPop(kind, msg0) {
 }
 function kitDo(kind, a, i) {
   var p = { kind: kind, i: i }; if (a === 'kitAccept') p.yrs = negoOffers(kind)[i].yrs;
-  var r = act(a, p, { quiet: true, norender: true }); if (!r) return; NW = {};
+  act(a, p, { quiet: true, norender: true }).then(function (r) { if (!r) return; NW = {};
   if (a === 'kitAccept') { closePop(); render(true); fxCard(kind === 'ball' ? 'Ballpartner' : 'Ausstatter', splitInfo(r.info.replace(/^(Ausstatter|Ballpartner): /, '')), LASTX, LASTY); xpFx(kind === 'ball' ? 3 : 5, LASTX, LASTY); rewardFx(LASTX, LASTY); setTimeout(afterUpdate, 900); return; }
-  kitPop(kind, r.info);
+  kitPop(kind, r.info); });
 }
 /* ---------- Positionswechsel */
 function benefizPop() {
@@ -318,7 +313,7 @@ function examPop() {
   clearInterval(EXAM.t); EXAM.t = setInterval(function () { var el = $('#exT'); if (!el) { clearInterval(EXAM.t); return; } var l = Math.max(0, Math.round((EXAM.end - Date.now()) / 1000)); el.textContent = Math.floor(l / 60) + ':' + String(l % 60).padStart(2, '0'); if (l < 60) el.style.color = '#e25c5c'; if (l <= 0) { clearInterval(EXAM.t); examEnd(); } }, 500);
 }
 function examAns(i) { EXAM.ans[EXAM.i] = i; EXAM.i++; if (EXAM.i >= V.langExam.q.length) return examEnd(); examPop(); }
-function examEnd() { clearInterval(EXAM.t); var a = EXAM.ans.slice(); EXAM = { t: null, end: 0, ans: [], i: 0 }; closePop(); var r = act('langExamDone', { a: a }, { quiet: true }); if (r && r.info) { pop('<div style="text-align:center"><div style="font-size:44px">' + (/Bestanden/.test(r.info) ? '🎓' : '📚') + '</div><div class="small" style="margin:10px 0;line-height:1.5">' + esc(r.info) + '</div><button class="pri" onclick="closePop()">OK</button></div>'); if (/Bestanden/.test(r.info)) try { fwBurst(); } catch (e) {} } }
+function examEnd() { clearInterval(EXAM.t); var a = EXAM.ans.slice(); EXAM = { t: null, end: 0, ans: [], i: 0 }; closePop(); act('langExamDone', { a: a }, { quiet: true }).then(function (r) { if (r && r.info) { pop('<div style="text-align:center"><div style="font-size:44px">' + (/Bestanden/.test(r.info) ? '🎓' : '📚') + '</div><div class="small" style="margin:10px 0;line-height:1.5">' + esc(r.info) + '</div><button class="pri" onclick="closePop()">OK</button></div>'); if (/Bestanden/.test(r.info)) try { fwBurst(); } catch (e) {} } }); }
 function sgPop() {
   var L = V.giftPop;
   var h = '<div class="evw"><div style="text-align:center"><div style="font-size:42px">🎁</div><h2 style="padding:0">Geschenk vom Hauptsponsor</h2><div class="small" style="line-height:1.6;max-width:520px;margin:0 auto">Der <b>Transfermarkt</b> ist erst ab <b>Manager-Level ' + (MGR.featLvl('transfers') || 5) + '</b> verfügbar – aber ' + (V.fin && V.fin.sponsors && V.fin.sponsors[0] ? 'dein Hauptsponsor <b>' + esc(V.fin.sponsors[0].firm) + '</b>' : 'dein Hauptsponsor') + ' übernimmt die Ablöse für deinen <b>ersten Transfer</b>. Wähle einen Spieler:</div></div>' +
@@ -331,12 +326,13 @@ function sgPop() {
   pop(h, { lock: true, xwide: true, top: true });
 }
 function langAns(i, btn) {
-  if (LANGBUSY) return; LANGBUSY = true; var r = act('langAnswer', { i: i }, { quiet: true, norender: true }); if (!r) { LANGBUSY = false; return; }
+  if (LANGBUSY) return; LANGBUSY = true; act('langAnswer', { i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) { LANGBUSY = false; return; }
   var ok = /^✅/.test(r.info || ''), m = /„([^“]+)“/.exec(r.info || ''), corr = ok ? btn.getAttribute('data-o') : (m ? m[1] : '');
   document.querySelectorAll('.lqb').forEach(function (b) { b.disabled = true; var t = b.getAttribute('data-o'); if (t === corr) { b.style.background = '#2e9b46'; b.style.color = '#fff'; b.style.transform = 'scale(1.04)'; } else if (b === btn) { b.style.background = '#d84343'; b.style.color = '#fff'; } else b.style.opacity = '.45'; });
   var res = $('#lqres'); if (res) res.innerHTML = ok ? '<span style="color:#2e9b46;font-size:18px">✅ Richtig! +2 XP</span>' : '<span style="color:#d84343">❌ Leider falsch – richtig ist „' + esc(corr) + '“. Die Frage kommt später nochmal.</span>';
   if (ok) { try { SND.coin && SND.coin(); } catch (e) {} try { xpFx(2, LASTX, LASTY); } catch (e) {} } else { var p = $('#pop'); if (p) { p.style.animation = 'none'; void p.offsetWidth; p.style.animation = 'shake .4s'; } }
   setTimeout(function () { LANGBUSY = false; closePop(); if (r.info && /Abschlussprüfung/.test(r.info)) toast(r.info.replace(/^.*?📝/, '📝')); render(true); }, ok ? 1300 : 2400);
+  });
 }
 var LANGBUSY = false;
 function langPop() {
@@ -353,7 +349,7 @@ function trPopShow() {
     (posted ? '<div class="postok">📱 Gepostet · <b>+' + num(posted) + ' Follower</b></div>' : '') +
     '<div class="row" style="gap:8px;margin-top:14px"><button class="' + (posted ? 'done' : 'sm') + '" style="flex:1" ' + (posted ? 'disabled' : '') + ' onclick="trPostDo()">' + (posted ? '✔ Gepostet' : '📱 Posten') + '</button><button class="pri" style="flex:2" onclick="act(\'trPopSeen\',{},{quiet:true})">Weiter</button></div></div>', { lock: true });
 }
-function trPostDo() { MGR.act(S, D, 'trPost', {}); V = MGR.view(S, D); DIRTY = true; try { SND.send(); } catch (e) {} trPopShow(); var b = $('.postok'); if (b) { b.classList.add('pulse'); } }
+function trPostDo() { act('trPost', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; try { SND.send(); } catch (e) {} trPopShow(); var b = $('.postok'); if (b) { b.classList.add('pulse'); } }); }
 function posPop() {
   var q = V.posPop, nm = V.dpn || {}, w3 = q.w === 3;
   pop('<div class="evw" style="text-align:center"><div style="font-size:46px">🔄</div><h2 style="padding:0">Neue Hauptposition?</h2><div class="small" style="line-height:1.6"><b>' + esc(q.n) + '</b> (' + q.age + ' J.) ist auf seiner ' + (w3 ? 'Wunschposition' : 'Nebenposition') + ' <b>' + q.dp2 + '</b>' + (nm[q.dp2] ? ' (' + esc(nm[q.dp2]) + ')' : '') + ' bei <b>100 %</b> angekommen – genauso stark wie als <b>' + q.dp + '</b>.</div><div class="xs muted" style="margin-top:8px">' + (w3 ? 'Wird ' + q.dp2 + ' Hauptposition, wird ' + q.dp + ' zur Nebenposition' + (q.old2 ? ' und ' + q.old2 + ' fällt weg' : '') + '.' : 'Wird ' + q.dp2 + ' Hauptposition, wird ' + q.dp + ' zur Nebenposition (95 %).') + ' <b style="color:#2e7d32">+5 XP</b></div><div style="text-align:left">' + pCard(q.pid, true) + '</div><div class="evbtns" style="margin-top:14px"><button class="pri" onclick="closePop();act(\'posSwap\',{yes:true})">✅ Ja, ' + q.dp2 + ' wird Hauptposition</button><button onclick="closePop();act(\'posSwap\',{yes:false})">Nein, ' + q.dp + ' bleibt</button></div></div>', { lock: true, auto: 1 });
@@ -380,10 +376,10 @@ function starPop(first) {
   h += '<button class="pri" style="width:100%;margin-top:12px" onclick="act(\'starDone\',{},{quiet:true})">' + (V.hsPts >= 0.5 ? 'Bestätigen – restliche Sterne aufheben' : 'Fertig') + '</button>';
   pop(h, { lock: true, auto: 1, wide: true });
 }
-function giveStar(pid) { var r = act('giveStar', { pid: pid }, { quiet: true, norender: true }); if (!r) return; starFx(1); toast(r.info); starPop(false); }
+function giveStar(pid) { act('giveStar', { pid: pid }, { quiet: true, norender: true }).then(function (r) { if (!r) return; starFx(1); toast(r.info); starPop(false); }); }
 /* ---------- Vorbereitung (Ausnahme auf Level 1) */
 function prepIntroPop() {
-  S.prepSeen = true;
+  S.prepSeen = true; uiFlag('prepSeen');
   pop('<div style="font-size:30px">📋</div><h2>Deine erste Vorbereitung</h2><div class="small" style="line-height:1.6">Normalerweise darfst du Vorbereitungen (Testspiele, Trainingslager, Turniere) erst ab <b>Manager-Level ' + MGR.featLvl('testspiele') + '</b> selbst planen.<br><br>Zum Einstieg gibt es eine <b style="color:var(--g)">Ausnahme</b>: Plane jetzt <b>2 Testspiele</b> und ein <b>kurzes Trainingslager</b>. Im Winter folgen 1 Testspiel und ein Hallenturnier.</div><button class="pri" style="width:100%;margin-top:14px" onclick="prepPop()">Vorbereitung planen</button>', { lock: true, top: true });
 }
 function prepPop() {
@@ -419,7 +415,7 @@ function prepSend(nT, summer) {
   var tests = []; for (var i = 0; i < nT; i++) tests.push({ d: $('#pd' + i).value, opp: $('#po' + i).value, home: i % 2 === 0 });
   if (nT > 1 && tests[0].d === tests[1].d) return toast('Zwei Testspiele am selben Tag geht nicht.', true);
   var ev = { d: $('#pe').value }; var p = { tests: tests }; p[summer ? 'camp' : 'halle'] = ev;
-  var r = act('prepPlan', p, { quiet: true, norender: true }); if (!r) return; closePop(); render(true); toast(r.info); setTimeout(afterUpdate, 300);
+  act('prepPlan', p, { quiet: true, norender: true }).then(function (r) { if (!r) return; closePop(); render(true); toast(r.info); setTimeout(afterUpdate, 300); });
 }
 function prepInfoPop() {
   pop('<div style="font-size:30px">🔒</div><h2>Vorbereitung abgeschlossen</h2><div class="small" style="line-height:1.6">Das war die Einsteiger-Ausnahme. Ab jetzt kannst du Testspiele, Trainingslager und Turniere erst wieder ab <b>Manager-Level ' + MGR.featLvl('testspiele') + '</b> selbst planen.</div><button class="pri" style="width:100%;margin-top:14px" onclick="act(\'prepAck\',{},{quiet:true})">Verstanden</button>', { lock: true });
@@ -439,7 +435,7 @@ function weekPop() {
 }
 function wpSet(k, v) { if (k === null) WP = { _k: WP._k }; else { WP[k] = v; if (k === 't') delete WP.f; } weekPop(); }
 function wpGo(diff) { if (diff === 'easy') return weekSend(WP.t, WP.f, 'easy', null); closePop(); mgStart(WP.t, WP.f, diff); MG.week = true; }
-function weekSend(t, f, diff, score) { var r = act('weekPlan', { t: t, f: f, diff: diff, score: score }, { quiet: true, norender: true }); if (!r) return; WP = null; closePop(); render(true); toast(r.info); setTimeout(afterUpdate, 300); }
+function weekSend(t, f, diff, score) { act('weekPlan', { t: t, f: f, diff: diff, score: score }, { quiet: true, norender: true }).then(function (r) { if (!r) return; WP = null; closePop(); render(true); toast(r.info); setTimeout(afterUpdate, 300); }); }
 function gateFx() {
   var src = $('#gateamt'), dst = document.querySelector('#kpis .kpi:last-child') || $('#kpis'); if (!src || !dst || !V.lastGate) return;
   var a = src.getBoundingClientRect(), b = dst.getBoundingClientRect(), sx = a.left + a.width / 2 + scrollX, sy = a.top + a.height / 2 + scrollY, tx = b.left + b.width / 2 + scrollX, ty = b.top + 30 + scrollY;
@@ -474,10 +470,11 @@ function trainPop(sel) {
   pop(h, { lock: true, auto: 1 });
 }
 function trainSend(t, f, skip, score, diff) {
-  var r = act('trainDay', skip ? { skip: true } : { t: t, f: f, score: score, diff: diff || (MG && MG.diff) || null }, { quiet: true, norender: true }); if (!r) return;
+  act('trainDay', skip ? { skip: true } : { t: t, f: f, score: score, diff: diff || (MG && MG.diff) || null }, { quiet: true, norender: true }).then(function (r) { if (!r) return;
   if (skip) { closePop(); render(true); toast(r.info); return; }
   var L = V.lastTrain, res = (L && L.res) || [];
   pop('<div style="font-size:28px">' + TR_IC[t] + '</div><h2>' + esc(L.t) + ' – ' + esc(L.f) + (L.score != null ? ' <span class="pill ' + (L.score >= 0.55 ? 'g' : L.score >= 0.35 ? 'y' : 'r') + '">' + Math.round(L.score * 100) + ' %</span>' : '') + '</h2>' + (res.length ? '<table class="t">' + res.map(function (x) { return '<tr><td><span class="pb ' + x.pos + '">' + x.pos + '</span></td><td>' + esc(x.n) + '</td><td class="num ' + (x.d > 0 ? 'pos' : 'neg') + '"><b>' + (x.d > 0 ? '+' : '') + x.d.toFixed(2).replace('.', ',') + '</b></td></tr>'; }).join('') + '</table>' : '<div class="small muted">Keine spürbaren Veränderungen.</div>') + '<div class="xs muted" style="margin-top:8px">Fitness der Spieler ist gesunken und erholt sich an freien Tagen. Gutes Training erhöht auch die Siegchance im nächsten Spiel.</div><button class="pri" style="width:100%;margin-top:12px" onclick="closePop();render(true);afterUpdate()">Weiter</button>', { auto: 1 });
+  });
 }
 /* ---------- Probetraining */
 function trialPop() {
@@ -495,26 +492,25 @@ function goalPop() {
     p.opts.map(function (o, i) { return '<button class="' + (o.label.indexOf('Vorschlag') >= 0 || i === 0 ? '' : '') + '" onclick="goalPick(\'' + o.k + '\',event)">' + esc(o.label) + '</button>'; }).join('') + '</div><div class="xs muted" style="margin-top:10px">Diese Frage musst du beantworten.</div></div>', { lock: true, top: true });
 }
 function goalPick(k, ev) {
-  var p = V.pending; var r; var cash0 = V.wealth, fans0 = V.fans;
-  try { r = MGR.act(S, D, 'decide', { id: p.id, choice: k }); } catch (e) { return toast(e.message, true); } if (r && r.levelUp) NOTE.levelUp = r.levelUp;
-  DIRTY = true; V = MGR.view(S, D);
+  var p = V.pending; var cash0 = V.wealth, fans0 = V.fans;
+  act('decide', { id: p.id, choice: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return;
   var dm = V.wealth - cash0, df = V.fans - fans0;
   var ch = []; if (dm) ch.push('+' + eur(dm) + ' Zuschuss'); if (df) ch.push('Fans +' + df);
   $('#pop').innerHTML = '<div style="text-align:center;padding:10px 0"><div style="font-size:54px;animation:popin .5s cubic-bezier(.2,1.6,.4,1)">' + ({ aufstieg: '🚀', oben: '📈', mitte: '🛡️', erhalt: '🧱' }[k] || '🎯') + '</div><h2 style="padding:0;margin-top:6px">' + esc(V.goal) + '</h2><div class="small muted" style="margin:6px 0 10px">Der Vorstand hat dein Saisonziel notiert.' + (k === 'aufstieg' ? ' Das ganze Dorf träumt vom Aufstieg!' : k === 'erhalt' ? ' Kein Druck – aber verfehlen wäre peinlich.' : '') + '</div>' +
     (ch.length ? ch.map(function (c) { return '<span class="pill g" style="margin:3px;animation:popin .6s ease">' + esc(c) + '</span>'; }).join('') : '<span class="pill">Keine Sofort-Effekte</span>') + '<div style="margin-top:16px"><button class="pri" onclick="closePop();render(true);afterUpdate()">Los geht’s</button></div></div>';
+  });
 }
 function popBan(key, ic, title, sub) { var u = imgOf('bg', key) || (key === 'aufstieg' ? imgOf('bg', 'saisonende') : ''); if (u) return '<div class="popban" style="background-image:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.75)),url(&quot;' + u + '&quot;)"><div><h2 style="padding:0;margin:0;color:#fff">' + esc(title) + '</h2>' + (sub ? '<div class="small" style="color:rgba(255,255,255,.85)">' + esc(sub) + '</div>' : '') + '</div></div>'; return '<div class="row" style="gap:12px;align-items:center;margin-bottom:6px"><span style="font-size:34px;line-height:1">' + ic + '</span><div><h2 style="padding:0;margin:0">' + esc(title) + '</h2>' + (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div></div>'; }
-var JOKSNAP = null, JOKDATE = null;
-function jokerAvail() { return JOKSNAP && V && JOKDATE === V.date && !V.live && !V.matchToday; }
+function jokerAvail() { return JOKER_OK && V && !V.live && !V.matchToday && V.jokers > 0; }
 function jokerUse() {
   if (!jokerAvail()) return toast('Den Joker kannst du direkt nach einem Spiel einsetzen – zurück in der Übersicht, bevor du weiterspielst.', true);
   pop('<div class="evw" style="text-align:center"><div class="jokcard">🃏</div><h2>Spiel wiederholen?</h2><div class="small">Alles seit dem Anpfiff wird zurückgesetzt. Du verbrauchst einen Joker (' + V.jokers + ' vorhanden).</div><div class="row" style="gap:8px;margin-top:14px"><button class="pri" style="flex:1" onclick="jokerGo()">🃏 Zurückspulen</button><button onclick="closePop()">Abbrechen</button></div></div>');
 }
 function jokerGo() {
-  closePop(); var left = (S.jokers || 1) - 1, jk = S.jok; S = JSON.parse(JOKSNAP); S.jokers = left; if (jk) S.jok = jk; JOKSNAP = null; DIRTY = true;
+  closePop();
   try { SND.rewind(); } catch (e) {}
   var o = document.createElement('div'); o.className = 'rewind'; o.innerHTML = '<div class="rwin"><div class="rwclock">⏪</div><div class="rwtxt">Zurück zum Anpfiff …</div></div>'; document.body.appendChild(o);
-  setTimeout(function () { V = MGR.view(S, D); render(true); }, 900); setTimeout(function () { o.classList.add('out'); }, 1500); setTimeout(function () { o.remove(); toast('🃏 Joker eingesetzt – das Spiel kann neu beginnen!'); }, 2100);
+  var jp = serverJoker(); setTimeout(function () { jp.then(function () { V = MGR.view(S, D); render(true); }); }, 900); setTimeout(function () { o.classList.add('out'); }, 1500); setTimeout(function () { o.remove(); }, 2100); jp.then(function () { toast('🃏 Joker eingesetzt – das Spiel kann neu beginnen!'); }, function (e) { toast((e && e.message) || String(e), true); });
 }
 function firedPop() {
   pop('<div class="evw">' + popBan('entlassung', '❌', 'Du wurdest entlassen', 'am ' + dFull(V.firedOn)) + '<div class="small" style="margin:10px 0">' + esc((V.firedTxt || '').replace(/^❌ ?/, '')) + '</div><div class="xs muted">Deine Bilanz bleibt in der Bestenliste, dein Manager-Level bleibt erhalten.</div><button class="pri" style="width:100%;margin-top:14px" onclick="quit()">Zurück ins Hauptmenü</button></div>', { lock: true });

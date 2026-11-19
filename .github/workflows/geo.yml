@@ -13,7 +13,8 @@ jobs:
         with: { ref: umbau }
       - run: |
           curl -sSfL -o data/de-laender.geo.json https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json || curl -sSfL -o data/de-laender.geo.json https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/3_mittel.geo.json
+          curl -sSfL -o data/de-kreise.geo.json https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/4_kreise/4_niedrig.geo.json || curl -sSfL -o data/de-kreise.geo.json https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/4_kreise/3_mittel.geo.json
           ls -la data
           git config user.name "amateur-manager-bot"; git config user.email "bot@amateur-manager.de"
-          git add data/de-laender.geo.json; git commit -m "Bundesländer-Karte (GeoJSON, isellsoap/deutschlandGeoJSON)" || true
+          git add data/de-laender.geo.json data/de-kreise.geo.json; git commit -m "Bundesländer-Karte (GeoJSON, isellsoap/deutschlandGeoJSON)" || true
           git pull --rebase origin umbau; git push origin HEAD:umbau

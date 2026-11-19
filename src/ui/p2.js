@@ -217,9 +217,10 @@ function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (V.blockMails) { toast('Erst die offenen Nachrichten beantworten.', true); go('home'); return; }
   if (V.trainToday) { trainPop(); return; }
   if (ST.tab !== 'home') { ST.tab = 'home'; render(true); }
-  SIMRUN = true; SND.click(); var mailsBefore = openMails();
+  SIMRUN = true; SND.click(); var mailsBefore = openMails(), ib0 = S.inbox && S.inbox[0] ? S.inbox[0].d + S.inbox[0].t : '';
   serverAct('run', { mode: mode }).then(function (r) {
     SIMRUN = false; V = MGR.view(S, D); if (r.levelUp) NOTE.levelUp = r.levelUp;
+    try { var nev = []; for (var ii = 0; ii < (S.inbox || []).length && ii < 40; ii++) { var it = S.inbox[ii]; if (it.d + it.t === ib0) break; if (it.k === 'verein' && /^🎉/.test(it.t)) nev.push(it.t); } nev.slice(0, 3).reverse().forEach(function (t) { var m = /^🎉\s*([^:]+):\s*(.*)$/.exec(t); toast(m ? m[2] : t.replace(/^🎉\s*/, ''), false, m ? '🎉 ' + m[1] : '🎉 Ereignis'); }); } catch (e) {}
     var k = $('#kpis'), sr = $('#simrow');
     if (k) k.innerHTML = kpiHTML(); cal7Update(); if (sr) sr.innerHTML = simRowHTML();
     render(true); afterUpdate(mailsBefore);
@@ -339,14 +340,23 @@ function langAns(i, btn) {
   if (LANGBUSY) return; LANGBUSY = true; act('langAnswer', { i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) { LANGBUSY = false; return; }
   var ok = /^✅/.test(r.info || ''), m = /„([^“]+)“/.exec(r.info || ''), corr = ok ? btn.getAttribute('data-o') : (m ? m[1] : '');
   document.querySelectorAll('.lqb').forEach(function (b) { b.disabled = true; var t = b.getAttribute('data-o'); if (t === corr) { b.style.background = '#2e9b46'; b.style.color = '#fff'; b.style.transform = 'scale(1.04)'; } else if (b === btn) { b.style.background = '#d84343'; b.style.color = '#fff'; } else b.style.opacity = '.45'; });
+  try { speakAns(LQCUR, corr); } catch (e) {}
   var res = $('#lqres'); if (res) res.innerHTML = ok ? '<span style="color:#2e9b46;font-size:18px">✅ Richtig! +2 XP</span>' : '<span style="color:#d84343">❌ Leider falsch – richtig ist „' + esc(corr) + '“. Die Frage kommt später nochmal.</span>';
   if (ok) { try { SND.coin && SND.coin(); } catch (e) {} try { xpFx(2, LASTX, LASTY); } catch (e) {} } else { var p = $('#pop'); if (p) { p.style.animation = 'none'; void p.offsetWidth; p.style.animation = 'shake .4s'; } }
   setTimeout(function () { LANGBUSY = false; closePop(); if (r.info && /Abschlussprüfung/.test(r.info)) toast(r.info.replace(/^.*?📝/, '📝')); render(true); }, ok ? 1300 : 2400);
   });
 }
-var LANGBUSY = false;
+var LANGBUSY = false, LQCUR = null;
+var TTSL = { en: 'en-GB', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', pl: 'pl-PL' };
+function speakAns(q, corr) {
+  if (!q || !corr || !window.speechSynthesis || !TTSL[q.k]) return;
+  var txt = corr, m = /^(Was bedeutet|Welche Zahl ist)[^„]*„([^“]+)“/.exec(q.q || ''); if (m) txt = m[2];
+  else { var mt = /^[^?:]*[?:] (.*___.*)$/.exec(q.q || ''); if (mt) txt = mt[1].replace('___', corr); }
+  var u = new SpeechSynthesisUtterance(txt); u.lang = TTSL[q.k]; u.rate = 0.9; var vs = speechSynthesis.getVoices().filter(function (v) { return v.lang && v.lang.replace('_', '-').indexOf(TTSL[q.k].slice(0, 2)) === 0; }); if (vs.length) u.voice = vs[0];
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
 function langPop() {
-  var q = V.langQ, lg = (V.lang || []).filter(function (x) { return x.k === q.k; })[0] || {};
+  var q = V.langQ, lg = (V.lang || []).filter(function (x) { return x.k === q.k; })[0] || {}; LQCUR = q;
   pop('<div class="evw" style="text-align:center"><div style="font-size:38px">' + (lg.f || '🗣️') + '</div><h2 style="padding:0;margin:4px 0">' + esc(q.n) + ' üben</h2><div class="small muted">Frage für ' + esc(V.slpNames[q.lv]) + '</div><div style="font-size:17px;font-weight:700;margin:16px 0;line-height:1.4">' + esc(q.q) + '</div><div class="evbtns">' + q.o.map(function (o, i) { return '<button class="lqb" data-o="' + esc(o) + '" onclick="langAns(' + i + ',this)">' + esc(o) + '</button>'; }).join('') + '</div><div id="lqres" style="min-height:22px;margin-top:10px;font-weight:800"></div></div>', { lock: true, y: Math.max((window.scrollY || 0) + 10, (LASTY || 200) - 120), x: LASTX || null });
 }
 function trPopShow() {

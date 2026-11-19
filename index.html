@@ -662,14 +662,21 @@ body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 .negbars{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:10px}.nbl{display:flex;flex-direction:column;font-size:11px;line-height:1.2;min-width:96px}.nbl span{opacity:.65}.nbl b{font-size:13px}
 .nbt{height:14px;border-radius:8px;background:rgba(0,0,0,.08);overflow:hidden}.nbt.sm{height:7px;margin-top:3px}.nb{display:block;height:100%;border-radius:8px;width:0;transition:width .9s cubic-bezier(.3,.8,.3,1)}.nb.ask{background:linear-gradient(90deg,#e25c5c,#f2994a)}.nb.bid{background:linear-gradient(90deg,#5fbf3a,#8fc852)}
 .negok{margin-top:8px;font-weight:700}.negok.neg{color:#c0392b}
+
+/* v25 Block 6 */
+*{scrollbar-width:thin;scrollbar-color:rgba(143,200,82,.55) rgba(255,255,255,.05)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:8px}::-webkit-scrollbar-thumb{background:rgba(143,200,82,.5);border-radius:8px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:rgba(143,200,82,.8);background-clip:padding-box}
+.lgrow{padding:5px 8px!important;gap:8px!important;font-size:12px}.lgrow b{font-size:12.5px}.lgscale{grid-template-columns:repeat(6,1fr)!important;margin-top:3px!important}.lgscale i{height:5px!important}.lgrow .lgf img{height:14px!important;width:21px!important}
+.lgbtns .sm,.box .row.wr .sm[onclick^="act('langAdd'"]{font-size:10.5px;padding:3px 8px;min-height:0}
+.shopbox{margin-top:16px!important}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<script src="engine.js?v=25.1.0"></script>
-<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v25.1.0';</script>
+<script src="engine.js?v=25.2.0"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v25.2.0';</script>
 <script>
 
 /* ===================================================================== Server-Anbindung (Supabase)
@@ -1643,9 +1650,10 @@ function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (V.blockMails) { toast('Erst die offenen Nachrichten beantworten.', true); go('home'); return; }
   if (V.trainToday) { trainPop(); return; }
   if (ST.tab !== 'home') { ST.tab = 'home'; render(true); }
-  SIMRUN = true; SND.click(); var mailsBefore = openMails();
+  SIMRUN = true; SND.click(); var mailsBefore = openMails(), ib0 = S.inbox && S.inbox[0] ? S.inbox[0].d + S.inbox[0].t : '';
   serverAct('run', { mode: mode }).then(function (r) {
     SIMRUN = false; V = MGR.view(S, D); if (r.levelUp) NOTE.levelUp = r.levelUp;
+    try { var nev = []; for (var ii = 0; ii < (S.inbox || []).length && ii < 40; ii++) { var it = S.inbox[ii]; if (it.d + it.t === ib0) break; if (it.k === 'verein' && /^🎉/.test(it.t)) nev.push(it.t); } nev.slice(0, 3).reverse().forEach(function (t) { var m = /^🎉\s*([^:]+):\s*(.*)$/.exec(t); toast(m ? m[2] : t.replace(/^🎉\s*/, ''), false, m ? '🎉 ' + m[1] : '🎉 Ereignis'); }); } catch (e) {}
     var k = $('#kpis'), sr = $('#simrow');
     if (k) k.innerHTML = kpiHTML(); cal7Update(); if (sr) sr.innerHTML = simRowHTML();
     render(true); afterUpdate(mailsBefore);
@@ -1765,14 +1773,23 @@ function langAns(i, btn) {
   if (LANGBUSY) return; LANGBUSY = true; act('langAnswer', { i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) { LANGBUSY = false; return; }
   var ok = /^✅/.test(r.info || ''), m = /„([^“]+)“/.exec(r.info || ''), corr = ok ? btn.getAttribute('data-o') : (m ? m[1] : '');
   document.querySelectorAll('.lqb').forEach(function (b) { b.disabled = true; var t = b.getAttribute('data-o'); if (t === corr) { b.style.background = '#2e9b46'; b.style.color = '#fff'; b.style.transform = 'scale(1.04)'; } else if (b === btn) { b.style.background = '#d84343'; b.style.color = '#fff'; } else b.style.opacity = '.45'; });
+  try { speakAns(LQCUR, corr); } catch (e) {}
   var res = $('#lqres'); if (res) res.innerHTML = ok ? '<span style="color:#2e9b46;font-size:18px">✅ Richtig! +2 XP</span>' : '<span style="color:#d84343">❌ Leider falsch – richtig ist „' + esc(corr) + '“. Die Frage kommt später nochmal.</span>';
   if (ok) { try { SND.coin && SND.coin(); } catch (e) {} try { xpFx(2, LASTX, LASTY); } catch (e) {} } else { var p = $('#pop'); if (p) { p.style.animation = 'none'; void p.offsetWidth; p.style.animation = 'shake .4s'; } }
   setTimeout(function () { LANGBUSY = false; closePop(); if (r.info && /Abschlussprüfung/.test(r.info)) toast(r.info.replace(/^.*?📝/, '📝')); render(true); }, ok ? 1300 : 2400);
   });
 }
-var LANGBUSY = false;
+var LANGBUSY = false, LQCUR = null;
+var TTSL = { en: 'en-GB', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', pl: 'pl-PL' };
+function speakAns(q, corr) {
+  if (!q || !corr || !window.speechSynthesis || !TTSL[q.k]) return;
+  var txt = corr, m = /^(Was bedeutet|Welche Zahl ist)[^„]*„([^“]+)“/.exec(q.q || ''); if (m) txt = m[2];
+  else { var mt = /^[^?:]*[?:] (.*___.*)$/.exec(q.q || ''); if (mt) txt = mt[1].replace('___', corr); }
+  var u = new SpeechSynthesisUtterance(txt); u.lang = TTSL[q.k]; u.rate = 0.9; var vs = speechSynthesis.getVoices().filter(function (v) { return v.lang && v.lang.replace('_', '-').indexOf(TTSL[q.k].slice(0, 2)) === 0; }); if (vs.length) u.voice = vs[0];
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
 function langPop() {
-  var q = V.langQ, lg = (V.lang || []).filter(function (x) { return x.k === q.k; })[0] || {};
+  var q = V.langQ, lg = (V.lang || []).filter(function (x) { return x.k === q.k; })[0] || {}; LQCUR = q;
   pop('<div class="evw" style="text-align:center"><div style="font-size:38px">' + (lg.f || '🗣️') + '</div><h2 style="padding:0;margin:4px 0">' + esc(q.n) + ' üben</h2><div class="small muted">Frage für ' + esc(V.slpNames[q.lv]) + '</div><div style="font-size:17px;font-weight:700;margin:16px 0;line-height:1.4">' + esc(q.q) + '</div><div class="evbtns">' + q.o.map(function (o, i) { return '<button class="lqb" data-o="' + esc(o) + '" onclick="langAns(' + i + ',this)">' + esc(o) + '</button>'; }).join('') + '</div><div id="lqres" style="min-height:22px;margin-top:10px;font-weight:800"></div></div>', { lock: true, y: Math.max((window.scrollY || 0) + 10, (LASTY || 200) - 120), x: LASTX || null });
 }
 function trPopShow() {
@@ -2177,7 +2194,7 @@ function miniRing(pct, col, big, lbl, sub, locked) {
 }
 function jobRing(J) {
   var JD = V.jobsDef || {}; J = J || {}; var lk = !has('privat');
-  if (J.stage === 'study' && JD[J.path]) { var st = JD[J.path].study, pc = J.months / st[1] * 100; return miniRing(pc, '#6fb3e6', Math.round(pc) + '%', '📚 Studium', J.months + ' / ' + st[1] + ' Mon.', lk); }
+  if (J.stage === 'study' && JD[J.path]) { var st = JD[J.path].study, pc = J.months / st[1] * 100; return miniRing(pc, '#6fb3e6', Math.round(pc) + '%', J.path === 'ausb' ? '🛠️ Ausbildung' : '📚 Studium', J.months + ' / ' + st[1] + ' Mon.', lk); }
   if (J.stage === 'job' && JD[J.path]) { var lad = JD[J.path].ladder; return miniRing((J.step + 1) / lad.length * 100, '#6fb3e6', (J.step + 1) + '/' + lad.length, '💼 Job', J.title || 'Stufe ' + (J.step + 1), lk); }
   return miniRing(0, '#6fb3e6', '–', '💼 Job / Studium', J.stage === 'abi' || !J.stage ? 'noch nichts' : 'ohne Job', lk);
 }
@@ -2196,7 +2213,7 @@ function mgrSide() {
   h += '<div class="mkv">' + kv('Karrierebilanz', '<b style="color:#5fbf3a">' + w[0] + 'S</b> · ' + w[1] + 'U · <b style="color:#e25c5c">' + w[2] + 'N</b>') + kv('Privatvermögen', '<b class="pos">' + eur(P.cash || 0) + '</b>') + kv('Gekauft', own + ' / ' + ((V.shop || []).length || own) + (own ? ' <a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'privat\')">ansehen</a>' : '')) + '</div>' +
     '<div class="mkv">' + kv('Beziehung', F ? '❤️ ' + esc(F.n.split(' ')[0]) : 'Single') + (V.ps ? kv('Pers. Sponsor', esc(V.ps.firm)) : '') + '</div>';
   var L = V.lang || [];
-  if (lockP) h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🗣️ Sprachen</b><span class="xs muted">🔒 ab Level ' + MGR.featLvl('privat') + '</span></div></div>'; else h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🗣️ Sprachen</b><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'manager\')">verwalten</a></div><div class="xs" style="margin-top:4px">' + flagImg('de') + ' Deutsch · SLP 4</div>' + L.map(function (x) { return '<div class="row sp xs" style="margin-top:4px;gap:6px"><span>' + flagImg(FLC[x.k]) + ' ' + esc(x.n) + ' · SLP ' + x.lvl + '</span>' + (x.lvl >= 4 ? '<span>✔</span>' : x.exam ? '<button class="sm' + (x.block ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.block ? 'disabled' : '') + ' onclick="act(\'langExam\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.block ? '⏳ ' + dFull(x.block).slice(0, 6) : '🎓 Prüfung') + '</button>' : '<button class="sm' + (x.done ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.done ? 'disabled title="Diese Woche schon geübt"' : '') + ' onclick="act(\'langAsk\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.done ? '✓ geübt' : '📖 Lernen') + '</button>') + '</div>'; }).join('') + '</div>';
+  if (lockP) h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🗣️ Sprachen</b><span class="xs muted">🔒 ab Level ' + MGR.featLvl('privat') + '</span></div></div>'; else h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🗣️ Sprachen</b><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'manager\')">verwalten</a></div><div class="xs" style="margin-top:4px">' + flagImg('de') + ' Deutsch · Muttersprache</div>' + L.map(function (x) { return '<div class="row sp xs" style="margin-top:4px;gap:6px"><span>' + flagImg(FLC[x.k]) + ' ' + esc(x.n) + ' · ' + (CEFR[x.lvl] || '–') + '</span>' + (x.lvl >= 6 ? '<span>✔</span>' : x.exam ? '<button class="sm' + (x.block ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.block ? 'disabled' : '') + ' onclick="act(\'langExam\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.block ? '⏳ ' + dFull(x.block).slice(0, 6) : '🎓 Prüfung') + '</button>' : '<button class="sm' + (x.done ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.done ? 'disabled title="Diese Woche schon geübt"' : '') + ' onclick="act(\'langAsk\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.done ? '✓ geübt' : '📖 Lernen') + '</button>') + '</div>'; }).join('') + '</div>';
   var HB = V.hobbies || [], myH = (V.hobO || []).map(function (k) { return HB.filter(function (x) { return x.k === k; })[0]; }).filter(Boolean);
   h += '<div style="margin-top:10px"><div class="row sp"><b class="xs">🎯 Hobbys</b><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'manager\')">verwalten</a></div>' + (myH.length ? myH.map(function (x) { return '<div class="row sp xs" style="margin-top:4px;gap:6px"><span>' + x.ic + ' ' + esc(x.n) + ' · ' + x.pct + ' %</span><button class="sm' + (x.done ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.done ? 'disabled' : '') + ' onclick="act(\'hobbyDo\',{k:\'' + x.k + '\'})">' + (x.done ? '✓' : 'Hingehen') + '</button></div>'; }).join('') : '<div class="xs muted" style="margin-top:4px">Noch kein Hobby.</div>') + '</div>';
   return h + '</div>';
@@ -2980,7 +2997,7 @@ function youthMap() { return campusScene({ objs: YOBJ, fn: 'yoHover', hub: 'Acad
 function yoHover(id, click) { isoInfo(id, 'yoinfo', click); }
 function tJugend() {
   var cap = V.youthCap || 3, full = V.youth.length >= cap;
-  var talents = '<div class="box"><h3>🌱 Talente (' + V.youth.length + ' / ' + cap + ')</h3><div class="xs muted" style="margin:-4px 0 8px">🏃 Pro Woche darf <b>ein</b> Talent bei der Ersten mittrainieren' + (V.ytrDone ? ' – diesen Monat erledigt ✓' : '') + '. +/− = Entwicklung seit Saisonbeginn.' + (full ? ' <b style="color:#e25c5c">Academy voll</b>' : '') + '</div>' + (V.youth.length ? V.youth.slice().sort(function (a, b) { return b.talHi - a.talHi || b.str - a.str; }).map(function (y) {
+  var talents = '<div class="box"><h3>🌱 Talente (' + V.youth.length + ' / ' + cap + ')</h3><div class="xs muted" style="margin:-4px 0 8px">🏃 Pro Woche darf <b>ein</b> Talent bei der Ersten mittrainieren' + (V.ytrDone ? ' – diese Woche erledigt ✓' : '') + '. +/− = Entwicklung seit Saisonbeginn.' + (full ? ' <b style="color:#e25c5c">Academy voll</b>' : '') + '</div>' + (V.youth.length ? V.youth.slice().sort(function (a, b) { return b.talHi - a.talHi || b.str - a.str; }).map(function (y) {
     var can = y.age >= 16;
     return '<div class="yrow"><span class="pb ' + y.pos + '">' + y.pos + '</span><div style="min-width:0"><div class="row sp" style="gap:6px"><b class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(y.n) + '</b><span class="row" style="gap:3px">' + strBox(y.str) + '<span class="dS" style="color:' + (y.dS > 0 ? '#5fbf3a' : y.dS < 0 ? '#e25c5c' : '#888') + '">' + (y.dS > 0 ? '+' : '') + String(y.dS || 0).replace('.', ',') + '</span></span></div><div class="row xs" style="margin-top:3px;gap:6px;flex-wrap:wrap"><span class="wchip tip" data-tip="' + ytip(y) + '">' + y.age + ' J.</span>' + stars(y.talLo, y.talHi) + '<span class="row" style="gap:4px"><button class="sm ybt" title="Trainiert diese Woche bei der Ersten mit (kleiner Stärke-Bonus)" ' + (V.ytrDone ? 'disabled' : '') + ' onclick="act(\'youthTrain\',{yid:' + y.id + '})">🏃</button><button class="sm ybt red" title="Verabschieden" onclick="act(\'dropyouth\',{yid:' + y.id + '})">✕</button><button class="sm ybt ' + (can ? 'pri' : '') + '" ' + (can ? '' : 'disabled') + ' title="' + (can ? 'In die Erste holen' : 'Ab 16 Jahren') + '" onclick="act(\'promote\',{yid:' + y.id + '})">⬆</button></span></div></div></div>';
   }).join('') : '<div class="muted small">Neue Talente kommen zum Saisonstart.</div>') + '<div class="xs muted" style="margin-top:6px">Ab 16 in die Erste, mit 19 verlassen sie die Academy.' + (V.youthNext ? ' ' + V.youthNext + ' Talent(e) unterwegs.' : '') + '</div></div>';
@@ -4008,16 +4025,17 @@ function repBox() {
   var r = V.mgrRep || 0, R = V.clubRep || { reg: 0, nat: 0, intl: 0 };
   return '<div class="box"><h3>⭐ Ansehen</h3>' + repBar(r, '🧑‍💼 Als Trainer', repName(r) + ' · bessere persönliche Sponsoren', '#f0c24b') + repBar(R.reg, '📍 Verein regional', '', '#8fc852') + repBar(R.nat, '🇩🇪 Verein national', '', '#4fa3e0') + repBar(R.intl, '🌍 Verein international', '', '#c77dff') + '</div>';
 }
-var FLC = { de: 'de', en: 'gb', es: 'es', fr: 'fr', it: 'it', ja: 'jp' };
+var FLC = { de: 'de', en: 'gb', es: 'es', fr: 'fr', it: 'it', ja: 'jp', pl: 'pl' };
+var CEFR = ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 function flagImg(code, h) { if (!code) return ''; return '<img src="https://flagcdn.com/w40/' + code + '.png" alt="" style="height:' + (h || 14) + 'px;width:' + Math.round((h || 14) * 1.5) + 'px;object-fit:cover;border-radius:2px;vertical-align:-2px;box-shadow:0 0 0 1px rgba(0,0,0,.2)">'; }
 function langBox() {
   var have = V.lang || [], used = have.map(function (x) { return x.k; }), canAdd = have.length < 4 && have.every(function (x) { return x.lvl >= 3; });
-  var line = function (f, n, lvl, nm, pct, extra) { return '<div class="lgrow"><span class="lgf">' + f + '</span><div style="flex:1;min-width:0"><div class="row" style="gap:8px;justify-content:flex-start"><b>' + esc(n) + '</b><span class="xs" style="color:' + ['#888', '#ff9f43', '#ffd34d', '#8fc852', '#4fc3f7'][lvl] + ';font-weight:700">' + esc(nm) + '</span></div><div class="lgscale">' + [1, 2, 3, 4].map(function (k) { return '<i class="' + (k <= lvl ? 'on' : k === lvl + 1 ? 'cur' : '') + '"' + (k === lvl + 1 ? ' style="--p:' + pct + '%"' : '') + '></i>'; }).join('') + '</div></div>' + (extra || '') + '</div>'; };
+  var line = function (f, n, lvl, nm, pct, extra) { return '<div class="lgrow"><span class="lgf">' + f + '</span><div style="flex:1;min-width:0"><div class="row" style="gap:8px;justify-content:flex-start"><b>' + esc(n) + '</b><span class="xs" style="color:' + ['#888', '#ff9f43', '#ffb84d', '#ffd34d', '#8fc852', '#4fc3f7', '#b18cff'][lvl] + ';font-weight:700">' + esc(nm) + '</span></div><div class="lgscale">' + [1, 2, 3, 4, 5, 6].map(function (k) { return '<i class="' + (k <= lvl ? 'on' : k === lvl + 1 ? 'cur' : '') + '"' + (k === lvl + 1 ? ' style="--p:' + pct + '%"' : '') + '></i>'; }).join('') + '</div></div>' + (extra || '') + '</div>'; };
   var h = '<div class="box" style="margin:0"><div class="row sp"><h3 style="margin:0">🗣️ Fremdsprachen</h3>' + (V.langF > 1 ? '<span class="pill g" title="Bonus auf Jobgehalt und persönlichen Sponsor">+' + Math.round((V.langF - 1) * 100) + ' % Bonus</span>' : '') + '</div><div style="margin-top:8px;display:grid;gap:8px">';
-  h += line(flagImg('de', 18), 'Deutsch', 4, 'Muttersprache · SLP 4', 100);
-  have.forEach(function (x) { var pct = x.lvl >= 4 ? 100 : Math.round((x.xp - x.prev) / Math.max(1, x.next - x.prev) * 100); h += line(flagImg(FLC[x.k], 18), x.n, x.lvl, x.lvlN, pct, (x.exam ? '<button class="sm' + (x.block ? ' done' : ' pri') + '" style="margin-left:8px;white-space:nowrap;font-size:10.5px;padding:3px 8px;min-height:0" ' + (x.block ? 'disabled title="Wiederholung ab ' + dFull(x.block) + '"' : '') + ' onclick="act(\'langExam\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.block ? '⏳ ' + dFull(x.block).slice(0, 6) : '🎓 Prüfung') + '</button>' : '<button class="sm' + (x.done ? ' done' : ' pri') + '" style="margin-left:8px;white-space:nowrap;font-size:10.5px;padding:3px 8px;min-height:0" ' + (x.done || x.lvl >= 4 ? 'disabled' : '') + ' onclick="act(\'langAsk\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.lvl >= 4 ? '✔' : x.done ? '✓ geübt' : '📖 Lernen') + '</button>')); });
+  h += line(flagImg('de', 18), 'Deutsch', 6, 'Muttersprache', 100);
+  have.forEach(function (x) { var pct = x.lvl >= 6 ? 100 : Math.round((x.xp - x.prev) / Math.max(1, x.next - x.prev) * 100); h += line(flagImg(FLC[x.k], 18), x.n, x.lvl, x.lvlN, pct, (x.exam ? '<button class="sm' + (x.block ? ' done' : ' pri') + '" style="margin-left:8px;white-space:nowrap;font-size:10.5px;padding:3px 8px;min-height:0" ' + (x.block ? 'disabled title="Wiederholung ab ' + dFull(x.block) + '"' : '') + ' onclick="act(\'langExam\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.block ? '⏳ ' + dFull(x.block).slice(0, 6) : '🎓 Prüfung') + '</button>' : '<button class="sm' + (x.done ? ' done' : ' pri') + '" style="margin-left:8px;white-space:nowrap;font-size:10.5px;padding:3px 8px;min-height:0" ' + (x.done || x.lvl >= 6 ? 'disabled' : '') + ' onclick="act(\'langAsk\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.lvl >= 6 ? '✔' : x.done ? '✓ geübt' : '📖 Lernen') + '</button>')); });
   h += '</div>';
-  if (have.length < 4) { var free = (V.langs || []).filter(function (x) { return used.indexOf(x.k) < 0; }); h += canAdd ? '<div class="row wr" style="gap:5px;margin-top:10px">' + free.map(function (x) { return '<button class="sm" onclick="act(\'langAdd\',{k:\'' + x.k + '\'})">+ ' + flagImg(FLC[x.k]) + ' ' + esc(x.n) + '</button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:8px">🔒 Weitere Sprache, sobald alle Fremdsprachen SLP 3 erreicht haben.</div>'; }
+  if (have.length < 4) { var free = (V.langs || []).filter(function (x) { return used.indexOf(x.k) < 0; }); h += canAdd ? '<div class="row wr" style="gap:5px;margin-top:10px">' + free.map(function (x) { return '<button class="sm" onclick="act(\'langAdd\',{k:\'' + x.k + '\'})">+ ' + flagImg(FLC[x.k]) + ' ' + esc(x.n) + '</button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:8px">🔒 Weitere Sprache, sobald alle Fremdsprachen B1 erreicht haben.</div>'; }
   h += '<div class="xs muted" style="margin-top:8px">1× pro Woche je Sprache üben · richtige Antworten bringen Sprach-XP · bessere Sprachen = bessere Sponsoren & Jobangebote</div></div>';
   return h;
 }
@@ -4084,7 +4102,7 @@ function tPriv() {
   var own = '';
   if (owned.length) own = '<div class="box"><h3>Dein Besitz</h3><div class="grid g4">' + owned.map(function (k) { var it = shop.filter(function (x) { return x.id === k; })[0]; if (!it) return ''; return '<div class="shop">' + shopPic(it) + '<div class="bd"><b>' + esc(it.n) + (P.owned[k] > 1 ? ' ×' + P.owned[k] : '') + '</b><button class="sm" onclick="act(\'privSell\',{id:\'' + k + '\'})">Verkaufen</button></div></div>'; }).join('') + '</div></div>';
   var sc = ST.shopCat || 'all', so = ST.shopSort || 'up';
-  h += '<div class="box"><div class="row sp wr"><h3 style="margin:0">Shop</h3><select class="sel" onchange="ST.shopSort=this.value;renderTab()">' + [['up', 'Preis aufsteigend'], ['down', 'Preis absteigend'], ['name', 'Name A–Z']].map(function (o) { return '<option value="' + o[0] + '" ' + (so === o[0] ? 'selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
+  h += '<div class="box shopbox"><div class="row sp wr"><h3 style="margin:0">Shop</h3><select class="sel" onchange="ST.shopSort=this.value;renderTab()">' + [['up', 'Preis aufsteigend'], ['down', 'Preis absteigend'], ['name', 'Name A–Z']].map(function (o) { return '<option value="' + o[0] + '" ' + (so === o[0] ? 'selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
     '<div class="subnav" style="margin-top:10px">' + [['all', 'Alle']].concat(cats.map(function (c) { return [c, c]; })).map(function (c) { return '<button class="' + (sc === c[0] ? 'on' : '') + '" onclick="ST.shopCat=\'' + c[0] + '\';renderTab()">' + c[1] + '</button>'; }).join('') + '</div>';
   var items = shop.filter(function (x) { return sc === 'all' || x.cat === sc; }).slice(); var pv = function (x) { return x.rent > 0 ? x.rent * 12 : x.price; };
   items.sort(function (a, b) { return so === 'name' ? a.n.localeCompare(b.n) : so === 'down' ? pv(b) - pv(a) : pv(a) - pv(b); });
@@ -4139,7 +4157,7 @@ function jobBox(J) {
     h += '<div class="small muted">Abi in der Tasche – wie geht’s weiter? Der Trainerjob allein macht dich (noch) nicht reich.</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">' +
       [['uni', '🎓 Studium', 'lange, wenig Geld (' + eur(JD.uni.study[2]) + '/Monat) – später das höchste Gehalt'], ['ausb', '🛠️ Ausbildung', JD.ausb.study[1] + ' Monate, ' + eur(JD.ausb.study[2]) + '/Monat – später solides Gehalt'], ['arbeit', '📦 Arbeit suchen', 'sofort Geld (' + eur(JD.arbeit.ladder[0][1]) + '/Monat), geringere Aufstiegschancen']].map(function (x) { return '<button style="text-align:left" onclick="act(\'jobChoose\',{path:\'' + x[0] + '\'})"><b>' + x[1] + '</b><div class="xs muted">' + x[2] + '</div></button>'; }).join('') + '</div>';
   } else if (J.stage === 'study') {
-    var st = JD[J.path].study; h += '<b>' + esc(J.title) + '</b><div class="small muted">' + eur(J.sal) + ' / Monat</div>' + fBar('🎓 Fortschritt', J.months / st[1] * 100, J.months + ' / ' + st[1] + ' Monate');
+    var st = JD[J.path].study, spc = J.months / st[1] * 100; h += '<div class="row" style="gap:14px;align-items:center"><div class="mrings" style="margin:0;display:block;width:96px;flex:none">' + miniRing(spc, '#6fb3e6', Math.round(spc) + '%', J.path === 'ausb' ? '🛠️ Ausbildung' : '🎓 Studium', J.months + ' / ' + st[1] + ' Mon.') + '</div><div style="flex:1;min-width:0"><b>' + esc(J.title) + '</b><div class="small muted">' + eur(J.sal) + ' / Monat</div><div class="xs muted" style="margin-top:4px">Noch ' + Math.max(0, st[1] - J.months) + ' Monate bis zum Abschluss</div></div></div>';
   } else if (J.stage === 'job') {
     var lad = JD[J.path].ladder; h += '<b>' + esc(J.title) + '</b> <span class="pill g">' + eur(J.sal) + ' / Monat</span><div class="xs muted" style="margin-top:4px">Stufe ' + (J.step + 1) + ' von ' + lad.length + ' · seit ' + J.months + ' Monaten · Beförderung ab 18 Monaten möglich</div>' +
       fBar('⏫ Bis zur Beförderung', Math.min(100, J.months / 18 * 100), J.months >= 18 ? 'jederzeit möglich' : (18 - J.months) + ' Monate') + '<div class="jlad">' + lad.map(function (l, i) { return '<div class="js' + (i < J.step ? ' done' : i === J.step ? ' cur' : '') + '" title="' + esc(l[0]) + ' · ' + eur(l[1]) + '"><i></i><span>' + esc(l[0]) + '</span></div>'; }).join('') + '</div><button class="sm red" style="margin-top:10px" onclick="act(\'jobQuit\',{})">Kündigen</button>';
@@ -4192,8 +4210,10 @@ function depBox(P, inv) {
 function levelList() {
   var my = V ? V.mlvl : (HOME && HOME.me ? levelOf(HOME.me.xp).lvl : 0);
   var cur = MGR.FEATURES.filter(function (g) { return g[0] > my; })[0];
-  return MGR.FEATURES.map(function (f) { var done = my >= f[0]; return '<div class="lvl-row ' + (done ? 'done' : '') + (cur && cur === f ? ' cur' : '') + '"><div class="n" style="' + (done ? 'background:' + lvCol(f[0]) : 'color:' + lvCol(f[0])) + '">' + f[0] + '</div><div><b class="small">' + esc(f[2]) + '</b><div class="xs muted">' + esc(f[3]) + '</div></div><span class="xs muted">' + num(MGR.XPLV[f[0] - 1]) + ' XP</span></div>'; }).join('') +
-    '<div class="lvl-row"><div class="n" style="color:var(--y)">6+</div><div><b class="small">Ausbau Stück für Stück</b><div class="xs muted">Erweiterungen ab Level 6 – teure Projekte mit viel Ertrag erst später.</div></div><span></span></div>';
+  var FS = MGR.FEATURES.slice().sort(function (a, b) { return a[0] - b[0]; }), ins = false;
+  return FS.map(function (f) { var done = my >= f[0], pre = '';
+    if (!ins && f[0] > 6) { ins = true; pre = '<div class="lvl-row"><div class="n" style="color:var(--y)">6+</div><div><b class="small">Ausbau Stück für Stück</b><div class="xs muted">Erweiterungen ab Level 6 – teure Projekte mit viel Ertrag erst später.</div></div><span></span></div>'; }
+    return pre + '<div class="lvl-row ' + (done ? 'done' : '') + (cur && cur === f ? ' cur' : '') + '"><div class="n" style="' + (done ? 'background:' + lvCol(f[0]) : 'color:' + lvCol(f[0])) + '">' + f[0] + '</div><div><b class="small">' + esc(f[2]) + '</b><div class="xs muted">' + esc(f[3]) + '</div></div><span class="xs muted">' + num(MGR.XPLV[f[0] - 1]) + ' XP</span></div>'; }).join('');
 }
 function levelPop() { pop('<h2>Levelstruktur</h2><div class="small muted" style="margin-bottom:6px">Dein Manager-Level wächst mit jeder Spielminute und bleibt dauerhaft in deinem Profil. Neue Funktionen werden sofort freigeschaltet – auch mitten im Spiel. Level 1–5 <span style="color:var(--o)">orange</span>, 6–14 <span style="color:var(--y)">gelb</span>, ab 15 <span style="color:var(--g)">grün</span>.</div>' + levelList()); }
 

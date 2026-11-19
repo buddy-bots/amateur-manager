@@ -155,7 +155,7 @@ function pop(html, opts) {
 }
 function closePop() { var mf = $('#demapf'); if (mf) mf.remove(); document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
 /* Wirkungs-Karte, schief an der Klickstelle */
-// Kurz-Rückmeldungen erscheinen als Nachricht oben rechts (wie WhatsApp)
+// Kurz-Rückmeldungen erscheinen als Nachricht oben rechts (wie in der ChatApp)
 function fxCard(title, list, x, y) {
   if (!list || !list.length) return;
   var txt = list.map(String).join(' · '); toast(txt, false, title);

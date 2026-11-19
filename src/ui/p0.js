@@ -189,6 +189,7 @@ var API = {
     text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500); if (!text) return Promise.reject(new Error('Leere Nachricht.'));
     if (toName === DEV_NAME) return rest('feedback_tickets', { method: 'POST', body: { user_id: SESSION.user.id, message: text } }).then(function () { return { ok: true, ts: Date.now() }; });
     var to = WA_IDS[toName]; if (!to) return Promise.reject(new Error('Manager nicht gefunden.'));
+    if (!(WA.fr || []).some(function (f) { return f.id === to && f.st === 'ok'; })) return Promise.reject(new Error('Schreiben kannst du nur deinen Favoriten. Schick ' + toName + ' unter „Spieler suchen“ eine Anfrage.'));
     return rest('wa_messages', { method: 'POST', body: { from_user: SESSION.user.id, to_user: to, body: text } }).then(function () { return { ok: true, ts: Date.now() }; });
   },
   apiWaRead: function (tok, withName) {
@@ -197,6 +198,21 @@ var API = {
     var other = WA_IDS[withName]; if (!other) return Promise.resolve({ ok: true });
     return rest('wa_messages?from_user=eq.' + other + '&to_user=eq.' + SESSION.user.id + '&read_at=is.null', { method: 'PATCH', body: { read_at: now } }).then(function () { return { ok: true }; });
   },
+  apiFriends: function () {
+    var me = SESSION.user.id;
+    return Promise.all([rest('friends?select=user_id,friend_id,status,created_at'), managers()]).then(function (a) {
+      var dir = {}; (a[1] || []).forEach(function (m) { dir[m.id] = m; });
+      var list = (a[0] || []).map(function (f) { var out = f.user_id === me, id = out ? f.friend_id : f.user_id, m = dir[id] || {}; return { id: id, out: out, st: f.status, name: m.display_name || '?', pic: m.avatar_path || '', club: m.club_name || '', liga: m.league_name || '' }; });
+      list.sort(function (x, y) { return x.name.localeCompare(y.name); });
+      return { ok: true, list: list };
+    });
+  },
+  apiFindUser: function (tok, q) {
+    return rpc('find_user', { q: String(q || '').slice(0, 120) }).then(function (rows) { return { ok: true, list: (rows || []).map(function (u) { return { id: u.id, name: u.display_name, pic: u.avatar_path || '', club: u.club_name || '', liga: u.league_name || '' }; }) }; });
+  },
+  apiFriendAsk: function (tok, id) { return rest('friends', { method: 'POST', body: { user_id: SESSION.user.id, friend_id: id } }).then(function () { return { ok: true }; }); },
+  apiFriendOk: function (tok, id) { return rest('friends?user_id=eq.' + id + '&friend_id=eq.' + SESSION.user.id, { method: 'PATCH', body: { status: 'ok' } }).then(function () { return { ok: true }; }); },
+  apiFriendDel: function (tok, id) { var me = SESSION.user.id; return rest('friends?or=' + encodeURIComponent('(and(user_id.eq.' + me + ',friend_id.eq.' + id + '),and(user_id.eq.' + id + ',friend_id.eq.' + me + '))'), { method: 'DELETE' }).then(function () { return { ok: true }; }); },
   apiWaFavSet: function (tok, list) {
     list = (list || []).map(function (x) { return String(x).slice(0, 60); }).filter(function (x) { return x && x !== DEV_NAME; }).slice(0, 200);
     return rest('wa_favorites?user_id=eq.' + SESSION.user.id, { method: 'DELETE' }).then(function () {
@@ -220,7 +236,7 @@ var API = {
   apiSalary: function () {
     return managers().then(function (rows) {
       var me = SESSION.user.id;
-      var list = rows.filter(function (m) { return m.summary && m.summary.sal > 0; }).map(function (m) { var s = m.summary; return { name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '' }; });
+      var list = rows.filter(function (m) { return m.summary && m.summary.sal > 0; }).map(function (m) { var s = m.summary; return { name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '', club: m.club_name || '' }; });
       list.sort(function (a, b) { return b.sal - a.sal; }); list.forEach(function (x, i) { x.rank = i + 1; });
       var mine = list.filter(function (x) { return x.me; })[0] || null; list.forEach(function (x) { if (!x.me) delete x.me; });
       return { ok: true, top: list.slice(0, 3), all: list, mine: mine && mine.rank > 3 ? mine : null, myRank: mine ? mine.rank : null, total: list.length };

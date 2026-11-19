@@ -1,0 +1,17 @@
+name: Ligadaten importieren
+on:
+  workflow_dispatch:
+  push:
+    branches: [umbau]
+    paths: ['data/.import-trigger']
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: In Datenbank übernehmen
+        run: |
+          curl -sS --max-time 150 -X POST "https://wnzrakcsfwxsckrucfan.supabase.co/functions/v1/game" \
+            -H "apikey: sb_publishable_xlzCh6qzM_Ve2r9PpOe5Sg_TlzWswH1" -H "Content-Type: application/json" \
+            -d "{\"op\":\"ligenImport\",\"ref\":\"$GITHUB_SHA\"}" | tee /tmp/imp.json
+          grep -q '"status":"\(ok\|recent\)"' /tmp/imp.json

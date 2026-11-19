@@ -28,6 +28,35 @@ async function refreshMedia() {
   (D as any).relImgs = (data || []).filter((m: any) => m.key.startsWith('rel.')).map((m: any) => base + m.path.split('/').map(encodeURIComponent).join('/'));
 }
 
+// Echte Ligen eines Verbands (für die Vereinswahl beim Spielstart) – 10 Minuten zwischengespeichert
+const ligCache: Record<string, { at: number; st: any[] }> = {};
+async function verbandStaffeln(verband: string) {
+  const c = ligCache[verband];
+  if (c && Date.now() - c.at < 600_000) return c.st;
+  const { data: st, error } = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').eq('verband', verband).eq('aktiv', true).limit(1000);
+  if (error || !st?.length) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
+  const ids = st.map((x: any) => x.id), teams: any[] = [];
+  for (let i = 0; i < ids.length; i += 60) {
+    const { data, error: e2 } = await admin.from('ligen_teams').select('id, staffel_id, verein_id, name, zone, aktiv').in('staffel_id', ids.slice(i, i + 60)).limit(1000);
+    if (e2) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
+    teams.push(...(data || []));
+  }
+  const by: Record<string, any[]> = {};
+  teams.forEach((t) => { (by[t.staffel_id] = by[t.staffel_id] || []).push(t); });
+  st.forEach((x: any) => { x.teams = by[x.id] || []; });
+  ligCache[verband] = { at: Date.now(), st };
+  return st;
+}
+async function regFor(teamId: string) {
+  if (!/^[0-9A-Z]{10,40}$/.test(teamId)) throw new HttpError(400, 'Ungültige Mannschaft.');
+  const { data: t } = await admin.from('ligen_teams').select('id, aktiv, ligen_staffeln(verband)').eq('id', teamId).maybeSingle();
+  if (!t || !(t as any).ligen_staffeln) throw new HttpError(400, 'Mannschaft nicht gefunden.');
+  if (!(t as any).aktiv) throw new HttpError(400, 'Diese Mannschaft ist nicht spielbar.');
+  const verband = (t as any).ligen_staffeln.verband;
+  const st = JSON.parse(JSON.stringify(await verbandStaffeln(verband)));
+  return MGR.buildReg(verband, st, teamId);
+}
+
 class HttpError extends Error { constructor(public status: number, msg: string) { super(msg); } }
 
 function cors(origin: string | null) {
@@ -182,8 +211,9 @@ async function handle(req: Request, userId: string, body: any) {
     if ((count || 0) >= MAX_SAVES) throw new HttpError(400, 'Maximal ' + MAX_SAVES + ' Spielstände – bitte erst einen löschen.');
     const self = body.self && typeof body.self.pos === 'string' ? { pos: body.self.pos.slice(0, 3) } : null;
     const xp = Number(profile.xp) || 0;
+    const reg = body.team ? await regFor(String(body.team)) : null;
     let S: any;
-    try { S = MGR.newGame(D, { mgr: profile.display_name.split(' ')[0], full: profile.display_name, xp, mlvl: MGR.levelOf(xp).lvl, self }); }
+    try { S = MGR.newGame(D, { mgr: profile.display_name.split(' ')[0], full: profile.display_name, xp, mlvl: MGR.levelOf(xp).lvl, self, reg }); }
     catch (e) { throw new HttpError(400, (e as Error).message || String(e)); }
     const m = meta(S);
     const { data, error } = await admin.from('saves').insert({ user_id: userId, mode: 'single', engine_version: ENGINE_VERSION, state: S, summary: MGR.summary(S, D) || {}, club_name: m.club, league_name: m.league, season: m.season }).select('id, version').single();

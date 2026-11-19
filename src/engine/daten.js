@@ -21,7 +21,9 @@ var MGR_DATA = (function () {
     [8, 'Kreisliga A Bonn', 'Kreisliga A', 16, 1, 0, 3, 0, 15, 30, 'So', 15000, 80, 4, 200, 0, 200, 0, 0, '', FD + 'kreisliga-a-kreis-bonn-kreisliga-a-herren-saison2627-mittelrhein/-/staffel/031BONFSMC000004VS5489BTVUS470OH-G'],
     [9, 'Kreisliga B Bonn, Gruppe 2', 'Kreisliga B', 16, 1, 0, 2, 0, 10, 25, 'So', 8000, 50, 3, 120, 0, 120, 0, 0, '', FD + 'kreisliga-b-gruppe-2-kreis-bonn-kreisliga-b-herren-saison2627-mittelrhein/-/staffel/031BOPGR0S000004VS5489BTVUS470OH-G'],
     [10, 'Kreisliga C Bonn, Gruppe 3', 'Kreisliga C', 15, 1, 0, 3, 0, 5, 20, 'So', 4000, 35, 2, 80, 0, 80, 0, 0, '', FD + 'kreisliga-c-gruppe-3-kreis-bonn-kreisliga-c-herren-saison2627-mittelrhein/-/staffel/031BOT1Q68000003VS5489BTVUS470OH-G'],
-    [11, 'Kreisliga D Bonn, Gruppe 1', 'Kreisliga D', 11, 2, 0, 0, 0, 1, 15, 'So', 2000, 25, 0, 50, 0, 50, 0, 0, '', FD + 'kreisliga-d-gruppe-1-kreis-bonn-kreisliga-d-herren-saison2627-mittelrhein/-/staffel/031BP3KE28000003VS5489BTVUS470OH-G']
+    [11, 'Kreisliga D Bonn, Gruppe 1', 'Kreisliga D', 11, 2, 0, 0, 0, 1, 15, 'So', 2000, 25, 0, 50, 0, 50, 0, 0, '', FD + 'kreisliga-d-gruppe-1-kreis-bonn-kreisliga-d-herren-saison2627-mittelrhein/-/staffel/031BP3KE28000003VS5489BTVUS470OH-G'],
+    // Ebene 12 gibt es nur in Westfalen (dort liegt die Westfalenliga zwischen Oberliga und Landesliga)
+    [12, 'Kreisliga D', 'Kreisliga D', 12, 2, 0, 0, 0, 1, 12, 'So', 1500, 20, 0, 40, 0, 40, 0, 0, '', '']
   ];
 
   // ---------------------------------------------------------------- Ligen 2026/27 (echte Teams, Stand November 2026)

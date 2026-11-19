@@ -26,7 +26,3 @@ jobs:
           git commit -m "Ligadaten von fussball.de aktualisiert" || echo "nichts zu tun"
           git pull --rebase origin umbau
           git push origin HEAD:umbau
-      - name: In Datenbank übernehmen
-        run: node tools/import-ligen.mjs
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

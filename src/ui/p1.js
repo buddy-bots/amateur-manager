@@ -1,6 +1,7 @@
 /* ===================================================================== Basis */
 var TOKEN = 'supabase'; // frühere Sitzungs-ID, nur noch als Platzhalter für alte Aufrufe
 var RAW = null, D = null, S = null, V = null, ME = null, HOME = null, DIRTY = false, SAVEDXP = 0, LASTY = 120, LASTX = 200, AUTOSAVE = null, SIMRUN = false;
+function DD() { return S && MGR.dOf ? MGR.dOf(S, D) : D; }
 var NOTE = { levelUp: null };
 var ST = { tab: 'home', boardPage: 0, calMonth: null, ligaLvl: null, md: null, trSeg: 'markt', kSort: 'pos', topSeg: 'lt', igIdx: 0, mailOpen: null, vitLvl: null, screen: 'game' };
 var GROUPS = [
@@ -175,10 +176,20 @@ var WAP = {}, WCOL = {}, WREQ = {}, WQ = [], WT = null;
 try { var wc = JSON.parse(localStorage.getItem('svwm_wap2') || '{}'); WAP = wc.w || {}; WCOL = wc.c || {}; } catch (e) {}
 function wapSave() { try { localStorage.setItem('svwm_wap2', JSON.stringify({ w: WAP, c: WCOL })); } catch (e) {} }
 function initials(n) { var p = String(n).replace(/^(SV|FC|SC|TuS|VfL|VfR|SSV|TSV|SpVg|SG|DJK|1\.|BSV|FV|TV)\s+/i, '').split(/[\s-]+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); }
-function wkey(n) { return n === (D && D.club) ? '__svw' : n; }
+// Eigenes Wappen: SV Wachtberg im Standardspiel, sonst ein neutrales Platzhalter-Wappen mit Initialen
+var OWNLOGO = {};
+function ownLogo() {
+  if (!(S && S.reg)) return SVWLOGO;
+  var n = S.club; if (OWNLOGO[n]) return OWNLOGO[n];
+  var h = 0; for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360;
+  var ini = initials(n).replace(/[<&>"]/g, ''), c1 = 'hsl(' + h + ',48%,36%)', c2 = 'hsl(' + ((h + 40) % 360) + ',40%,22%)';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></linearGradient></defs><path d="M50 3 94 16v38c0 30-20 50-44 59C26 104 6 84 6 54V16z" fill="url(#g)" stroke="#fff" stroke-width="5"/><text x="50" y="68" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="' + (ini.length > 2 ? 26 : 34) + '" fill="#fff" text-anchor="middle">' + ini + '</text></svg>';
+  return (OWNLOGO[n] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+}
+function wkey(n) { return !(S && S.reg) && n === ((S && S.club) || (D && D.club)) ? '__svw' : n; }
 function needCrest(key) { if (WAP[key] === undefined && !WREQ[key]) { WREQ[key] = 1; WQ.push(key); clearTimeout(WT); WT = setTimeout(loadCrests, 60); } }
 function crest(n, cls) {
-  var key = wkey(n); if (key === '__svw') return '<img class="' + (cls || 'wp') + '" src="' + SVWLOGO + '" alt="">';
+  var key = wkey(n); if (key === '__svw' || (S && S.reg && n === S.club)) return '<img class="' + (cls || 'wp') + '" src="' + ownLogo() + '" alt="">';
   if (WAP[key]) return '<img class="' + (cls || 'wp') + '" src="' + WAP[key] + '" alt="">';
   needCrest(key);
   return '<span class="ini' + (cls === 'cbig' ? ' cbig' : '') + '">' + esc(key === '__svw' ? 'SVW' : initials(n)) + '</span>';
@@ -477,13 +488,63 @@ function modePop() {
 function newGameSetup() {
   var lv = levelOf(ME.xp), sl = MGR.featLvl('spielertrainer'), can = lv.lvl >= sl, col = lvCol(lv.lvl);
   var opts = ['TW', 'RV', 'LV', 'IV', 'DM', 'ZM', 'OM', 'LM', 'RM', 'LA', 'ST', 'RA'].map(function (k) { return '<option value="' + k + '" ' + (k === 'ST' ? 'selected' : '') + '>Ja – ' + MGR.DPN[k] + ' (' + k + ')</option>'; }).join('');
-  pop('<div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div><div class="small muted" style="margin-top:10px">Du übernimmst den <b style="color:var(--t)">' + esc(D.club) + '</b> in der <b style="color:var(--t)">' + esc(D.lv[D.startLvl].short) + '</b> als Manager.</div>' +
+  pop('<div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div><label>Verein</label><select id="cpv" onchange="cpVerband(this.value)"><option value="">' + esc(D.club) + ' – ' + esc(D.lv[D.startLvl].short) + ' (Standard)</option><option value="Mittelrhein">Echter Verein – Verband Mittelrhein</option><option value="Niederrhein">Echter Verein – Verband Niederrhein</option><option value="Westfalen">Echter Verein – Verband Westfalen</option></select><div id="cpx"></div>' +
+    '<div class="small muted" id="cptxt" style="margin-top:10px">Du übernimmst den <b style="color:var(--t)">' + esc(D.club) + '</b> in der <b style="color:var(--t)">' + esc(D.lv[D.startLvl].short) + '</b> als Manager.</div>' +
     (can ? '<label>Spielertrainer: Du selbst als Superspieler</label><select id="selfpos"><option value="">Nein, nur Manager</option>' + opts + '</select>' : '<div class="hint">🔒 Ab Manager-Level ' + sl + ' kannst du dich selbst als Superspieler in den Kader holen.</div>') +
     '<button class="pri" style="width:100%;margin-top:14px" onclick="createGame()">Los geht’s</button>', { white: true });
 }
+/* Vereinswahl: Verband → Liga → Staffel → Mannschaft (echte Daten aus fussball.de) */
+var CP = { vb: '', st: [], team: null };
+function cpTxt() { var t = CP.team; $('#cptxt').innerHTML = t ? 'Du übernimmst <b style="color:var(--t)">' + esc(t.name) + '</b> in der <b style="color:var(--t)">' + esc(t.liga) + '</b> als Manager.' : CP.vb ? 'Wähle Liga, Staffel und Mannschaft – oder suche direkt nach dem Namen.' : 'Du übernimmst den <b style="color:var(--t)">' + esc(D.club) + '</b> in der <b style="color:var(--t)">' + esc(D.lv[D.startLvl].short) + '</b> als Manager.'; }
+function cpVerband(vb) {
+  CP = { vb: vb, st: [], team: null }; cpTxt();
+  if (!vb) { $('#cpx').innerHTML = ''; return; }
+  $('#cpx').innerHTML = '<div class="small muted" style="margin-top:8px">Lade Ligen …</div>';
+  rest('ligen_staffeln?select=id,ebene,klasse,name&aktiv=eq.true&verband=eq.' + encodeURIComponent(vb) + '&order=ebene,name').then(function (rows) {
+    CP.st = rows || []; if (!CP.st.length) { $('#cpx').innerHTML = '<div class="small muted" style="margin-top:8px">Für diesen Verband sind noch keine Ligen hinterlegt.</div>'; return; }
+    var eb = [], seen = {}; CP.st.forEach(function (r) { if (!seen[r.ebene]) { seen[r.ebene] = 1; eb.push(r); } });
+    $('#cpx').innerHTML = '<input id="cpq" placeholder="🔎 Mannschaft suchen …" style="margin-top:8px" oninput="cpSearch(this.value)"><div id="cphits"></div>' +
+      '<div class="row" style="gap:8px;margin-top:8px"><select id="cpe" onchange="cpEbene(this.value)"><option value="">Liga wählen</option>' + eb.map(function (r) { return '<option value="' + r.ebene + '">' + esc(cpKl(r.klasse, vb)) + '</option>'; }).join('') + '</select><select id="cps" onchange="cpStaffel(this.value)" disabled><option>Staffel</option></select></div>' +
+      '<select id="cpt" onchange="cpTeam(this.value)" disabled style="margin-top:8px"><option>Mannschaft</option></select>';
+  }).catch(function (e) { $('#cpx').innerHTML = '<div class="small muted" style="margin-top:8px">' + esc(e.message) + '</div>'; });
+}
+function cpKl(k, vb) { return k === 'Verbandsliga' ? (vb === 'Mittelrhein' ? 'Mittelrheinliga' : vb === 'Westfalen' ? 'Westfalenliga' : k) : k; }
+function cpEbene(e) {
+  var list = CP.st.filter(function (r) { return String(r.ebene) === String(e); }), sel = $('#cps');
+  CP.team = null; cpTxt(); $('#cpt').disabled = true; $('#cpt').innerHTML = '<option>Mannschaft</option>';
+  sel.disabled = !list.length; sel.innerHTML = '<option value="">Staffel wählen</option>' + list.map(function (r) { return '<option value="' + r.id + '">' + esc(r.name) + '</option>'; }).join('');
+  if (list.length === 1) { sel.value = list[0].id; cpStaffel(list[0].id); }
+}
+function cpStaffel(id, pick) {
+  var sel = $('#cpt'); CP.team = null; cpTxt(); if (!id) return;
+  sel.disabled = true; sel.innerHTML = '<option>Lade …</option>';
+  rest('ligen_teams?select=id,name&aktiv=eq.true&staffel_id=eq.' + encodeURIComponent(id) + '&order=name').then(function (rows) {
+    sel.disabled = false; sel.innerHTML = '<option value="">Mannschaft wählen</option>' + rows.map(function (t) { return '<option value="' + t.id + '">' + esc(t.name) + '</option>'; }).join('');
+    if (pick) { sel.value = pick; cpTeam(pick); }
+  });
+}
+function cpTeam(id) {
+  var o = $('#cpt').selectedOptions[0], st = CP.st.filter(function (r) { return r.id === $('#cps').value; })[0];
+  CP.team = id ? { id: id, name: o.textContent, liga: st ? st.name : '' } : null; cpTxt();
+}
+var CPQT = null;
+function cpSearch(q) {
+  clearTimeout(CPQT); q = q.trim(); if (q.length < 3) { $('#cphits').innerHTML = ''; return; }
+  CPQT = setTimeout(function () {
+    var ids = CP.st.map(function (r) { return r.id; });
+    rest('ligen_teams?select=id,name,staffel_id&aktiv=eq.true&name=ilike.*' + encodeURIComponent(q.replace(/[*,()]/g, ' ')) + '*&staffel_id=in.(' + ids.join(',') + ')&order=name&limit=8').then(function (rows) {
+      $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t) { var st = CP.st.filter(function (r) { return r.id === t.staffel_id; })[0] || {}; return '<button class="cphit" onclick="cpPick(\'' + t.id + '\',\'' + t.staffel_id + '\')"><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
+    });
+  }, 300);
+}
+function cpPick(tid, sid) {
+  var st = CP.st.filter(function (r) { return r.id === sid; })[0]; if (!st) return;
+  $('#cpe').value = st.ebene; cpEbene(st.ebene); $('#cps').value = sid; cpStaffel(sid, tid); $('#cphits').innerHTML = ''; $('#cpq').value = '';
+}
 function createGame() {
   var sp = $('#selfpos') ? $('#selfpos').value : '';
-  loading(true); game('new', { self: sp ? { pos: sp } : null }).then(function (r) {
+  if ($('#cpv') && $('#cpv').value && !CP.team) return toast('Bitte zuerst eine Mannschaft wählen.', true);
+  loading(true); game('new', { self: sp ? { pos: sp } : null, team: $('#cpv') && $('#cpv').value ? CP.team.id : null }).then(function (r) {
     loading(false); SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state;
     closePop(); ST.tab = 'home'; ST.screen = 'game'; NOTE = { levelUp: null };
     V = MGR.view(S, D); render();

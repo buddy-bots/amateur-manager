@@ -90,6 +90,12 @@ async function ligenImport(ref: string) {
   if (res.status === 404) res = await fetch(LIG_RAW + r + '/data/nrw-2627.json');
   if (!res.ok) throw new HttpError(502, 'Ligendatei nicht erreichbar (' + res.status + ').');
   const d = await res.json();
+  // Ortskoordinaten für den Kartenmarker (Ort aus dem Vereinsnamen, sonst Kreisstadt)
+  let orte: Record<string, [number, number]> = {};
+  try { const ro = await fetch(LIG_RAW + r + '/data/orte-de.json'); if (ro.ok) orte = await ro.json(); } catch (_) { /* ohne Marker */ }
+  const part: Record<string, [number, number]> = {};
+  for (const k of Object.keys(orte)) for (const p of k.split(/[-\s]+/)) if (p.length > 3 && !part[p]) part[p] = orte[k];
+  const geo = (name: string, gn: string) => { const t = MGR.clubTown(name); const k = String(gn || '').replace(/^Kreis\s+/, '').split(/[-\/\s]/)[0]; return orte[t] || orte[t.replace(/-.*$/, '')] || part[t] || orte[k] || part[k] || null; };
   const now = new Date().toISOString(), S: any[] = [], T: any[] = [], seen: Record<string, 1> = {}, drop: string[] = [];
   for (const v of d.verbaende || []) {
     const order: string[] = [];
@@ -100,7 +106,7 @@ async function ligenImport(ref: string) {
       if (own.length < 4) { drop.push(s.id); continue; }
       own.forEach((t: any) => { seen[t.id] = 1; });
       S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
-      for (const t of own) T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', updated_at: now });
+      for (const t of own) { const g = geo(ligTeam(t.n), s.gn); T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', lat: g ? g[0] : null, lon: g ? g[1] : null, updated_at: now }); }
     }
   }
   if (S.length < 50) throw new HttpError(422, 'Ligendatei unvollständig.');

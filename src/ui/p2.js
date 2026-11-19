@@ -51,10 +51,10 @@ function cal7Update(anim) {
 }
 function simRowHTML() {
   if (V.fired) return '';
-  if (V.matchToday) { var m = V.matchToday; return '<span class="small muted">Heute: ' + esc(m.label) + ' ' + (m.home === false ? 'bei ' : 'gegen ') + esc(m.opp) + '</span><button class="md" onclick="matchDay()">⚽ MatchDay</button>'; }
+  if (V.matchToday) return '<button class="md" onclick="matchDay()">⚽ MatchDay</button>' + icBar();
   var bl = V.blockMails ? '<button class="btn-r" title="' + V.blockMails + ' Nachricht' + (V.blockMails > 1 ? 'en' : '') + ' beantworten" onclick="mailJump()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><svg width="20" height="15" viewBox="0 0 20 15"><rect x="1" y="1" width="18" height="13" rx="2" fill="#fff"/><path d="M1.5 2 L10 8.5 L18.5 2" fill="none" stroke="#e25c5c" stroke-width="2"/></svg><b>' + V.blockMails + '</b></button>' : '';
   var tr = V.trainToday ? '<button class="btn-r" onclick="trainPop()">🏃 Training festlegen</button>' : '';
-  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button></span>';
+  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button>' + icBar();
 }
 function navHTML(extra) {
   var grp = groupOf(ST.tab);
@@ -75,7 +75,7 @@ function render(keepScroll) {
   if (V.fired) h += '<div class="deci" style="background:rgba(226,92,92,.15);margin-top:10px"><h2>Du wurdest am ' + dFull(V.firedOn) + ' entlassen.</h2><div class="small muted">Deine Bilanz bleibt in der Bestenliste, dein Level bleibt sowieso.</div><div class="row" style="margin-top:10px"><button class="pri" onclick="newGameSetup()">Neues Spiel</button></div></div>';
   h += '<div class="kpis" id="kpis">' + kpiHTML() + '</div><div class="cal7" id="cal7">' + cal7HTML() + '</div>';
   h += '<div class="simrow" id="simrow">' + simRowHTML() + '</div>';
-  var navX = ('<span class="starchip jokchip' + (V.jokers ? '' : ' zero') + '" title="Joker: Direkt nach einem Spiel (zurück in der Übersicht) kannst du damit die Zeit zurückdrehen und das Spiel wiederholen. 1 Joker = 1 Wiederholung. Du bekommst max. einen pro Saison für viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen." onclick="if(V.jokers)jokerUse()">🃏 ' + (V.jokers || 0) + '</span>') + ('<span class="starchip stchip' + (V.hsPts ? '' : ' zero') + '" title="Halbe Sterne zum Verteilen: Du bekommst sie für Meisterschaft, Aufstieg und Pokalsiege. Am Saisonende kannst du damit das Talent deiner Spieler erhöhen (½ Stern pro Spieler und Saison, ab 4 Sternen teurer)." onclick="if(V.starPop)starPop()">★ ' + String(V.hsPts || 0).replace('.', ',') + '</span>');
+  var navX = ('<span class="starchip jokchip' + (V.jokers ? '' : ' zero') + '" title="Joker: Direkt nach einem Spiel (zurück in der Übersicht) kannst du damit die Zeit zurückdrehen und das Spiel wiederholen. 1 Joker = 1 Wiederholung. Du bekommst max. einen pro Saison für viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen." onclick="if(V.jokers)jokerUse()">🃏 ' + (V.jokers || 0) + '</span>') + ('<span class="starchip stchip' + (V.hsPts ? '' : ' zero') + '" title="Halbe Sterne zum Verteilen: Du bekommst sie für Meisterschaft, Aufstieg und Pokalsiege. Am Saisonende kannst du damit das Talent deiner Spieler erhöhen (½ Stern pro Spieler und Saison, ab 4 Sternen teurer)." onclick="if(V.starPop)starPop();else toast(\'Die heben wir uns für den Saisonabschluss auf – dann verbesserst du damit das Talent deiner Spieler.\', false, \'★ \' + String(V.hsPts || 0).replace(\'.\', \',\') + \' Sterne\')">★ ' + String(V.hsPts || 0).replace('.', ',') + '</span>');
   h += '<div class="navL4"><div></div>' + navHTML('') + '<div class="navchips">' + navX + '</div></div><div id="main"></div>';
   $('#app').innerHTML = h;
   try { waBadge(); if (TOKEN && !WA.timer) setTimeout(function () { waSync(); }, 1500); } catch (e0) {}
@@ -106,7 +106,7 @@ function introSet(k) {
     if (!$('#introback')) { var ib = document.createElement('div'); ib.id = 'introback'; ib.innerHTML = fsBtn() + '<button class="icbtn wide" onclick="quit()" title="Zurück zum Hauptmenü – dein Spiel ist gespeichert">⌂ Hauptmenü</button>'; b.appendChild(ib); }
   } else if (b.classList.contains('intro')) {
     b.classList.remove('intro'); b.classList.add('build'); if (bg) bg.classList.add('out'); var ib2 = $('#introback'); if (ib2) ib2.remove();
-    setTimeout(function () { b.classList.remove('build'); var x = $('#introbg'); if (x) x.remove(); }, 2600);
+    setTimeout(function () { b.classList.remove('build'); var x = $('#introbg'); if (x) x.remove(); if (V && V.daily && V.daily.open) afterUpdate(); }, 2600);
   }
 }
 function mailJump() {
@@ -170,6 +170,7 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (mailsBefore != null && openMails() > mailsBefore) SND.mail();
   introSet(V.pending && V.pending.type === 'goal' ? 'saisonziel' : V.spNeed ? 'hauptsponsor' : V.kitNeed ? 'ausstatter' : (V.pressPending === true && V.needAlloc) ? 'budget' : V.pressPending ? 'presse' : (V.prep && V.prep.need) ? 'vorbereitung' : null);
   if (V.seasonRep) return seasonPop(0);
+  if (V.twin) return twinPop();
   if (V.fired) return firedPop();
   if (V.jokNew) { act('jokSeen', {}, { quiet: true, norender: true }); try { SND.joker(); } catch (e) {} pop('<div class="evw" style="text-align:center"><div class="jokcard">🃏</div><h2>Joker erhalten!</h2><div class="small">Für deinen Einsatz bei Fans und Social Media. Direkt nach einem Spiel kannst du damit in der Übersicht die Zeit zurückdrehen und das Spiel wiederholen.</div><button class="pri" style="width:100%;margin-top:12px" onclick="closePop();render(true)">Super!</button></div>', { lock: true }); return; }
   if (V.warnPop) return warnPopShow();
@@ -253,7 +254,8 @@ function pressAns(i) {
   if (PRESS.busy) return; PRESS.ans.push(i); SND.click();
   var o = (V.press[PRESS.step][1] || [])[i] || [], FL = { fans: 'Fans', vorstand: 'Vorstand', moral: 'Moral', sponsoren: 'Sponsoren' };
   var fx = String(o[1] || '').split(';').map(function (x) { var m = x.trim().match(/^(\w+):([+-]?\d+)$/); return m && FL[m[1]] ? FL[m[1]] + ' ' + (+m[2] > 0 ? '+' : '') + (+m[2]) : null; }).filter(Boolean);
-  var el = $('#pressQ'); if (el) { el.querySelectorAll('.pqa button').forEach(function (b, k) { b.disabled = true; if (k === i) b.style.outline = '3px solid #8fc852'; }); el.insertAdjacentHTML('beforeend', '<div class="row wr" style="gap:6px;margin-top:10px;animation:fxin .3s">' + (fx.length ? fx.map(function (t) { return '<span class="pill ' + (/\+/.test(t) ? 'g' : 'r') + '" style="font-size:13px;padding:5px 10px">' + esc(t) + '</span>'; }).join('') : '<span class="pill">Keine Auswirkung</span>') + '</div>'); }
+  var el = $('#pressQ'); if (el) el.querySelectorAll('.pqa button').forEach(function (b, k) { b.disabled = true; if (k === i) b.style.outline = '3px solid #8fc852'; });
+  toast(fx.length ? fx.join(' · ') : 'Keine Auswirkung', false, '🎤 Pressekonferenz – Frage ' + (PRESS.step + 1));
   PRESS.busy = true;
   if (PRESS.step + 1 < V.press.length) { setTimeout(function () { PRESS.busy = false; PRESS.step++; pressDraw(); }, 1300); return; }
   setTimeout(function () { PRESS.busy = false; pressFinish(); }, 1300);
@@ -262,6 +264,23 @@ function pressFinish() {
   act('press', { a: PRESS.ans }, { quiet: true, norender: true }).then(function (r) { if (!r) return; closePop(); render(true);
   var agg = {}; splitInfo(r.info).forEach(function (x) { var m = x.match(/^(.*) ([+-]\d+)$/); if (m) agg[m[1]] = (agg[m[1]] || 0) + +m[2]; }); fxCard('Pressekonferenz', ['+5 XP'], LASTX, LASTY); setTimeout(function () { afterUpdate(); }, 900); });
 }
+/* Zweitmannschaft: höhere Mannschaft übernehmen – Spieler aus beiden Kadern wählen */
+var TWSEL = null;
+function twinPop() {
+  var T = V.twin, own = V.players.filter(function (p) { return !(p.loan && p.loan.to); });
+  if (!TWSEL || TWSEL.up !== T.up) { var all = own.map(function (p) { return ['o', p]; }).concat(T.sq.map(function (p) { return ['n', p]; })).sort(function (a, b) { return b[1].str - a[1].str; }); TWSEL = { up: T.up, o: {}, n: {} }; all.slice(0, 24).forEach(function (x) { TWSEL[x[0]][x[1].id] = 1; }); own.forEach(function (p) { if (p.self) TWSEL.o[p.id] = 1; }); }
+  var row = function (k, p) { var on = !!TWSEL[k][p.id]; return '<label class="twr' + (on ? ' on' : '') + '"><input type="checkbox" ' + (on ? 'checked' : '') + (p.self ? ' disabled' : '') + ' onchange="TWSEL.' + k + '[' + p.id + ']=this.checked?1:0;twinPop()"><span class="pb ' + p.pos + '">' + p.pos + '</span><b>' + esc(p.n) + '</b><span class="xs muted">' + p.age + ' J.</span><span class="twst">' + String(p.str).replace('.', ',') + '</span></label>'; };
+  var cnt = Object.keys(TWSEL.o).filter(function (k) { return TWSEL.o[k]; }).length + Object.keys(TWSEL.n).filter(function (k) { return TWSEL.n[k]; }).length;
+  var srt = function (L) { return L.slice().sort(function (a, b) { return (PORD[a.pos] || 0) - (PORD[b.pos] || 0) || b.str - a.str; }); };
+  pop('<div class="evw"><div class="ptitle"><span>🛑</span><h2>Kein Aufstieg für die ' + esc(V.club) + '</h2></div><div class="small" style="line-height:1.55;margin:6px 0 10px">In der ' + esc(T.name) + ' spielt schon die <b>' + esc(T.up) + '</b>. Der Vorstand möchte, dass du sie übernimmst. Such dir aus beiden Kadern deine Mannschaft zusammen (16 bis 30 Spieler, mindestens ein Torwart).</div>' +
+    '<div class="grid g2" style="gap:10px"><div><h3 style="margin:0 0 6px">' + esc(V.club) + '</h3><div class="twl">' + srt(own).map(function (p) { return row('o', p); }).join('') + '</div></div><div><h3 style="margin:0 0 6px">' + esc(T.up) + '</h3><div class="twl">' + srt(T.sq).map(function (p) { return row('n', p); }).join('') + '</div></div></div>' +
+    '<div class="row sp" style="margin-top:10px"><b>' + cnt + ' Spieler ausgewählt</b></div><div class="grid g2" style="gap:8px;margin-top:8px"><button class="pri" onclick="twinGo(true)">Die ' + esc(T.up) + ' übernehmen</button><button onclick="twinGo(false)">Bei der ' + esc(V.club) + ' bleiben</button></div></div>', { lock: true, xwide: true });
+}
+function twinGo(take) {
+  var keep = Object.keys(TWSEL.o).filter(function (k) { return TWSEL.o[k]; }).map(Number), add = Object.keys(TWSEL.n).filter(function (k) { return TWSEL.n[k]; }).map(Number);
+  act('twinDecide', { take: take, keep: keep, add: add }, { quiet: true }).then(function (r) { if (!r) return; TWSEL = null; closePop(); render(true); toast(r.info || '', false, take ? '🏟️ Neue Mannschaft' : 'Entscheidung'); afterUpdate(); });
+}
+function icBar() { return '<span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button></span>'; }
 /* ---------- Hauptsponsor */
 var NW = {};
 function negoOffers(kind) { return kind === 'sp' ? V.spOffers : kind === 'ps' ? V.psOffers : kind === 'pv' ? V.pvOffers : kind === 'ball' ? V.ballOffers : V.kitOffers; }
@@ -367,10 +386,9 @@ function trPopShow() {
     '<div class="trk"><div class="trfee ' + (isIn ? 'in' : 'out') + '"><small>' + (isIn ? '💸 Ablösesumme' : '💰 Erlös') + '</small><b>' + (T.fee ? eur(T.fee) : 'ablösefrei') + '</b></div><div class="trev2"><span class="trevic">' + ev[0] + '</span><div><small>Bewertung</small><b>' + esc(ev[1]) + '</b></div></div></div></div>';
   var posted = T.posted;
   pop('<div class="evw" style="text-align:center">' + (u ? '<div class="popban" style="height:200px;background-image:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.7)),url(&quot;' + driveImg(u, 1200) + '&quot;)"><h2 style="padding:0;margin:0;color:#fff">' + (isIn ? '✍️ Neuzugang!' : '👋 Abschied') + '</h2></div>' : '<div style="font-size:44px">' + (isIn ? '✍️' : '👋') + '</div><h2 style="padding:0">' + (isIn ? 'Neuzugang!' : 'Abschied') + '</h2>') + card +
-    (posted ? '<div class="postok">📱 Gepostet · <b>+' + num(posted) + ' Follower</b></div>' : '') +
     '<div class="row" style="gap:8px;margin-top:14px"><button class="' + (posted ? 'done' : 'sm') + '" style="flex:1" ' + (posted ? 'disabled' : '') + ' onclick="trPostDo()">' + (posted ? '✔ Gepostet' : '📱 Posten') + '</button><button class="pri" style="flex:2" onclick="act(\'trPopSeen\',{},{quiet:true})">Weiter</button></div></div>', { lock: true, nav: true });
 }
-function trPostDo() { act('trPost', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; try { SND.send(); } catch (e) {} trPopShow(); var b = $('.postok'); if (b) { b.classList.add('pulse'); } }); }
+function trPostDo() { act('trPost', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; try { SND.send(); } catch (e) {} trPopShow(); toast(String(r.info || '').replace(/^📱\s*/, ''), /−|-\d/.test(r.info || ''), '📱 Post'); }); }
 function posPop() {
   var q = V.posPop, nm = V.dpn || {}, w3 = q.w === 3;
   pop('<div class="evw" style="text-align:center"><div style="font-size:46px">🔄</div><h2 style="padding:0">Neue Hauptposition?</h2><div class="small" style="line-height:1.6"><b>' + esc(q.n) + '</b> (' + q.age + ' J.) ist auf seiner ' + (w3 ? 'Wunschposition' : 'Nebenposition') + ' <b>' + q.dp2 + '</b>' + (nm[q.dp2] ? ' (' + esc(nm[q.dp2]) + ')' : '') + ' bei <b>100 %</b> angekommen – genauso stark wie als <b>' + q.dp + '</b>.</div><div class="xs muted" style="margin-top:8px">' + (w3 ? 'Wird ' + q.dp2 + ' Hauptposition, wird ' + q.dp + ' zur Nebenposition' + (q.old2 ? ' und ' + q.old2 + ' fällt weg' : '') + '.' : 'Wird ' + q.dp2 + ' Hauptposition, wird ' + q.dp + ' zur Nebenposition (95 %).') + ' <b style="color:#2e7d32">+5 XP</b></div><div style="text-align:left">' + pCard(q.pid, true) + '</div><div class="evbtns" style="margin-top:14px"><button class="pri" onclick="closePop();act(\'posSwap\',{yes:true})">✅ Ja, ' + q.dp2 + ' wird Hauptposition</button><button onclick="closePop();act(\'posSwap\',{yes:false})">Nein, ' + q.dp + ' bleibt</button></div></div>', { lock: true, auto: 1 });
@@ -520,6 +538,7 @@ function goalPick(k, ev) {
   act('decide', { id: p.id, choice: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return;
   var dm = V.wealth - cash0, df = V.fans - fans0;
   var ch = []; if (dm) ch.push('+' + eur(dm) + ' Zuschuss'); if (df) ch.push('Fans +' + df);
+  toast(ch.length ? ch.join(' · ') : 'Keine Sofort-Effekte', false, '🎯 Saisonziel: ' + V.goal);
   $('#pop').innerHTML = '<div style="text-align:center;padding:10px 0"><div style="font-size:54px;animation:popin .5s cubic-bezier(.2,1.6,.4,1)">' + ({ aufstieg: '🚀', oben: '📈', mitte: '🛡️', erhalt: '🧱' }[k] || '🎯') + '</div><h2 style="padding:0;margin-top:6px">' + esc(V.goal) + '</h2><div class="small muted" style="margin:6px 0 10px">Der Vorstand hat dein Saisonziel notiert.' + (k === 'aufstieg' ? ' Das ganze Dorf träumt vom Aufstieg!' : k === 'erhalt' ? ' Kein Druck – aber verfehlen wäre peinlich.' : '') + '</div>' +
     (ch.length ? ch.map(function (c) { return '<span class="pill g" style="margin:3px;animation:popin .6s ease">' + esc(c) + '</span>'; }).join('') : '<span class="pill">Keine Sofort-Effekte</span>') + '<div style="margin-top:16px"><button class="pri" onclick="closePop();render(true);afterUpdate()">Los geht’s</button></div></div>';
   });
@@ -528,7 +547,7 @@ function popBan(key, ic, title, sub) { var u = imgOf('bg', key) || (key === 'auf
 function jokerAvail() { return JOKER_OK && V && !V.live && !V.matchToday && V.jokers > 0; }
 function jokerUse() {
   if (!jokerAvail()) return toast('Den Joker kannst du direkt nach einem Spiel einsetzen – zurück in der Übersicht, bevor du weiterspielst.', true);
-  pop('<div class="evw" style="text-align:center"><div class="jokcard">🃏</div><h2>Spiel wiederholen?</h2><div class="small">Alles seit dem Anpfiff wird zurückgesetzt. Du verbrauchst einen Joker (' + V.jokers + ' vorhanden).</div><div class="row" style="gap:8px;margin-top:14px"><button class="pri" style="flex:1" onclick="jokerGo()">🃏 Zurückspulen</button><button onclick="closePop()">Abbrechen</button></div></div>');
+  pop('<div class="evw"><div class="ptitle"><span>🃏</span><h2>Spiel wiederholen?</h2></div><div class="small" style="line-height:1.55;margin:6px 0 12px">Mit dem Joker spulst du zurück bis zum Anpfiff. Das Spiel wird komplett neu ausgetragen.</div><div class="grid g2" style="gap:8px"><button class="pri" onclick="jokerGo()">🃏 Zurückspulen</button><button onclick="closePop()">Abbrechen</button></div></div>');
 }
 function jokerGo() {
   closePop();

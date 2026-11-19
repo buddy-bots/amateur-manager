@@ -765,7 +765,7 @@ function liveScreen(first) {
   var L = V.live; var n = { d: L.d, comp: L.comp, label: L.label, opp: L.opp, home: L.home, oppLvl: V.matchToday ? V.matchToday.oppLvl : null };
   var hn = L.home === false ? L.opp : V.club, an = L.home === false ? V.club : L.opp;
   $('#app').innerHTML = '<div class="livewrap prew"><div class="L4 ltopl4"><div class="c1"></div><div class="cm">' +
-    '<div class="box livetop2"><div class="scoreb"><div class="tm">' + crest(hn) + '<span>' + esc(hn) + ' <span class="mini" id="lsh" style="background:var(--flaeche2);color:var(--t)"></span></span></div><div><div class="sc" id="lsc">0:0</div><div class="mn" id="lmn">0\'</div></div><div class="tm">' + crest(an) + '<span>' + esc(an) + ' <span class="mini" id="lsa" style="background:var(--flaeche2);color:var(--t)"></span></span></div></div><div class="cd" id="lcdw"><i id="lcd" style="width:0"></i><div id="lcdm"></div></div>' +
+    '<div class="box livetop2"><div class="scoreb"><div class="tm">' + crest(hn) + '<span>' + esc(hn) + ' <span class="mini" id="lsh" style="background:var(--flaeche2);color:var(--t)"></span></span></div><div><div class="sc" id="lsc">0:0</div><div class="mn" id="lmn">0\'</div></div><div class="tm">' + crest(an) + '<span>' + esc(an) + ' <span class="mini" id="lsa" style="background:var(--flaeche2);color:var(--t)"></span></span></div></div><div class="cd tl" id="lcdw"></div>' +
     '<div id="lctl" class="row wr" style="margin-top:10px;justify-content:center"></div><div id="lpan"></div></div></div><div class="c4"></div></div>' +
     '<div id="lgrid" style="margin-top:14px"></div></div>';
   liveDraw(); if (first) setTimeout(function () { SND.whistle(); liveRun(); }, 600); else liveRun();
@@ -791,13 +791,13 @@ function liveDraw() {
   var L = V.live; if (!L) return;
   if (L.done && L.shoot && LIVE.shotFor !== L.d + L.opp) { LIVE.shotFor = L.d + L.opp; setTimeout(function () { shootPop(L); }, 300); }
   var gf = L.home === false ? L.ga : L.gf, ga = L.home === false ? L.gf : L.ga;
-  $('#lsc').textContent = gf + ':' + ga;
+  var hti = -1; (L.ev || []).forEach(function (e, i) { if (e.k === 'ht' && hti < 0) hti = i; });
+  var htT = ''; if (hti >= 0) { var h1 = 0, a1 = 0; L.ev.slice(0, hti).forEach(function (e) { if (e.k === 'goal' || e.k === 'pen') h1++; if (e.k === 'goalA' || e.k === 'penA') a1++; }); htT = ' <span class="htres">(' + (L.home === false ? a1 + ':' + h1 : h1 + ':' + a1) + ')</span>'; }
+  $('#lsc').innerHTML = gf + ':' + ga + htT;
   if (V.liveS) { var ownS = V.liveS.own, oppS = V.liveS.opp, hS = L.home === false ? oppS : ownS, aS = L.home === false ? ownS : oppS; var sh = $('#lsh'), sa = $('#lsa'); if (sh) sh.textContent = String(hS).replace('.', ','); if (sa) sa.textContent = String(aS).replace('.', ','); }
   var ml = L.half === 1 ? (L.min > 45 ? '45+' + (L.min - 45) : L.min) : L.half === 2 ? (L.min > 90 ? '90+' + (L.min - 90) : L.min) : L.min;
   $('#lmn').textContent = (L.done ? (L.penTxt ? 'Abpfiff · ' + L.penTxt : L.half >= 3 ? 'Abpfiff n.V.' : 'Abpfiff') : (L.half === 1 ? '1. HZ · ' : L.half === 2 ? '2. HZ · ' : 'Verlängerung · ') + ml + '\'');
-  var tot = L.half === 1 ? 45 + L.stop1 : L.half === 2 ? 90 + L.stop2 : L.half === 3 ? 105 : 120; var start = L.half === 1 ? 0 : L.half === 2 ? 45 : L.half === 3 ? 90 : 105;
-  $('#lcd').style.width = (L.done ? 100 : Math.max(0, (L.min - start) / (tot - start) * 100)) + '%';
-  var cm = $('#lcdm'); if (cm) { var s0 = L.done ? 0 : start, t0 = L.done ? Math.max(90, L.min || 90) : tot; cm.innerHTML = (L.ev || []).filter(function (e) { return /^(goal|goalA|red|redA|yellow|yellowA|inj|pen|penA)$/.test(e.k) && e.m >= s0 && e.m <= t0; }).map(function (e) { return '<span class="cdm ' + (/A$/.test(e.k) ? 'a' : 'h') + '" style="left:' + Math.max(0, Math.min(100, (e.m - s0) / Math.max(1, t0 - s0) * 100)) + '%" title="' + e.m + '\' · ' + esc(e.t) + '">' + (LIC[e.k] || '•') + '</span>'; }).join(''); }
+  liveTimeline(L);
   var G = $('#lgrid'); if (!G) return; var homeG = L.home !== false;
   if (L.done) { liveControls(); if (!G.getAttribute('data-done')) { G.setAttribute('data-done', '1'); var c1r = statBox(L), c4r = '<div class="box">' + (potmHTML(L.rep) || '<h3>⭐ Spieler des Spiels</h3><div class="muted small">–</div>') + '</div>' + scAsBox(L); G.innerHTML = L4(c1r, S2(sumBox(L) + '<div class="box"><h3>🔥 Heatmap</h3><div style="position:relative"><canvas id="lhm" width="760" height="490" style="width:100%;height:auto;border-radius:12px;display:block"></canvas><div class="hmcb l">' + crest(V.club, 'cbig') + '</div><div class="hmcb r">' + crest(L.opp, 'cbig') + '</div></div></div>', usedBox(L, 0) + usedBox(L, 1)), c4r); heatDraw0(L.heat, L.goals); } return; }
   var on = V.liveOn || []; var subsLeft = L.maxSubs - L.subs;
@@ -819,6 +819,21 @@ function liveDraw() {
   G.innerHTML = L4(c1, '<div class="lgrid">' + xi + bb + tk + hb + '</div>', heat);
   heatDraw(L.heat, L.goals); liveFitHeat(); liveAnimStart(L);
   liveControls();
+}
+// Zeitleiste 0–90 (bzw. 120) am Stück: Balken je Minute wie ein Equalizer – nach oben grün, wenn wir drücken, nach unten rot beim Gegner
+var TLW = { own: { goal: 3, pen: 2.5, chance: 1.6, miss: 1.2, foulA: 0.6, yellowA: 0.5, redA: 0.8 }, opp: { goalA: 3, penA: 2.5, chanceA: 1.6, save: 1.3, foul: 0.6, yellow: 0.5, red: 0.8 } };
+function liveTimeline(L) {
+  var w = $('#lcdw'); if (!w) return;
+  var et = L.half >= 3 || (L.min || 0) > 95, T = et ? 120 : 90, cur = L.done ? Math.max(T, L.min || 0) : (L.half === 1 ? Math.min(45, L.min || 0) : (L.min || 0));
+  var pos = function (m, half) { return half === 1 ? Math.min(45, m) : m; };
+  var ev = L.ev || [], hti = -1; ev.forEach(function (e, i) { if (e.k === 'ht' && hti < 0) hti = i; });
+  var val = []; for (var m = 0; m <= T; m++) val[m] = 0;
+  ev.forEach(function (e, i) { var wO = TLW.own[e.k] || 0, wA = TLW.opp[e.k] || 0; if (!wO && !wA) return; var mm = pos(e.m || 0, hti < 0 || i < hti ? 1 : 2); for (var d = -3; d <= 3; d++) { var q = mm + d; if (q < 0 || q > T) continue; var f = 1 - Math.abs(d) / 4; val[q] += (wO - wA) * f; } });
+  var seed = (L.opp || '').length * 13 + (L.d || '').length, bars = '';
+  for (m = 1; m <= Math.min(T, cur); m++) { var base = Math.sin((m + seed) * 0.37) * 0.7 + Math.sin((m + seed) * 0.11) * 0.5 + Math.sin((m + seed) * 1.7) * 0.25 + ((V.liveS ? (V.liveS.own - V.liveS.opp) : 0) / 12); var v = Math.max(-1, Math.min(1, (val[m] + base) / 2.6)); var h = Math.max(2, Math.abs(v) * 27);
+    bars += v >= 0 ? '<rect x="' + ((m - 1) / T * 900 + 1).toFixed(1) + '" y="' + (30 - h).toFixed(1) + '" width="' + (900 / T - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="#8fc852" opacity="' + (0.55 + Math.abs(v) * 0.45).toFixed(2) + '"/>' : '<rect x="' + ((m - 1) / T * 900 + 1).toFixed(1) + '" y="30" width="' + (900 / T - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="#e0564f" opacity="' + (0.4 + Math.abs(v) * 0.4).toFixed(2) + '"/>'; }
+  var marks = ev.map(function (e, i) { if (!/^(goal|goalA|red|redA|yellow|yellowA|inj|pen|penA)$/.test(e.k)) return ''; var mm = pos(e.m || 0, hti < 0 || i < hti ? 1 : 2); return '<span class="cdm ' + (/A$/.test(e.k) ? 'a' : 'h') + '" style="left:' + (mm / T * 100).toFixed(2) + '%" title="' + (e.m || 0) + '\'">' + (LIC[e.k] || '•') + '</span>'; }).join('');
+  w.innerHTML = '<svg viewBox="0 0 900 60" preserveAspectRatio="none"><line x1="0" y1="30" x2="900" y2="30" stroke="rgba(255,255,255,.25)"/><line x1="' + (45 / T * 900) + '" y1="4" x2="' + (45 / T * 900) + '" y2="56" stroke="rgba(255,255,255,.35)" stroke-dasharray="3 3"/>' + (et ? '<line x1="' + (90 / T * 900) + '" y1="4" x2="' + (90 / T * 900) + '" y2="56" stroke="rgba(255,255,255,.3)" stroke-dasharray="3 3"/>' : '') + bars + '<rect x="' + (Math.min(T, cur) / T * 900).toFixed(1) + '" y="2" width="2" height="56" fill="#fff" opacity="' + (L.done ? 0 : 0.8) + '"/></svg><div id="lcdm">' + marks + '</div>';
 }
 function hlText(e) { var t = e.t; if (e.k === 'goal' || e.k === 'goalA') { var m = t.match(/TOR[^A-Za-zÄÖÜ]*([^!.]+)/); return t.length > 70 ? t.slice(0, 68) + '…' : t; } return t.length > 70 ? t.slice(0, 68) + '…' : t; }
 function ballBurst(d) {
@@ -877,7 +892,7 @@ function heatDraw0(pts, goals) {
   var d = o.getImageData(0, 0, W, H), dd = d.data;
   for (var q = 0; q < dd.length; q += 4) { var a = dd[q + 3] / 255; if (a < 0.03) { dd[q + 3] = 0; continue; } var t = Math.min(1, a * 1.6); dd[q] = Math.round(255 * Math.min(1, t * 1.8)); dd[q + 1] = Math.round(220 * (t < .5 ? 0.4 + t * 1.2 : 1.6 - t * 1.4)); dd[q + 2] = Math.round(120 * (1 - t)); dd[q + 3] = Math.round(190 * Math.min(1, t + .1)); }
   o.putImageData(d, 0, 0); x.save(); x.filter = 'blur(' + Math.round(3 * k) + 'px)'; x.drawImage(off, 0, 0); x.restore();
-  (goals || []).forEach(function (g) { var gx = g[2] ? W - 22 * k - (100 - g[0]) * 0.6 * k : 22 * k + g[0] * 0.6 * k, gy = g[1] / 100 * H; x.save(); x.shadowColor = g[2] ? 'rgba(143,200,82,.95)' : 'rgba(226,92,92,.95)'; x.shadowBlur = 10; ballIcon(x, gx, gy, 7 * k); x.restore(); });
+  (goals || []).forEach(function (g) { var gx = g[2] ? W - 22 * k - (100 - g[0]) * 0.6 * k : 22 * k + g[0] * 0.6 * k, gy = g[1] / 100 * H; x.save(); var rr2 = 7 * k; x.lineCap = 'round'; [[x.lineWidth = 7 * k, 'rgba(255,255,255,.95)'], [4 * k, g[2] ? '#3fbf3f' : '#e03a3a']].forEach(function (st) { x.lineWidth = st[0]; x.strokeStyle = st[1]; x.beginPath(); x.moveTo(gx - rr2, gy - rr2); x.lineTo(gx + rr2, gy + rr2); x.moveTo(gx + rr2, gy - rr2); x.lineTo(gx - rr2, gy + rr2); x.stroke(); }); x.restore(); });
 }
 function liveStats(L) {
   var c = function (ks) { return L.ev.filter(function (e) { return ks.indexOf(e.k) >= 0; }).length; }, own = V.liveS ? V.liveS.own : 30, opp = V.liveS ? V.liveS.opp : 30;
@@ -1133,13 +1148,13 @@ function pileClear() { PILE.forEach(function (e) { e.style.transition = 'opacity
 var LASTJ = null, LASTS = null, SKIPRAIN = 0;
 function symWatch() { if (!V) return; var j = V.jokers || 0, s2 = V.hsPts || 0; if (LASTJ != null && j > LASTJ && !(SKIPRAIN & 1)) { try { SND.joker(); } catch (e) {} symRain('🃏'); } if (LASTS != null && s2 > LASTS && !(SKIPRAIN & 2)) { try { SND.level(); } catch (e) {} symRain('⭐'); } SKIPRAIN = 0; LASTJ = j; LASTS = s2; }
 function jokIntroPop() {
-  pop('<div style="text-align:center"><div class="introcard jk">🃏</div><h2 style="padding:0">Der Joker</h2><div class="small" style="line-height:1.65;text-align:left;max-width:440px;margin:0 auto">Vor deinem ersten Pokalspiel ein kleines Geschenk: <b>ein Joker</b>.<br><br>🔄 <b>Was er kann:</b> Direkt nach einem Spiel (zurück in der Übersicht) drehst du mit ihm die Zeit bis vor das Spiel zurück – alles wird zurückgesetzt und du kannst es nochmal versuchen. 1 Joker = 1 Wiederholung.<br>📣 <b>Wie du weitere bekommst:</b> viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen – mit etwas Glück höchstens einer pro Saison.</div><button class="pri" style="width:100%;margin-top:14px" onclick="jokIntroOk()">Joker einsammeln</button></div>', { lock: true, nav: true });
+  pop('<div style="text-align:center"><div class="jokcard">🃏</div><h2 style="padding:0">Der Joker</h2><div class="small" style="line-height:1.65;text-align:left;max-width:440px;margin:0 auto">Vor deinem ersten Pflichtspiel ein kleines Geschenk: <b>ein Joker</b>.<br><br>🔄 <b>Was er kann:</b> Direkt nach einem Spiel (zurück in der Übersicht) drehst du mit ihm die Zeit bis vor das Spiel zurück – alles wird zurückgesetzt und du kannst es nochmal versuchen. 1 Joker = 1 Wiederholung.<br>📣 <b>Wie du weitere bekommst:</b> viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen – mit etwas Glück höchstens einer pro Saison.</div><button class="pri" style="width:100%;margin-top:14px" onclick="jokIntroOk()">Joker einsammeln</button></div>', { lock: true, nav: true });
 }
-function jokIntroOk() { SKIPRAIN |= 1; closePop(); act('jokIntroOk', {}, { quiet: true }); setTimeout(function () { try { SND.joker(); } catch (e) {} chipFly('.jokchip', '🃏', '+1'); }, 120); }
+function jokIntroOk() { closePop(); act('jokIntroOk', {}, { quiet: true }); setTimeout(function () { try { SND.joker(); } catch (e) {} chipFly('.jokchip', '🃏', '+1'); }, 120); }
 function starIntroPop() {
-  pop('<div style="text-align:center"><div class="introcard st">⭐</div><h2 style="padding:0">Ein halber Stern!</h2><div class="small" style="line-height:1.65;text-align:left;max-width:440px;margin:0 auto">Glückwunsch zum ersten Sieg! Dafür gibt es <b>½ Stern</b>.<br><br>⭐ <b>Was du damit machst:</b> Am Saisonende verteilst du halbe Sterne an deine Spieler – jeder bekommt dadurch mehr Talent und entwickelt sich schneller (½ Stern pro Spieler und Saison).<br>🏆 <b>Wie du mehr bekommst:</b> Meisterschaft, Aufstieg, Pokalsiege und besondere Erfolge.</div><button class="pri" style="width:100%;margin-top:14px" onclick="starIntroOk()">Stern einsammeln</button></div>', { lock: true, nav: true });
+  pop('<div style="text-align:center"><div class="jokcard">⭐</div><h2 style="padding:0">Ein halber Stern!</h2><div class="small" style="line-height:1.65;text-align:left;max-width:440px;margin:0 auto">Fünf Ligaspiele sind gespielt – dafür gibt es <b>½ Stern</b>.<br><br>⭐ <b>Was du damit machst:</b> Am Saisonende verteilst du halbe Sterne an deine Spieler – jeder bekommt dadurch mehr Talent und entwickelt sich schneller (½ Stern pro Spieler und Saison).<br>🏆 <b>Wie du mehr bekommst:</b> Meisterschaft, Aufstieg, Pokalsiege und besondere Erfolge.</div><button class="pri" style="width:100%;margin-top:14px" onclick="starIntroOk()">Stern einsammeln</button></div>', { lock: true, nav: true });
 }
-function starIntroOk() { SKIPRAIN |= 2; closePop(); act('starIntroOk', {}, { quiet: true }); setTimeout(function () { try { SND.level(); } catch (e) {} chipFly('.stchip', '⭐', '+½'); }, 120); }
+function starIntroOk() { closePop(); act('starIntroOk', {}, { quiet: true }); setTimeout(function () { try { SND.level(); } catch (e) {} chipFly('.stchip', '⭐', '+½'); }, 120); }
 
 /* ---------- Tägliche Login-Belohnung (7 Tage) */
 function dailyKick() { if (!S || !MGR) return Promise.resolve(); return serverAct('dailyCheck', {}).then(function () { V = MGR.view(S, D); }, function () { }); }

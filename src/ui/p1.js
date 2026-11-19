@@ -151,7 +151,7 @@ function pop(html, opts) {
   var f = p.querySelector('input'); if (f && !opts.nofocus && !LITE && !(navigator.maxTouchPoints > 0)) try { f.focus({ preventScroll: true }); } catch (e) {}
   return p;
 }
-function closePop() { document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
+function closePop() { var mf = $('#demapf'); if (mf) mf.remove(); document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
 /* Wirkungs-Karte, schief an der Klickstelle */
 // Kurz-Rückmeldungen erscheinen als Nachricht oben rechts (wie WhatsApp)
 function fxCard(title, list, x, y) {
@@ -507,10 +507,12 @@ function newGameSetup() {
   var lv = levelOf(ME.xp), sl = MGR.featLvl('spielertrainer'), can = lv.lvl >= sl, col = lvCol(lv.lvl);
   var opts = ['TW', 'RV', 'LV', 'IV', 'DM', 'ZM', 'OM', 'LM', 'RM', 'LA', 'ST', 'RA'].map(function (k) { return '<option value="' + k + '" ' + (k === 'ST' ? 'selected' : '') + '>Ja – ' + MGR.DPN[k] + ' (' + k + ')</option>'; }).join('');
   CP = { land: '', team: null };
-  pop('<div class="ngwrap"><div class="ngl"><div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div>' +
+  pop('<div class="row" style="gap:12px;padding-right:26px"><h2 style="margin:0;padding:0">Neues Spiel</h2><div class="lvbox" style="cursor:default"><span class="ln" style="color:' + col + '">Level ' + lv.lvl + '</span>' + bar(lv.pct, 100, col) + '</div></div>' +
     '<label>Dein Verein</label><input id="cpq" placeholder="🔎 Verein suchen …" autocomplete="off" oninput="cpSearch(this.value)"><div id="cphits"></div><div id="cpsel"></div>' +
     (can ? '<label>Spielertrainer: Du selbst als Superspieler</label><select id="selfpos"><option value="">Nein, nur Manager</option>' + opts + '</select>' : '<div class="hint">🔒 Ab Manager-Level ' + sl + ' kannst du dich selbst als Superspieler in den Kader holen.</div>') +
-    '<button class="pri" style="width:100%;margin-top:14px" onclick="createGame()">Los geht’s</button></div><div class="ngr" id="cpmap">' + deMap() + '</div></div>', { white: true, xwide: true });
+    '<button class="pri" style="width:100%;margin-top:14px" onclick="createGame()">Los geht’s</button>', { white: true, y: 70 });
+  var mf = document.createElement('div'); mf.id = 'demapf'; mf.innerHTML = deMap(); $('#layer').appendChild(mf);
+  var pp = $('#pop'); if (pp && window.innerWidth > 900) { pp.style.left = 'max(16px, calc(50vw - 640px))'; pp.style.transform = 'none'; pp.style.maxWidth = '440px'; }
   cpSel(); cpCounts();
 }
 /* Vereinswahl: Suche über alle verfügbaren Verbände, auf der Karte das Bundesland antippen grenzt die Suche ein */
@@ -529,7 +531,7 @@ function cpSearch(q) {
   clearTimeout(CPQT); q = q.trim(); if (q.length < 3) { $('#cphits').innerHTML = ''; return; }
   CPQT = setTimeout(function () {
     var qq = encodeURIComponent(q.replace(/[*,()]/g, ' ')), vb = cpVbs().map(encodeURIComponent).join(',');
-    rest('ligen_teams?select=id,name,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&ligen_staffeln.verband=in.(' + vb + ')&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
+    rest('ligen_teams?select=id,name,lat,lon,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&ligen_staffeln.verband=in.(' + vb + ')&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
       CP.hits = rows;
       $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
     }).catch(function (e) { $('#cphits').innerHTML = '<div class="xs muted">' + esc(e.message) + '</div>'; });
@@ -537,31 +539,44 @@ function cpSearch(q) {
 }
 function cpPick(i) {
   var t = (CP.hits || [])[i]; if (!t) return;
-  CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '' };
+  CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '', lat: t.lat, lon: t.lon };
   $('#cphits').innerHTML = ''; $('#cpq').value = ''; cpSel();
-  var vb = (t.ligen_staffeln || {}).verband; Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; $('#cpmap').innerHTML = deMap(); } });
+  var vb = (t.ligen_staffeln || {}).verband; Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0) CP.land = k; }); mapRedraw();
 }
-function cpLand(n) { if (!BLAND[n]) return toast(n + ' kommt noch – bald spielbar!'); CP.land = CP.land === n ? '' : n; $('#cpmap').innerHTML = deMap(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
+function mapRedraw() { var el = $('#demapf'); if (el) el.innerHTML = deMap(); }
+function cpLand(n) { if (!BLAND[n]) return toast(n + ': Coming soon – bald spielbar!'); CP.land = CP.land === n ? '' : n; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
 function cpCounts() {
   if (CPN) return; CPN = {};
   Object.keys(BLAND).forEach(function (k) {
     ensureFresh().then(function () { return fetch(SB.url + '/rest/v1/ligen_teams?select=id,ligen_staffeln!inner(verband)&aktiv=eq.true&ligen_staffeln.verband=in.(' + BLAND[k].vb.map(encodeURIComponent).join(',') + ')', { headers: sbHeaders({ Prefer: 'count=exact', Range: '0-0' }) }); }).then(function (r) {
-      var m = /\/(\d+)/.exec(r.headers.get('content-range') || ''); CPN[k] = m ? +m[1] : 0; var el = $('#cpmap'); if (el) el.innerHTML = deMap();
+      var m = /\/(\d+)/.exec(r.headers.get('content-range') || ''); CPN[k] = m ? +m[1] : 0; mapRedraw();
     }).catch(function () {});
   });
 }
-// 3D-Karte: Länder als SVG, nach hinten gekippt und mit einer Seitenwand (gestapelte, dunklere Kopien)
+// 3D-Karte: schräg von oben (gestaucht), spielbare Länder schweben angehoben und wippen leicht, der Rest liegt flach („Coming soon“)
+var MAPK = 0.74, MAPLIFT = 16;
+function mapXY(lat, lon) { var p = DEMAP.p; return [(lon * p[3] - p[0]) * p[2], ((-lat) - p[1]) * p[2] * MAPK]; }
 function deMap() {
   if (typeof DEMAP === 'undefined') return '';
-  var W = DEMAP.w, H = DEMAP.h, side = '', top = '', badges = '';
-  DEMAP.l.forEach(function (l) { var av = !!BLAND[l[0]], on = CP.land === l[0];
-    for (var k = 7; k >= 1; k--) side += '<path d="' + l[1] + '" transform="translate(0 ' + k + ')" fill="' + (av ? (on ? '#4f8a26' : '#3d6e1f') : '#8d938b') + '"/>';
-    top += '<g class="land' + (av ? ' av' : '') + (on ? ' on' : '') + '" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + (av ? '' : ' – bald verfügbar') + '</title><path d="' + l[1] + '"/></g>';
-    if (av) { var L = BLAND[l[0]], cx = l[2], cy = l[3], n = CPN && CPN[l[0]] != null ? CPN[l[0]].toLocaleString('de-DE') + ' Teams' : '…';
-      badges += '<g class="lbadge" onclick="cpLand(\'' + l[0] + '\')" transform="translate(' + cx + ' ' + (cy - 6) + ')"><path d="M0 -34 22 -27v15c0 13-9 21-22 26-13-5-22-13-22-26v-15z" fill="' + L.c[0] + '" stroke="#fff" stroke-width="2.5"/><path d="M-22 -14h44v8h-44z" fill="' + L.c[1] + '"/><path d="M-22 -6h44v7h-44z" fill="' + L.c[2] + '" clip-path="none"/><text y="-17" text-anchor="middle" font-size="10" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + L.k + '</text>' +
-        '<rect x="-44" y="18" width="88" height="34" rx="9" fill="rgba(20,28,16,.88)"/><text y="32" text-anchor="middle" font-size="10" font-weight="800" fill="#cfe9b4" font-family="Arial,sans-serif">' + esc(L.ab) + '</text><text y="46" text-anchor="middle" font-size="11" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + n + '</text></g>'; }
+  var W = DEMAP.w, H = Math.round(DEMAP.h * MAPK), flat = '', soon = '', air = '', sc = 'scale(1 ' + MAPK + ')';
+  DEMAP.l.forEach(function (l) {
+    var av = !!BLAND[l[0]];
+    if (!av) {
+      for (var k = 5; k >= 1; k--) flat += '<path d="' + l[1] + '" transform="translate(0 ' + k + ') ' + sc + '" fill="#9aa097"/>';
+      flat += '<g class="land" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + ' – Coming soon</title><path d="' + l[1] + '" transform="' + sc + '"/></g>';
+      if (['Berlin', 'Bremen', 'Hamburg', 'Saarland'].indexOf(l[0]) < 0) soon += '<text x="' + l[2] + '" y="' + Math.round(l[3] * MAPK) + '" class="soon" text-anchor="middle">Coming soon</text>';
+      return;
+    }
+    var on = CP.land === l[0], L = BLAND[l[0]], cx = l[2], cy = Math.round(l[3] * MAPK), n = CPN && CPN[l[0]] != null ? CPN[l[0]].toLocaleString('de-DE') + ' Teams' : '…', walls = '';
+    flat += '<path d="' + l[1] + '" transform="' + sc + '" fill="#2b3a22" opacity=".55" filter="url(#mblur)"/>';
+    for (var j = MAPLIFT; j >= 1; j -= 2) walls += '<path d="' + l[1] + '" transform="translate(0 ' + (j - MAPLIFT) + ') ' + sc + '" fill="' + (on ? '#4f8a26' : '#3f7020') + '"/>';
+    var pin = '';
+    if (on && CP.team && CP.team.lat) { var q = mapXY(CP.team.lat, CP.team.lon); pin = '<g transform="translate(' + q[0].toFixed(1) + ' ' + (q[1] - MAPLIFT).toFixed(1) + ')"><g class="mpin"><ellipse rx="6" ry="2.4" fill="rgba(0,0,0,.35)"/><path d="M0 0C-3-7-11-12-11-21a11 11 0 0 1 22 0c0 9-8 14-11 21z" fill="#e8402f" stroke="#fff" stroke-width="2"/><circle cy="-21" r="4.2" fill="#fff"/></g></g>'; }
+    air += '<g class="lift' + (on ? ' on' : '') + '" style="animation-delay:' + (l[0].length % 3) * -0.9 + 's" onclick="cpLand(\'' + l[0] + '\')"><title>' + esc(l[0]) + '</title>' + walls + '<path class="top" d="' + l[1] + '" transform="translate(0 ' + (-MAPLIFT) + ') ' + sc + '"/>' +
+      '<g class="lbadge" transform="translate(' + cx + ' ' + (cy - MAPLIFT - 4) + ')"><path d="M0 -30 19 -24v13c0 11-8 18-19 22-11-4-19-11-19-22v-13z" fill="' + L.c[0] + '" stroke="#fff" stroke-width="2.2"/><path d="M-19 -12h38v7h-38z" fill="' + L.c[1] + '"/><path d="M-19 -5h38v6h-38z" fill="' + L.c[2] + '"/><text y="-16" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + L.k + '</text>' +
+      '<rect x="-40" y="15" width="80" height="30" rx="8" fill="rgba(20,28,16,.9)"/><text y="27" text-anchor="middle" font-size="9" font-weight="800" fill="#cfe9b4" font-family="Arial,sans-serif">' + esc(L.ab) + '</text><text y="40" text-anchor="middle" font-size="10.5" font-weight="900" fill="#fff" font-family="Arial,sans-serif">' + n + '</text></g>' + pin + '</g>';
   });
-  return '<div class="de3d"><svg viewBox="-10 -40 ' + (W + 20) + ' ' + (H + 60) + '" aria-label="Deutschlandkarte">' + side + top + badges + '</svg></div><div class="xs muted" style="text-align:center;margin-top:4px">Grün = spielbar · weitere Bundesländer folgen</div>';
+  return '<svg viewBox="-12 -60 ' + (W + 24) + ' ' + (H + 80) + '" aria-label="Deutschlandkarte"><defs><filter id="mblur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4"/></filter></defs>' + flat + soon + air + '</svg><div class="maphint">Grün = spielbar · weitere Bundesländer: Coming soon</div>';
 }
 function createGame() {
   if (!CP.team) return toast('Bitte zuerst deinen Verein suchen.', true);
@@ -620,3 +635,22 @@ function delGame(id) {
   }).catch(function (x) { loading(false); toast(x.message, true); });
 }
 function lsh(n) { return String(n || '').replace(/,.*$/, '').replace(/\s+(Mittelrhein|Bonn|West)$/, ''); }
+/* Ziehen & Ablegen auf Touch-Geräten (Tablet): HTML5-Drag-Events gibt es dort nicht, daher nachgebaut.
+   Gilt für alle Elemente mit draggable="true" und Ablageziele mit ondrop-Attribut (z. B. Wechsel im Live-Spiel). */
+(function () {
+  if (!('ontouchstart' in window)) return;
+  var st = null, ghost = null, dt = null, over = null;
+  function fire(el, type, t) { if (!el) return; var h = el.getAttribute('on' + type); var ev = { type: type, target: el, currentTarget: el, clientX: t.clientX, clientY: t.clientY, dataTransfer: dt, preventDefault: function () {}, stopPropagation: function () {} }; if (h) { try { (new Function('event', h)).call(el, ev); } catch (x) { console.error(x); } } }
+  document.addEventListener('touchstart', function (e) { var el = e.target.closest && e.target.closest('[draggable="true"]'); if (!el || e.touches.length > 1) return; var t = e.touches[0]; st = { el: el, x: t.clientX, y: t.clientY, on: false }; }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!st) return; var t = e.touches[0];
+    if (!st.on) { if (Math.hypot(t.clientX - st.x, t.clientY - st.y) < 10) return; st.on = true; dt = { d: {}, setData: function (k, v) { this.d[k] = v; }, getData: function (k) { return this.d[k] || ''; }, effectAllowed: '', dropEffect: '' }; fire(st.el, 'dragstart', t);
+      var r = st.el.getBoundingClientRect(); ghost = st.el.cloneNode(true); ghost.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;opacity:.85;pointer-events:none;z-index:9999;background:var(--flaeche2,#222);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);transform:scale(1.03)'; ghost.dataset.dx = t.clientX - r.left; ghost.dataset.dy = t.clientY - r.top; document.body.appendChild(ghost); }
+    e.preventDefault();
+    ghost.style.left = (t.clientX - ghost.dataset.dx) + 'px'; ghost.style.top = (t.clientY - ghost.dataset.dy) + 'px';
+    var tg = document.elementFromPoint(t.clientX, t.clientY), dz = tg && tg.closest('[ondrop]');
+    if (dz !== over) { if (over) fire(over, 'dragleave', t); over = dz; if (dz) fire(dz, 'dragover', t); }
+  }, { passive: false });
+  document.addEventListener('touchend', function (e) { if (!st) return; var t = e.changedTouches[0]; if (st.on) { if (ghost) ghost.remove(); ghost = null; var tg = document.elementFromPoint(t.clientX, t.clientY), dz = tg && tg.closest('[ondrop]'); if (over && over !== dz) fire(over, 'dragleave', t); if (dz) fire(dz, 'drop', t); fire(st.el, 'dragend', t); } st = null; over = null; });
+  document.addEventListener('touchcancel', function () { if (ghost) ghost.remove(); ghost = null; st = null; over = null; });
+})();

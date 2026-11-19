@@ -21,5 +21,5 @@ for (const f of g.features) {
   }
   out.push([f.properties.name, dStr, Math.round(ax / aw), Math.round(ay / aw)]);
 }
-writeFileSync(new URL('../src/ui/pmap.js', import.meta.url), '/* Bundesländer-Karte (erzeugt mit tools/make-map.mjs, Quelle: github.com/isellsoap/deutschlandGeoJSON) */\nvar DEMAP = ' + JSON.stringify({ w: W, h: H, l: out }) + ';\n');
+writeFileSync(new URL('../src/ui/pmap.js', import.meta.url), '/* Bundesländer-Karte (erzeugt mit tools/make-map.mjs, Quelle: github.com/isellsoap/deutschlandGeoJSON) */\nvar DEMAP = ' + JSON.stringify({ w: W, h: H, p: [+minX.toFixed(4), +minY.toFixed(4), +s.toFixed(4), +kx.toFixed(5)], l: out }) + ';\n');
 console.log('pmap.js', W, H, out.map((o) => o[0] + ':' + o[1].length).join(' '));

@@ -653,6 +653,15 @@ body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 @keyframes itfly{0%{transform:translate(-50%,-50%) scale(.6);opacity:0}20%{transform:translate(-50%,-140%) scale(1.2);opacity:1}100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) scale(.8);opacity:.3}}
 .yrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:start}.yrow>.pb{margin-top:1px}.dS{min-width:0!important;text-align:left!important}
 .lnrow,.pvt,.spoff>*{box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+
+/* v25 Block 5 */
+.cal .d{position:relative}.cal .dplus{position:absolute;right:6px;bottom:4px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;line-height:1;color:var(--m);background:rgba(255,255,255,.07);opacity:.55;transition:.15s}.cal .d:hover .dplus{opacity:1;color:#14200c;background:var(--g)}
+.cal .mark{font-size:12.5px!important;padding:3px 7px!important}.cal .calg{font-size:12px}.cal .calg img,.cal .calg .ini{width:24px!important;height:24px!important}
+.hasdate{position:relative}.hasdate:hover::after{content:attr(data-d);position:absolute;left:50%;top:-6px;transform:translate(-50%,-100%);background:#111;color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.5);z-index:20;pointer-events:none}
+.negbox{margin-top:12px;padding:12px;border-radius:12px;background:rgba(0,0,0,.04);box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+.negbars{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:10px}.nbl{display:flex;flex-direction:column;font-size:11px;line-height:1.2;min-width:96px}.nbl span{opacity:.65}.nbl b{font-size:13px}
+.nbt{height:14px;border-radius:8px;background:rgba(0,0,0,.08);overflow:hidden}.nbt.sm{height:7px;margin-top:3px}.nb{display:block;height:100%;border-radius:8px;width:0;transition:width .9s cubic-bezier(.3,.8,.3,1)}.nb.ask{background:linear-gradient(90deg,#e25c5c,#f2994a)}.nb.bid{background:linear-gradient(90deg,#5fbf3a,#8fc852)}
+.negok{margin-top:8px;font-weight:700}.negok.neg{color:#c0392b}
 </style>
 </head>
 <body>

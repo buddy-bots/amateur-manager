@@ -363,7 +363,7 @@ var MGR = (function () {
   function migrate(S) {
     if (S.world && !S.firstOk) { var rm1 = function (t) { t.n = String(t.n).replace(/\s+(1|I)$/, ''); }; Object.keys(S.world.lv).forEach(function (l) { S.world.lv[l].forEach(rm1); }); Object.keys(S.world.pool).forEach(function (l) { S.world.pool[l].forEach(rm1); }); S.firstOk = true; }
     if (S.world && !S.romanOk) { var rm = function (t) { t.n = String(t.n).replace(/\s+2$/, ' II').replace(/\s+3$/, ' III'); }; Object.keys(S.world.lv).forEach(function (l) { S.world.lv[l].forEach(rm); }); Object.keys(S.world.pool).forEach(function (l) { S.world.pool[l].forEach(rm); }); S.romanOk = true; }
-    if (S.world && S.fix) { if (!S.mc) S.mc = { sal: MSAL[S.lvl] || 900, until: S.season + 2, startLvl: S.lvl, offer: null }; if (!S.priv) S.priv = { cash: 0, owned: {}, rent: null, log: [] }; if (S.relStreak == null) S.relStreak = 0; }
+    if (S.world && S.fix) { if (!S.mc) S.mc = { sal: salRoll(S), until: S.season + 2, startLvl: S.lvl, offer: null }; if (!S.priv) S.priv = { cash: 0, owned: {}, rent: null, log: [] }; if (S.relStreak == null) S.relStreak = 0; }
     S.players.forEach(ensureDp); (S.youth || []).forEach(ensureDp);
     if (S.market) { (S.market.list || []).forEach(ensureDp); (S.market.loans || []).forEach(ensureDp); }
     (S.watch || []).forEach(ensureDp);
@@ -1369,7 +1369,9 @@ var MGR = (function () {
     S.hist.push({ season: S.season, lvl: oldLvl, liga: L.name, rank: me.rank, pts: me.pts, tore: me.tf + ':' + me.ta, result: result, goal: GOALS[S.goal], goalOk: goalOk, cups: cupBest, cash: Math.round(S.cash + (S.tb || 0)) });
     S.lastRank = me.rank;
     if (me.rank === 1) { ach(S, 'meister', L.name, false, oldLvl); hypeUp(S, 2.5); ownPost(S, '🏆 MEISTER! Der SV Wachtberg holt den Titel in der ' + L.short + '! Danke an alle Fans – ihr seid die Besten! 💚🍾', 'pokal'); }
-    if (oldLvl === 1 && me && me.rank === 1) S.blMeister = true;
+    if (oldLvl === 1 && me && me.rank === 1) { S.blMeister = true; S.blTitles = (S.blTitles || 0) + 1; }
+    if (oldLvl === 1 && me) S.blBest = Math.min(S.blBest || 99, me.rank);
+    if (!S.fired && S.mc && (result === 'Aufstieg' || oldLvl === 1)) { var nsal = salRoll(S); if (nsal > S.mc.sal) { S.mc.sal = nsal; msg(S, 'verein', '💶 Der Vorstand passt dein Gehalt an: ' + euro(nsal) + ' pro Monat.'); } }
     if (result === 'Aufstieg') { hypeUp(S, 2); if (me.rank !== 1) ownPost(S, '🚀 AUFSTIEG! Nächste Saison spielen wir in der ' + D.lv[S.lvl].short + '! Was für eine Saison! 💚', 'fans'); }
     if (!S.fired) S.pressPending = me.rank === 1 ? 'meister' : result === 'Aufstieg' ? 'aufstieg' : result === 'Abstieg' ? 'abstieg' : S.pressPending;
     // Halbe Sterne: Saison-Ausbeute & automatische Anpassungen
@@ -2813,16 +2815,16 @@ var MGR = (function () {
       case 'waFav': { S.waFav = (S.waFav || []).filter(function (x) { return x !== p.n; }); if (p.on) S.waFav.push(String(p.n).slice(0, 60)); break; }
       case 'waHide': { S.waHide = S.waHide || {}; S.waHide[String(p.n).slice(0, 60)] = +p.ts || 0; break; }
       case 'socialAd': { jokPt(S, 1);
-        var awk = addDays(S.date, -((dow(S.date) + 6) % 7)); if (S.adWeek === awk) err('Diese Woche lief schon Werbung.'); var ac = adCost(S); if (S.cash < ac) err('Nicht genug Bargeld (' + euro(ac) + ').');
+        var awk = addDays(S.date, -((dow(S.date) + 6) % 7)); if (socUsed(S)) err(SOCMSG); var ac = adCost(S); if (S.cash < ac) err('Nicht genug Bargeld (' + euro(ac) + ').');
         book(S, 'Social-Media-Werbung', -ac); S.adWeek = awk; var lvA = 1 + (11 - S.lvl) * 0.2, ag = R() < Math.max(0.03, 0.15 - ac / 8000) ? 0 : Math.round(Math.pow(ac / 1000, 1.15) * rnd(50, 170) * lvA * (1 + (S.hypeUntil >= S.date ? S.hype || 0 : 0) * 0.5)); followAdd(S, ag); S.adLast = { g: ag, c: ac, d: S.date };
         info = ag ? 'Werbung geschaltet (' + euro(ac) + '): +' + num(ag) + ' Follower.' : 'Werbung geschaltet (' + euro(ac) + ') – leider ohne Wirkung. 😕'; break;
       }
-      case 'flyer': { var fwk = wkStart(S); if (S.flyW === fwk) err('Diese Woche wurden schon Flyer verteilt.'); var fc = 40; if (S.cash < fc) err('Nicht genug Bargeld.'); book(S, 'Flyer', -fc); S.flyW = fwk; var fg = rint(2, 12); followAdd(S, fg); if (R() < 0.3) S.fans = clamp(S.fans + 1, 0, 100); S.flyLast = fg; info = 'Flyer im Ort verteilt (' + euro(fc) + '): +' + fg + ' Follower.'; break; }
+      case 'flyer': { var fwk = wkStart(S); if (socUsed(S)) err(SOCMSG); var fc = 40; if (S.cash < fc) err('Nicht genug Bargeld.'); book(S, 'Flyer', -fc); S.flyW = fwk; var fg = rint(2, 12); followAdd(S, fg); if (R() < 0.3) S.fans = clamp(S.fans + 1, 0, 100); S.flyLast = fg; info = 'Flyer im Ort verteilt (' + euro(fc) + '): +' + fg + ' Follower.'; break; }
       case 'likeFxSeen': { S.likeFx = 0; break; }
       case 'cupAck': { S.cupPop = null; break; }
       case 'gateSeen': { if (S.lastGate) S.lastGate.fx = false; break; }
       case 'socialAct': { jokPt(S, 1);
-        var sa = SOCIAL.filter(function (x) { return x[0] === p.k; })[0]; if (!sa) err('?'); var swk = addDays(S.date, -((dow(S.date) + 6) % 7)); if (S.socWeek === swk || S.adWeek === swk) err('Diese Woche gab es schon eine Social-Media-Aktion.'); if (socialPick(S).indexOf(p.k) < 0) err('Diese Aktion steht diese Woche nicht zur Auswahl.');
+        var sa = SOCIAL.filter(function (x) { return x[0] === p.k; })[0]; if (!sa) err('?'); var swk = addDays(S.date, -((dow(S.date) + 6) % 7)); if (socUsed(S)) err(SOCMSG); if (socialPick(S).indexOf(p.k) < 0) err('Diese Aktion steht diese Woche nicht zur Auswahl.');
         S.socWeek = swk; var hyp = S.hypeUntil >= S.date ? S.hype || 0 : 0, lvF2 = 1 + (11 - S.lvl) * 0.3, r0 = R();
         var g1 = r0 < 0.12 ? -rint(1, 8) * lvF2 : Math.round((rnd(2, 8) * lvF2 + S.follow * rnd(0.001, 0.004)) * sa[3] * (1 + hyp));
         g1 = Math.round(g1); followAdd(S, g1); if (g1 > 0) xp(S, 1); S.socLast = { k: p.k, g: g1, d: S.date };
@@ -2943,7 +2945,7 @@ var MGR = (function () {
         var tests = p.tests || [], ok = 0;
         var win = prepWin(S, D, PP.phase);
         var games = svwGames(S, D); var opps = testOpps(S, D);
-        tests.forEach(function (t) { if (!t.d || t.d < win[0] || t.d > win[1] || t.d <= S.date) err('Testspiel-Termin außerhalb der Vorbereitung (' + fmtD(win[0]) + ' – ' + fmtD(win[1]) + ').'); if (games.some(function (g) { return Math.abs(diffDays(g.d, t.d)) <= 1; })) err('Ein Testspiel liegt zu nah an einem anderen Spiel.'); var o = opps.filter(function (x) { return x.n === t.opp; })[0] || opps[0]; S.tests.push({ d: t.d, opp: { n: o.n, s: o.s, l: o.l }, home: t.home !== false, prep: PP.phase }); ok++; });
+        tests.forEach(function (t) { if (!t.d || t.d < win[0] || t.d > win[1] || t.d <= S.date) err('Testspiel-Termin außerhalb der Vorbereitung (' + fmtD(win[0]) + ' – ' + fmtD(win[1]) + ').'); if (games.some(function (g) { return Math.abs(diffDays(g.d, t.d)) <= 1; })) err('Ein Testspiel liegt zu nah an einem anderen Spiel.'); if ((S.dayEv || []).some(function (x) { return x.k === 'benefiz' && !x.done && x.d === t.d; })) err('An dem Tag ist schon ein Benefizspiel.'); var o = opps.filter(function (x) { return x.n === t.opp; })[0] || opps[0]; S.tests.push({ d: t.d, opp: { n: o.n, s: o.s, l: o.l }, home: t.home !== false, prep: PP.phase }); ok++; });
         var ev = PP.phase === 'summer' ? p.camp : p.halle; var k = PP.phase === 'summer' ? 'camp3' : 'halle';
         if (!ev || !ev.d || ev.d < win[0] || ev.d > win[1]) err(PP.phase === 'summer' ? 'Bitte einen Termin für das Trainingslager wählen.' : 'Bitte einen Termin für das Hallenturnier wählen.');
         if (games.some(function (g) { return g.d === ev.d; })) err('An dem Tag ist schon ein Spiel.');
@@ -3033,6 +3035,7 @@ var MGR = (function () {
         if (!(dd > S.date)) err('Nur für zukünftige Tage.');
         var de = DAYEV[dk]; if (de[3] && de[3].indexOf(mon(dd)) < 0) err(de[0] + ' geht nur in bestimmten Monaten.');
         if (!de[5] && svwGames(S, D).some(function (g) { return g.d === dd; })) err('An diesem Tag ist ein Spiel.');
+        if (dk === 'benefiz' && (svwGames(S, D).some(function (g) { return g.d === dd; }) || (S.tests || []).some(function (t) { return t.d === dd; }))) err('An diesem Tag ist schon ein Spiel – pro Tag ist nur ein Spiel möglich.');
         S.dayEv = S.dayEv || []; if (S.dayEv.some(function (x) { return x.d === dd && !x.done; })) err('An diesem Tag ist schon etwas geplant.');
         var cnt = S.dayEv.filter(function (x) { return x.k === dk && x.season === S.season; }).length; if (cnt >= de[4]) err(de[0] + ' gibt es höchstens ' + de[4] + '× pro Saison.');
         if ((dk === 'camp3' || dk === 'camp5') && S.camp) err('Es ist schon ein Trainingslager gebucht.');
@@ -3349,7 +3352,17 @@ var MGR = (function () {
     var P = privInit(S); (P.fam.kids || []).forEach(function (k) { if (k.academy) return; var age = yr(S.date) - yr(k.born); if (age >= 14) { var y = newYouth(S, D, true); y.n = k.n + ' ' + String(S.full).split(' ').slice(-1)[0]; y.age = 14; y.tal = Math.max(4, y.tal); y.pot = Math.max(y.pot, lvMid(D, S.lvl) + 10); S.youth.push(y); k.academy = true; infoMail(S, 'Academy', 'Dein Kind ist in der Academy!', k.n + ' ist jetzt 14 und spielt ab sofort in der Academy des ' + D.club + '. Ein echtes Talent!', 'info'); } });
   }
   var MSAL = { 11: 150, 10: 250, 9: 350, 8: 450, 7: 600, 6: 1000, 5: 1800, 4: 4000, 3: 12000, 2: 35000, 1: 110000 };
-  function mgrInit(S, D) { if (!S.mc) S.mc = { sal: MSAL[D.startLvl] || 900, until: seasonEndYear(S) + 1, startLvl: D.startLvl, offer: null }; if (!S.priv) S.priv = { cash: 0, owned: {}, rent: null, log: [] }; if (S.relStreak == null) S.relStreak = 0; }
+  // Monatsgehalt-Spannen je Liga (Bundesliga zusätzlich nach Erfolgen), plus 2 % je Manager-Level
+  var SALBAND = { 11: [100, 200], 10: [150, 250], 9: [200, 300], 8: [350, 500], 7: [500, 650], 6: [700, 900], 5: [800, 1200], 4: [1500, 3000], 3: [2500, 7500], 2: [10000, 50000], 1: [50000, 100000] };
+  function salBand(S) {
+    if (S.lvl === 1) { var t = S.blTitles || 0, b = S.blBest || 99; if (t > 3) return [1000000, 2500000]; if (t >= 1) return [500000, 1000000]; if (b <= 3) return [250000, 500000]; if (b <= 9) return [100000, 250000]; }
+    return SALBAND[S.lvl] || [500, 650];
+  }
+  function salRoll(S) { var b = salBand(S); return nice((b[0] + R() * (b[1] - b[0])) * (1 + (S.mlvl || 1) * 0.02) * qualF(S)); }
+  // Reichweite: pro Woche genau eine Aktion – Post, Werbung oder Flyer
+  var SOCMSG = 'Diese Woche gab es schon eine Aktion (Post, Werbung oder Flyer) – nur eine pro Woche.';
+  function socUsed(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); return S.socWeek === wk || S.adWeek === wk || S.flyW === wkStart(S); }
+  function mgrInit(S, D) { if (!S.mc) S.mc = { sal: salRoll(S), until: seasonEndYear(S) + 1, startLvl: D.startLvl, offer: null }; if (!S.priv) S.priv = { cash: 0, owned: {}, rent: null, log: [] }; if (S.relStreak == null) S.relStreak = 0; }
   function mgrMonthsLeft(S) { var m = mon(S.date); var endY = S.mc.until; var y = yr(S.date); return (endY - y) * 12 + (6 - m) + (m <= 6 ? 0 : 0); }
   function mgrCan(S, D) {
     var tab = S.fix && S.fix.length ? table(S) : []; var me = tab.filter(function (r) { return r.svw; })[0]; var L = D.lv[S.lvl];
@@ -3359,9 +3372,10 @@ var MGR = (function () {
     return { ok: true };
   }
   function mgrOffer(S, D) {
-    var base = MSAL[S.mc.startLvl] || 900; var lvGain = S.mc.startLvl - S.lvl;
-    var m = clamp(1 + 0.35 * lvGain, 0.6, 50) * (0.85 + S.board / 100 * 0.3) * (1 - 0.1 * (S.relStreak || 0));
-    m *= qualF(S); return { sal: nice(Math.max(base * 0.6, base * m)), until: seasonEndYear(S) + (mgrMonthsLeft(S) > 0 ? 2 : 2) };
+    // neues Angebot: Spanne der aktuellen Liga, Vorstandsvertrauen verschiebt leicht; nie unter dem bisherigen Gehalt, wenn erfolgreich
+    var roll = salRoll(S) * (0.92 + S.board / 100 * 0.16) * (1 - 0.08 * (S.relStreak || 0));
+    var sal = nice(S.board >= 60 ? Math.max(roll, S.mc.sal) : roll);
+    return { sal: sal, until: seasonEndYear(S) + 2 };
   }
   var SHOP = [
     ['iphone', 'Technik', 'iPhone 17 Pro', 1299, 0, 'phone'], ['airpods', 'Technik', 'AirPods Pro', 279, 0, 'buds'], ['tv', 'Technik', 'OLED-TV 65 Zoll', 1899, 0, 'tv'], ['ps5', 'Technik', 'PlayStation 5 Pro', 799, 0, 'console'], ['gta6', 'Technik', 'GTA 6', 79, 0, 'game'], ['cod', 'Technik', 'Call of Duty', 79, 0, 'game'], ['eafc', 'Technik', 'EA FC 27', 79, 0, 'game'], ['macbook', 'Technik', 'MacBook Pro', 2499, 0, 'laptop'], ['gamingpc', 'Technik', 'Gaming-PC', 2999, 0, 'pc'],
@@ -3490,7 +3504,7 @@ var MGR = (function () {
       stufen: { fans: S.lvFans, board: S.lvBoard, moral: S.lvMoral }, fanbase: S.fanbase, fitness: fitAvg,
       feed: S.feed, mails: S.mails, youth: S.youth.map(function (y) { return { bday: y.bday || null, id: y.id, dS: Math.round((y.str - (y.s0 != null ? y.s0 : y.str)) * 10) / 10, from: y.from || null, n: y.n, pos: y.dp, pos2: y.dp2, age: y.age, str: Math.round(y.str), tal: y.tal, talLo: e.scout ? y.tal : Math.max(1, y.tal - 1), talHi: e.scout ? y.tal : Math.min(5, y.tal + 1), pot: e.scout ? Math.round(y.pot) : null }; }),
       youthTeams: ['u15', 'u17', 'u19'].filter(function (k) { return S.built[k]; }),
-      achv: S.achv || [], achDef: ACH, spons: SPONS, sponsorsAll: S.sponsors, captain: S.captain, pen: S.pen, loanInfo: S.loan, fcs: S.fcs || [], fcNext: (S.fcs || []).length < FC_STEPS.length ? { pct: FC_STEPS[(S.fcs || []).length][1], need: FC_STEPS[(S.fcs || []).length][3] } : null, dk: S.dk ? { price: S.dk.price, hist: S.dk.hist, canSet: (S.hist || []).length > 0 && S.dk.setS !== S.season, fair: DK_FAIR[S.lvl] || 50 } : null, sellPop: S.sellPop || null, matchWx: S.mq && S.mq.length ? wxFor(S.mq[0].o.d || S.date, S.mq[0].o.opp && S.mq[0].o.opp.n) : null, talkOpts: talkOpts(S), hollyOn: hollyOn(S), holly: S.holly ? S.holly.list.filter(function (x) { return x.exp >= S.date; }) : [], hollyStar: S.hollyStar || null, streamFol: S.streamFol || 0, inhPop: S.inhPop || null, certPop: S.certPop || null, courseSpent: S.courseSpent || 0, qualF: qualF(S), tipPop: S.tipPop || null, daily: S.daily ? { streak: S.daily.streak, open: !!S.daily.open } : null, dailyLast: S.dailyLast || null, jokIntro: S.jokIntro === 1 && !S.live, starIntro: S.starIntro === 1 && !S.live && S.jokIntro !== 1, ag: S.ag || null, agWhy: S.ag ? [] : agCheck(S, D), agBase: agBase(S, D), bond: S.bond || null, bondOffer: S.bondOffer || null, bondAskDone: S.bondAskW === wkStart(S), credMax: nice(L.budget * 0.6), stadion: S.stadion, jersey: S.jersey,
+      achv: S.achv || [], achDef: ACH, spons: SPONS, sponsorsAll: S.sponsors, captain: S.captain, pen: S.pen, loanInfo: S.loan, fcs: S.fcs || [], fcNext: (S.fcs || []).length < FC_STEPS.length ? { pct: FC_STEPS[(S.fcs || []).length][1], need: FC_STEPS[(S.fcs || []).length][3] } : null, dk: S.dk ? { price: S.dk.price, hist: S.dk.hist, canSet: (S.hist || []).length > 0 && S.dk.setS !== S.season, fair: DK_FAIR[S.lvl] || 50 } : null, sellPop: S.sellPop || null, matchWx: S.mq && S.mq.length ? wxFor(S.mq[0].o.d || S.date, S.mq[0].o.opp && S.mq[0].o.opp.n) : null, talkOpts: talkOpts(S), hollyOn: hollyOn(S), holly: S.holly ? S.holly.list.filter(function (x) { return x.exp >= S.date; }) : [], hollyStar: S.hollyStar || null, streamFol: S.streamFol || 0, inhPop: S.inhPop || null, socUsed: socUsed(S), certPop: S.certPop || null, courseSpent: S.courseSpent || 0, qualF: qualF(S), tipPop: S.tipPop || null, daily: S.daily ? { streak: S.daily.streak, open: !!S.daily.open } : null, dailyLast: S.dailyLast || null, jokIntro: S.jokIntro === 1 && !S.live, starIntro: S.starIntro === 1 && !S.live && S.jokIntro !== 1, ag: S.ag || null, agWhy: S.ag ? [] : agCheck(S, D), agBase: agBase(S, D), bond: S.bond || null, bondOffer: S.bondOffer || null, bondAskDone: S.bondAskW === wkStart(S), credMax: nice(L.budget * 0.6), stadion: S.stadion, jersey: S.jersey,
       top: top, out: { inj: S.players.filter(function (p) { return p.inj > 0; }).map(pub), ban: S.players.filter(function (p) { return p.ban > 0; }).map(pub), loanOut: S.players.filter(function (p) { return p.loan && p.loan.to; }).map(pub), loanIn: S.players.filter(function (p) { return p.loan && p.loan.from; }).map(pub) },
       tplans: TPLANS, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
 

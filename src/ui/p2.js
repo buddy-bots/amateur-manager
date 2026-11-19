@@ -145,7 +145,7 @@ window.addEventListener('resize', function () { if (ST.tab === 'home') fitPartne
 function decisionPop() {
   var p = V.pending, ic = { event: '❓', offer: '💰', sponsor: '🤝' }[p.type] || '❓';
   pop('<div id="deci" class="evw"><div class="row" style="gap:10px;align-items:center"><span style="font-size:30px">' + ic + '</span><h2 style="padding:0;margin:0;flex:1">' + esc(p.title) + '</h2>' + (V.pendingCount > 1 ? '<span class="pill">noch ' + (V.pendingCount - 1) + ' weitere</span>' : '') + '</div><div style="line-height:1.55;margin:10px 0 12px">' + esc(p.text) + '</div>' + (p.vet ? extCard(p.vet) : p.pid != null && /abwerb/i.test(p.title) ? abwCard(p.pid) : p.pid != null && (PCARD_RX.test(p.title + ' ' + p.text) || p.type === 'offer') ? pCard(p.pid, true) : '') + '<div class="evbtns">' +
-    rotIdx(p.id, p.opts.length).map(function (i) { var o = p.opts[i]; return '<button onclick="decide(' + p.id + ',\'' + o.k + '\',event)">' + esc(o.label) + '</button>'; }).join('') + '</div></div>', { lock: true, auto: 1, cls: 'white' });
+    rotIdx(p.id, p.opts.length).map(function (i) { var o = p.opts[i]; return '<button onclick="decide(' + p.id + ',\'' + o.k + '\',event)">' + esc(o.label) + '</button>'; }).join('') + '</div></div>', { lock: true, auto: 1, cls: 'white', nav: true });
 }
 function decide(id, k, ev) {
   var x = ev ? ev.pageX : LASTX, y = ev ? ev.pageY : LASTY; var it = V.pending; act('decide', { id: id, choice: k }, { quiet: true }).then(function (r) {
@@ -357,7 +357,7 @@ function trPopShow() {
   var posted = T.posted;
   pop('<div class="evw" style="text-align:center">' + (u ? '<div class="popban" style="height:200px;background-image:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.7)),url(&quot;' + driveImg(u, 1200) + '&quot;)"><h2 style="padding:0;margin:0;color:#fff">' + (isIn ? '✍️ Neuzugang!' : '👋 Abschied') + '</h2></div>' : '<div style="font-size:44px">' + (isIn ? '✍️' : '👋') + '</div><h2 style="padding:0">' + (isIn ? 'Neuzugang!' : 'Abschied') + '</h2>') + card +
     (posted ? '<div class="postok">📱 Gepostet · <b>+' + num(posted) + ' Follower</b></div>' : '') +
-    '<div class="row" style="gap:8px;margin-top:14px"><button class="' + (posted ? 'done' : 'sm') + '" style="flex:1" ' + (posted ? 'disabled' : '') + ' onclick="trPostDo()">' + (posted ? '✔ Gepostet' : '📱 Posten') + '</button><button class="pri" style="flex:2" onclick="act(\'trPopSeen\',{},{quiet:true})">Weiter</button></div></div>', { lock: true });
+    '<div class="row" style="gap:8px;margin-top:14px"><button class="' + (posted ? 'done' : 'sm') + '" style="flex:1" ' + (posted ? 'disabled' : '') + ' onclick="trPostDo()">' + (posted ? '✔ Gepostet' : '📱 Posten') + '</button><button class="pri" style="flex:2" onclick="act(\'trPopSeen\',{},{quiet:true})">Weiter</button></div></div>', { lock: true, nav: true });
 }
 function trPostDo() { act('trPost', {}, { quiet: true, norender: true }).then(function (r) { if (!r) return; try { SND.send(); } catch (e) {} trPopShow(); var b = $('.postok'); if (b) { b.classList.add('pulse'); } }); }
 function posPop() {

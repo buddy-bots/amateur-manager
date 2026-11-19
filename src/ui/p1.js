@@ -128,9 +128,10 @@ function pop(html, opts) {
   if (keepTop == null) { if (y + ph > sy + vh - 10) y = sy + vh - ph - 10; if (y < sy + 10) y = sy + 10; }
   var introOn = document.body.classList.contains('intro');
   if (introOn) { var ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16); y = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)); keepLeft = null; }
+  if (opts.nav && !introOn) { var nv = document.querySelector('#tabs'); if (nv) { var nr = nv.getBoundingClientRect(); y = Math.max(sy + 10, Math.round(sy + nr.top + nr.height / 2 - ph / 2)); if (y + ph > sy + vh - 10) y = Math.max(sy + 10, sy + vh - ph - 10); } keepLeft = null; p.classList.add('navpop'); }
   if (ST.screen === 'start' && !opts.free) { var tb = document.querySelector('.tboard'); y = tb ? tb.offsetTop : 96; document.body.classList.add('spop'); keepLeft = null; }
   y = Math.max(10, Math.min(y, h - ph - 10)); p.style.top = y + 'px'; POPTOP = y;
-  var px = introOn || ST.screen === 'start' ? null : opts.x != null ? opts.x : (keepLeft == null && (opts.atx || opts.above) && recent ? LASTX : null);
+  var px = introOn || opts.nav || ST.screen === 'start' ? null : opts.x != null ? opts.x : (keepLeft == null && (opts.atx || opts.above) && recent ? LASTX : null);
   if (keepLeft != null) { p.style.left = keepLeft; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   else if (px != null) { var pw = p.offsetWidth; p.style.left = Math.max(8, Math.min(document.documentElement.clientWidth - pw - 8, px - pw / 2)) + 'px'; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   if (!opts.lock) $('#ov').onclick = closePop;

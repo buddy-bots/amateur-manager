@@ -738,7 +738,7 @@ html.lite [draggable="true"]{-webkit-user-select:none;user-select:none;-webkit-t
 button.ybt{width:24px!important;height:22px!important;min-width:0!important;padding:0!important;font-size:11px!important;line-height:1!important;border-radius:7px!important;display:inline-grid!important;place-items:center}
 .titlewrap .tbtns{gap:10px!important}
 #demapf .mair{animation:none!important;transition:transform .35s ease}#demapf .mair.hov{transform:translate3d(0,-1.6%,0)}
-#demapf svg.zoom{width:112%;margin-left:-12%;max-height:92vh}#demapf .krg{transition:transform .25s ease}#demapf .krg:hover{transform:translateY(-1.2px)}
+#demapf svg.zoom{width:100%;margin:0 auto;max-height:var(--mh,84vh)}#demapf .mapbar{justify-content:center}#demapf .krg{transition:transform .25s ease}#demapf .krg:hover{transform:translateY(-1.2px)}
 .cpqw{position:relative}.cpqw input{padding-right:34px}.cpqw .qx{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:rgba(0,0,0,.08);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:22px;padding:0;color:inherit;display:none}.cpqw.has .qx{display:block}
 .langpick{position:absolute;z-index:3}
 </style>
@@ -747,8 +747,8 @@ button.ybt{width:24px!important;height:22px!important;min-width:0!important;padd
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<script src="engine.js?v=26.1.0"></script>
-<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v26.1.0';</script>
+<script src="engine.js?v=26.2.0"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v26.2.0';</script>
 <script>
 
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
@@ -1562,12 +1562,14 @@ function cpSearch(q) {
     var qq = encodeURIComponent(q.replace(/[*,()]/g, ' '));
     rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
       CP.hits = rows;
-      $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span></button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
+      $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span>' + cpLock(st.ebene) + '</button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
     }).catch(function (e) { $('#cphits').innerHTML = '<div class="xs muted">' + esc(e.message) + '</div>'; });
   }, 280);
 }
 function cpPick(i) {
   var t = (CP.hits || [])[i]; if (!t) return;
+  var eb = (t.ligen_staffeln || {}).ebene, need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl();
+  if (need && my < need) { toast('🔒 Vereine aus der ' + ((t.ligen_staffeln || {}).name || 'Liga') + ' kannst du ab Manager-Level ' + need + ' wählen (du bist Level ' + my + '). Aufsteigen darfst du natürlich jederzeit.'); return; }
   CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '', lat: t.lat, lon: t.lon }; if (t.kreis) CP.kreis = t.kreis;
   $('#cphits').innerHTML = ''; $('#cpq').value = ''; cpSel();
   var vb = (t.ligen_staffeln || {}).verband; var kk = CP.kreis; Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; } }); CP.kreis = kk; mapRedraw();
@@ -1590,7 +1592,17 @@ function cpKreisDraw() {
 }
 // Spielklasse ohne Staffel/Gruppe: alle Kreisliga-A-Staffeln eines Kreises zusammen usw.
 function ligaKl(st) { var k = String(st.klasse || st.name || '').replace(/ \(Verband\)$/, ''), vb = st.verband; if (k === 'Verbandsliga') k = vb === 'Mittelrhein' ? 'Mittelrheinliga' : vb === 'Westfalen' ? 'Westfalenliga' : 'Verbandsliga'; if (/^(Oberliga|Regionalliga|3\. Liga|2\. Bundesliga|Bundesliga)/.test(st.name || '') && !/^(Kreisliga|Bezirksliga|Landesliga)/.test(k)) return st.name; return k; }
-function mapRedraw() { var el = $('#demapf'); if (!el) return; if (CP.land) { if (!el.dataset.top) { el.dataset.top = Math.round(el.getBoundingClientRect().top); el.style.top = el.dataset.top + 'px'; el.style.transform = 'none'; } } else { delete el.dataset.top; el.style.top = ''; el.style.transform = ''; } el.innerHTML = deMap(); }
+function mapRedraw() {
+  var el = $('#demapf'); if (!el) return;
+  if (CP.land) {
+    if (!el.dataset.top) { el.dataset.top = Math.round(el.getBoundingClientRect().top); el.style.top = el.dataset.top + 'px'; el.style.transform = 'none'; }
+    // Kreisansicht: im freien Bereich rechts neben dem Auswahlfenster mittig
+    var box = $('#cpq'), R0 = 0; while (box && box.getBoundingClientRect) { var rr = box.getBoundingClientRect(); if (rr.width > 640) break; R0 = rr.right; box = box.parentNode; }
+    var L = Math.round((R0 || 500) + 28);
+    el.style.left = L + 'px'; el.style.right = '28px'; el.style.width = 'auto'; el.style.setProperty('--mh', (innerHeight - (+el.dataset.top) - 50) + 'px');
+  } else { delete el.dataset.top; el.style.top = ''; el.style.transform = ''; el.style.left = ''; el.style.right = ''; el.style.width = ''; }
+  el.innerHTML = deMap();
+}
 function cpLand(n) { if (n && !BLAND[n]) return toast(n + ': Coming soon – bald spielbar!'); CP.land = n; CP.kreis = ''; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; if (!LITE && !navigator.maxTouchPoints) q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
 function cpCounts() {
   if (CPN) return; CPN = {};
@@ -1635,7 +1647,7 @@ function deMapLand(land) {
   var walls = ''; for (var j = 6; j >= 1; j--) walls += '<path d="' + l[1] + '" transform="translate(0 ' + (lift * j / 6 - lift) + ') ' + sc + '" fill="' + (j > 3 ? '#2f5d18' : '#3d7420') + '"/>';
   var kre = '', lab = '';
   K.forEach(function (k, i) { var on = CP.kreis === k[0], dim = CP.kreis && !on; kre += '<g class="krg"><path class="kr' + (on ? ' on' : '') + (dim ? ' dim' : '') + (i % 2 ? ' alt' : '') + '" d="' + k[2] + '" transform="translate(0 ' + (-lift) + ') ' + sc + '" onclick="cpKreis(\'' + esc(k[0]).replace(/'/g, "\\'") + '\')"><title>Kreis ' + esc(kName(k[0])) + '</title></path></g>';
-    var kb = pathBox(k[2]); if ((!dim && (kb[2] - kb[0]) > w * 0.1) || on) lab += '<text class="krl' + (on ? ' on' : '') + '" x="' + k[3] + '" y="' + (k[4] * MAPK - lift).toFixed(1) + '" font-size="' + (on ? fs * 1.25 : fs).toFixed(2) + '" text-anchor="middle">' + esc(kName(k[0])) + '</text>'; });
+    var kb = pathBox(k[2]), kn = kName(k[0]), kw = kb[2] - kb[0], f = Math.max(fs * 0.5, Math.min(fs, kw * 1.5 / Math.max(4, kn.length))); if (!dim || on) lab += '<text class="krl' + (on ? ' on' : '') + '" x="' + k[3] + '" y="' + (k[4] * MAPK - lift).toFixed(1) + '" font-size="' + (on ? Math.max(f, fs) * 1.2 : f).toFixed(2) + '" text-anchor="middle">' + esc(kn) + '</text>'; });
   return '<div class="mapbar"><button onclick="cpLand(\'\')">← Deutschland</button><b>' + esc(land) + '</b>' + (CP.kreis ? '<span>Kreis ' + esc(kName(CP.kreis)) + ' <a href="javascript:void 0" onclick="cpKreis(\'\')">✕</a></span>' : '<span class="muted">Tipp auf deinen Kreis</span>') + '</div>' +
     '<svg class="zoom" viewBox="' + (bx[0] - pad).toFixed(1) + ' ' + (bx[1] - pad - lift).toFixed(1) + ' ' + (w + pad * 2).toFixed(1) + ' ' + (h + pad * 2 + lift).toFixed(1) + '">' + mapDefs() + '<path d="' + l[1] + '" transform="' + sc + '" fill="#000" opacity=".45" filter="url(#mblur)"/>' + walls + kre + lab + mapPin(lift, w / 260) + '</svg>';
 }
@@ -1655,7 +1667,7 @@ function startLoad() {
     loading(false); SAVES = r.saves || []; if (r.profile) ME.xp = Number(r.profile.xp) || 0;
     if (!SAVES.length) return pop('<h2>Kein Spielstand</h2><div class="muted">Für ' + esc(ME.vorname) + ' ist noch kein Spiel gespeichert.</div><button class="pri" style="width:100%;margin-top:14px" onclick="closePop();startNew()">Neues Spiel starten</button>', { white: true });
     pop('<h2>Spiel laden</h2><div class="saves">' + SAVES.map(function (s) {
-      return '<div class="savec"><div class="sic">⚽</div><div style="min-width:0;flex:1"><b>' + esc(s.club_name || 'Verein') + '</b><div class="xs muted">' + esc(lsh(s.league_name || '')) + (s.season ? ' · Saison ' + s.season + '/' + String(s.season + 1).slice(2) : '') + '</div><div class="xs muted">Zuletzt gespielt ' + dtShort((s.updated_at || '').slice(0, 16).replace('T', ' ')) + '</div></div><button class="pri sm" onclick="loadSave(\'' + s.id + '\')">Laden</button><button class="sm red" title="Löschen" onclick="delPop(\'' + s.id + '\')">🗑</button></div>';
+      return '<div class="savec"><div class="sic">⚽</div><div style="min-width:0;flex:1"><b>' + esc(s.club_name || 'Verein') + '</b><div class="xs muted">' + esc(lsh(s.league_name || '')) + (s.season ? ' · Saison ' + s.season + '/' + String(s.season + 1).slice(2) : '') + '</div>' + saveAge(s.updated_at) + '<div class="xs muted">Zuletzt gespielt ' + dtShort((s.updated_at || '').slice(0, 16).replace('T', ' ')) + '</div></div><button class="pri sm" onclick="loadSave(\'' + s.id + '\')">Laden</button><button class="sm red" title="Löschen" onclick="delPop(\'' + s.id + '\')">🗑</button></div>';
     }).join('') + '</div>', { white: true });
   }).catch(function (x) { loading(false); toast(x.message, true); });
 }
@@ -1742,6 +1754,11 @@ function bonusRedeem() { act('bonusRedeem', {}, { quiet: true }).then(function (
 
 function langPick() { pop('<h2 style="padding:0">🌍 Sprache · Language</h2><div class="grid g2" style="gap:8px;margin-top:10px">' + [['de', '🇩🇪 Deutsch'], ['en', '🇬🇧 English'], ['es', '🇪🇸 Español'], ['fr', '🇫🇷 Français']].map(function (x) { return '<button class="' + (((userSet().lang) || 'de') === x[0] ? 'pri' : '') + '" onclick="setLang(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>', { white: true }); }
 function cpQx() { var q = $('#cpq'); if (!q) return; q.value = ''; q.parentNode.classList.remove('has'); cpSearch(''); }
+
+function cpLock(eb) { var need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl(); return need && my < need ? '<span class="pill" style="margin-left:auto;flex:none" title="ab Manager-Level ' + need + '">🔒 Lv ' + need + '</span>' : ''; }
+function cpMyLvl() { return levelOf((HOME && HOME.me && HOME.me.xp) || (ME && ME.xp) || 0).lvl; }
+// Hinweis vor der automatischen Löschung (3 Monate ohne Nutzung)
+function saveAge(ts) { var t = Date.parse(ts || ''); if (!t) return ''; var left = Math.ceil((t + 91 * 864e5 - Date.now()) / 864e5); return left <= 30 ? '<div class="xs" style="color:#e07a2c">⏳ Wird in ' + Math.max(0, left) + ' Tag' + (left === 1 ? '' : 'en') + ' gelöscht, wenn du ihn nicht lädst.</div>' : ''; }
 
 
 /* ===================================================================== Spiel-Rahmen */
@@ -2489,7 +2506,7 @@ function tHome() {
 /* ---------- Missionen: kleine Übersicht (zwei Kreise) und eigene Seite unter Manager */
 function donut(p, col, lbl, sub, lock) { var r = 26, c = 2 * Math.PI * r, d = Math.max(0, Math.min(1, p)) * c; return '<div class="mdon' + (lock ? ' lock' : '') + '"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>' + (lock ? '' : '<circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + d.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 32 32)"/>') + '<text x="32" y="36" text-anchor="middle" font-size="13" font-weight="900" fill="currentColor">' + (lock ? '🔒' : Math.round(p * 100) + '%') + '</text></svg><b>' + lbl + '</b><span class="xs muted">' + sub + '</span></div>'; }
 function misBox() {
-  var M = V.missions; if (!M || !M.dailyOn) return '';
+  var M = V.missions; if (!M || !M.dailyOn) return '<div class="box misbox"><h3>🎯 Missionen</h3><div class="mdons">' + donut(0, '#8fc852', 'Heute', 'ab Level ' + MGR.featLvl('tagesmissionen'), true) + donut(0, '#f0c24b', 'Karriere', 'ab Level ' + MGR.featLvl('missionen'), true) + '</div></div>';
   var d = M.daily, dn = d.filter(function (m) { return m.st !== 'open'; }).length, open = d.filter(function (m) { return m.st === 'done'; }).length + (M.careerOn ? M.career.filter(function (m) { return m.st === 'done'; }).length : 0);
   var cc = M.career.filter(function (m) { return m.st === 'claimed'; }).length;
   return '<div class="box misbox" onclick="if(V.missions.careerOn)go(\'missionen\');else pop(\'<h2>☀️ Tagesmissionen</h2>\' + V.missions.daily.map(misRow).join(\'\'), { white: true })" style="cursor:pointer"><h3>🎯 Missionen' + (open ? ' <span class="pill y">' + open + ' abholen</span>' : '') + '</h3><div class="mdons">' + donut(d.length ? dn / d.length : 0, '#8fc852', 'Heute', dn + '/' + d.length) + donut(cc / 50, '#f0c24b', 'Karriere', M.careerOn ? cc + '/50' : 'ab Level ' + MGR.featLvl('missionen'), !M.careerOn) + '</div></div>';

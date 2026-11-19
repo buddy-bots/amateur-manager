@@ -33,9 +33,10 @@ const ligCache: Record<string, { at: number; st: any[] }> = {};
 async function verbandStaffeln(verband: string) {
   const c = ligCache[verband];
   if (c && Date.now() - c.at < 600_000) return c.st;
-  const vbs = verband === 'Rheinland' || verband === 'Südwest' ? [verband, 'RV Südwest', 'DFB'] : [verband, 'RV West', 'DFB'];
-  const { data: st, error } = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').in('verband', vbs).eq('aktiv', true).limit(1000);
-  if (error || !st?.length) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
+  const vbs = verband === 'Rheinland' || verband === 'Südwest' ? [verband, 'RV Südwest', 'DFB'] : ['Baden', 'Südbaden', 'Württemberg'].includes(verband) ? [verband, 'Oberliga BW', 'RV Südwest', 'DFB'] : verband === 'Bayern' ? [verband, 'DFB'] : [verband, 'RV West', 'DFB'];
+  const st: any[] = []; let error: any = null;
+  for (let o = 0; o < 20000; o += 1000) { const r = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').in('verband', vbs).eq('aktiv', true).order('id').range(o, o + 999); if (r.error) { error = r.error; break; } st.push(...(r.data || [])); if ((r.data || []).length < 1000) break; }
+  if (error || !st.length) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
   const ids = st.map((x: any) => x.id), teams: any[] = [];
   for (let i = 0; i < ids.length; i += 40) {
     const { data, error: e2 } = await admin.from('ligen_teams').select('id, staffel_id, verein_id, name, zone, aktiv').in('staffel_id', ids.slice(i, i + 40)).limit(1000);
@@ -54,15 +55,14 @@ async function regFor(teamId: string) {
   if (!t || !(t as any).ligen_staffeln) throw new HttpError(400, 'Mannschaft nicht gefunden.');
   if (!(t as any).aktiv) throw new HttpError(400, 'Diese Mannschaft ist nicht spielbar.');
   let verband = (t as any).ligen_staffeln.verband;
-  if (verband === 'DFB' || verband === 'RV West') {
-    // Profiverein: Verband über den Fußballkreis seines Ortes
-    if (!(t as any).kreis) throw new HttpError(400, 'Dieser Verein liegt (noch) nicht in einem spielbaren Bundesland.');
-    const { data: ks } = await admin.from('ligen_staffeln').select('verband').eq('gebiet', 'Kreis ' + (t as any).kreis).limit(1);
-    verband = (ks?.[0] as any)?.verband || ''; if (!verband) throw new HttpError(400, 'Verband nicht gefunden.');
-  } else if (verband === 'RV Südwest') {
-    // Oberliga/Regionalliga: Verband über die eigenen Zweitmannschaften bestimmen, sonst Südwest
-    const { data: o } = await admin.from('ligen_teams').select('ligen_staffeln!inner(verband)').eq('verein_id', (t as any).verein_id).in('ligen_staffeln.verband', ['Rheinland', 'Südwest']).limit(1);
-    verband = (o?.[0] as any)?.ligen_staffeln?.verband || 'Südwest';
+  if (['DFB', 'RV West', 'RV Südwest', 'Oberliga BW'].includes(verband)) {
+    // Überregionale Liga: Verband über die eigenen Zweitmannschaften, sonst über den Fußballkreis des Ortes
+    let vb = '';
+    if ((t as any).verein_id) { const { data: o } = await admin.from('ligen_teams').select('ligen_staffeln!inner(verband)').eq('verein_id', (t as any).verein_id).not('ligen_staffeln.verband', 'in', '("DFB","RV West","RV Südwest","Oberliga BW")').limit(1); vb = (o?.[0] as any)?.ligen_staffeln?.verband || ''; }
+    if (!vb && (t as any).kreis) { const { data: ks } = await admin.from('ligen_staffeln').select('verband').eq('gebiet', 'Kreis ' + (t as any).kreis).limit(1); vb = (ks?.[0] as any)?.verband || ''; }
+    if (!vb && verband === 'RV Südwest') vb = 'Südwest';
+    if (!vb) throw new HttpError(400, 'Dieser Verein liegt (noch) nicht in einem spielbaren Bundesland.');
+    verband = vb;
   }
   const st = JSON.parse(JSON.stringify(await verbandStaffeln(verband)));
   return MGR.buildReg(verband, st, teamId);
@@ -106,7 +106,8 @@ async function ligenImport(ref: string) {
     for (const s of v.staffeln) {
       // Eine Mannschaft steht manchmal in zwei Runden (Findungs-/Meisterrunde): nur die erste zählt, leere Staffeln entfallen
       const own = s.teams.filter((t: any) => !seen[t.id]);
-      if (own.length < 4) { drop.push(s.id); continue; }
+      const eb = s.ebene || (v.start || 5) + order.indexOf(s.skn);
+      if (own.length < 4 || eb > 11) { drop.push(s.id); continue; }
       own.forEach((t: any) => { seen[t.id] = 1; });
       S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
       for (const t of own) { const g = MGR.geoFind(orte, part, ligTeam(t.n), v.name, s.gn); T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', lat: g ? g[0] : null, lon: g ? g[1] : null, updated_at: now }); }
@@ -124,10 +125,10 @@ async function ligenImport(ref: string) {
   const stG: Record<string, string> = {}, stV: Record<string, string> = {}; S.forEach((x) => { stG[x.id] = x.gebiet || ''; stV[x.id] = x.verband; });
   const clubK: Record<string, string> = {}, cen: Record<string, [number, number, number, string]> = {};
   T.forEach((t) => { const g = stG[t.staffel_id]; if (!/^Kreis /.test(g)) return; const k = g.replace(/^Kreis\s+/, ''); if (t.verein_id && !clubK[t.verein_id]) clubK[t.verein_id] = k; if (t.lat) { const c = (cen[k] = cen[k] || [0, 0, 0, stV[t.staffel_id]]); c[0] += t.lat; c[1] += t.lon; c[2]++; } });
-  const overall = (vb: string) => vb === 'RV Südwest' || vb === 'RV West' || vb === 'DFB';
-  const near = (lat: number, lon: number, vb: string) => { let b = '', bd = 1e9; for (const k of Object.keys(cen)) { const c = cen[k]; if (!overall(vb) && c[3] !== vb) continue; const d = (c[0] / c[2] - lat) ** 2 + (c[1] / c[2] - lon) ** 2; if (d < bd) { bd = d; b = k; } } return b && (!overall(vb) || bd < 0.12) ? b : null; };
+  const overall = (vb: string) => vb === 'RV Südwest' || vb === 'RV West' || vb === 'DFB' || vb === 'Oberliga BW';
   const kLand: Record<string, string> = {}; Object.keys(cen).forEach((k) => { kLand[k] = (MGR.VB_LAND[cen[k][3]] || [])[0] || ''; });
-  T.forEach((t) => { const vb = stV[t.staffel_id]; t.kreis = (t.verein_id && clubK[t.verein_id]) || (t.lat ? near(t.lat, t.lon, vb) : null); t.land = overall(vb) ? (t.kreis ? kLand[t.kreis] || null : null) : ((MGR.VB_LAND[vb] || [])[0] || null); });
+  const near = (lat: number, lon: number, vb: string, land?: string) => { let b = '', bd = 1e9; for (const k of Object.keys(cen)) { const c = cen[k]; if (land ? kLand[k] !== land : (!overall(vb) && c[3] !== vb)) continue; const d = (c[0] / c[2] - lat) ** 2 + (c[1] / c[2] - lon) ** 2; if (d < bd) { bd = d; b = k; } } return b && (!overall(vb) || bd < 0.12) ? b : null; };
+  T.forEach((t) => { const vb = stV[t.staffel_id]; const po = MGR.PRO_ORT[t.name]; t.kreis = (t.verein_id && clubK[t.verein_id]) || (t.lat ? near(t.lat, t.lon, vb, po ? po[1] : vb === 'Oberliga BW' ? 'Baden-Württemberg' : undefined) : null); t.land = overall(vb) ? (po ? po[1] : (t.kreis ? kLand[t.kreis] || null : null)) : ((MGR.VB_LAND[vb] || [])[0] || null); });
   const fixS: Record<string, string> = {}, fixT: Record<string, string> = {};
   for (const [tb, fx] of [['ligen_staffeln', fixS], ['ligen_teams', fixT]] as const) {
     const { data } = await admin.from(tb).select('id, name').eq('name_fix', true).limit(5000);
@@ -137,7 +138,7 @@ async function ligenImport(ref: string) {
   T.forEach((x) => { x.name_fix = !!fixT[x.id]; if (x.name_fix) x.name = fixT[x.id]; });
   for (let i = 0; i < S.length; i += 300) { const { error } = await admin.from('ligen_staffeln').upsert(S.slice(i, i + 300), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
   for (let i = 0; i < T.length; i += 800) { const { error } = await admin.from('ligen_teams').upsert(T.slice(i, i + 800), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
-  if (drop.length) await admin.from('ligen_staffeln').delete().in('id', drop);
+  for (let i = 0; i < drop.length; i += 100) await admin.from('ligen_staffeln').delete().in('id', drop.slice(i, i + 100));
   Object.keys(ligCache).forEach((k) => delete ligCache[k]);
   return { status: 'ok', staffeln: S.length, teams: T.length, ref: r };
 }
@@ -361,6 +362,8 @@ async function handle(req: Request, userId: string, body: any) {
     const self = body.self && typeof body.self.pos === 'string' ? { pos: body.self.pos.slice(0, 3) } : null;
     const xp = Number(profile.xp) || 0;
     const reg = body.team ? await regFor(String(body.team)) : null;
+    const needL = reg ? MGR.LIGA_LVL[reg.lvl] || 0 : 0;
+    if (needL && MGR.levelOf(xp).lvl < needL) throw new HttpError(403, 'Vereine aus der ' + ((reg as any).lv[reg.lvl] || {}).name + ' kannst du ab Manager-Level ' + needL + ' wählen.');
     let S: any;
     try { S = MGR.newGame(D, { mgr: profile.display_name.split(' ')[0], full: profile.display_name, xp, mlvl: MGR.levelOf(xp).lvl, self, reg }); }
     catch (e) { throw new HttpError(400, (e as Error).message || String(e)); }
@@ -379,6 +382,8 @@ async function handle(req: Request, userId: string, body: any) {
 
   if (op === 'load') {
     const sv = await loadSave(userId, saveId);
+    // Laden zählt als Benutzung (Spielstände werden nach 3 Monaten ohne Nutzung gelöscht)
+    await admin.from('saves').update({ updated_at: new Date().toISOString() }).eq('id', saveId).eq('user_id', userId);
     const S = prepare(sv.state, profile);
     return { saveId, version: sv.version, engineVersion: sv.engine_version, state: S, joker: jokerOk(S, sv) };
   }

@@ -1,10 +1,12 @@
-// Holt alle Herren-Staffeln (Meisterschaft) der Verbände in NRW und Rheinland-Pfalz von fussball.de
+// Holt alle Herren-Staffeln (Meisterschaft) der Verbände in NRW, Rheinland-Pfalz, Baden-Württemberg und Bayern von fussball.de
 // und schreibt sie nach data/ligen-<saison>.json. Läuft in GitHub Actions (dort ist fussball.de erreichbar).
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const SAISON = process.env.SAISON || '2627';
 // [Mandant, Name, Ebene der obersten Verbandsliga]
-const VERB = [[23, 'Mittelrhein', 5], [22, 'Niederrhein', 5], [21, 'Westfalen', 5], [41, 'Rheinland', 6], [42, 'Südwest', 6]];
+const VERB = [[23, 'Mittelrhein', 5], [22, 'Niederrhein', 5], [21, 'Westfalen', 5], [41, 'Rheinland', 6], [42, 'Südwest', 6], [31, 'Bayern', 4], [32, 'Baden', 6], [33, 'Südbaden', 6], [35, 'Württemberg', 6]];
+// Oberliga Baden-Württemberg steht bei fussball.de unter Württemberg, gilt aber für alle drei BW-Verbände
+const OBW = { id: 35, name: 'Oberliga BW', start: 5, klassen: {}, staffeln: [] };
 const UA = 'Mozilla/5.0 (compatible; AmateurManagerDataBot/1.0; +https://amateur-manager.de)';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let calls = 0;
@@ -57,7 +59,7 @@ for (const [m, vname, start] of VERB) {
   const geb = kinds.Gebiet?.[HERREN] || {};
   const V = { id: m, name: vname, start, klassen: {}, staffeln: [] };
   for (const [skk, skName] of Object.entries(sks)) {
-    const sk = strip(skk); if (/Reserve|Freizeit/i.test(skName)) continue; V.klassen[sk] = skName;
+    const sk = strip(skk); if (/Reserve|Freizeit|Senioren|Ü\d/i.test(skName)) continue; const isObw = m === 35 && /^Oberliga/.test(skName); if (!isObw) V.klassen[sk] = skName;
     for (const [gk, gName] of Object.entries(geb[sk] || {})) {
       const g = strip(gk);
       const comp = await get(`https://www.fussball.de/wam_competitions_${m}_${SAISON}_1_${HERREN}_${sk}_${g}.json`, true);
@@ -67,13 +69,14 @@ for (const [m, vname, start] of VERB) {
         if (!id) continue;
         const html = await get(`https://www.fussball.de/ajax.actual.table/-/staffel/${id}`, false);
         const teams = html ? parseTable(html) : [];
-        V.staffeln.push({ id, n: sName, sk, skn: skName, g, gn: gName, teams });
+        (isObw ? OBW : V).staffeln.push({ id, n: sName, sk, skn: skName, g, gn: gName, teams, ...(isObw ? { ebene: 5 } : {}) });
         console.log(`  ${skName} · ${gName} · ${sName}: ${teams.length} Teams`);
       }
     }
   }
   result.verbaende.push(V);
 }
+if (OBW.staffeln.length) result.verbaende.push(OBW);
 // Überregional für Rheinland-Pfalz: Oberliga Rheinland-Pfalz/Saar (Ebene 5) und Regionalliga Südwest (Ebene 4)
 {
   const V = { id: 29, name: 'RV Südwest', start: 4, klassen: {}, staffeln: [] };

@@ -4,7 +4,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const rows = readFileSync(process.argv[2], 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t'));
 const acc = {};
 for (const c of rows) {
-  const lat = +c[9], lon = +c[10], land = c[3]; if (!lat || !lon) continue;
+  const LDE = { Bavaria: 'Bayern', Thuringia: 'Thüringen', 'Saxony-Anhalt': 'Sachsen-Anhalt', Saxony: 'Sachsen', 'Mecklenburg-Western Pomerania': 'Mecklenburg-Vorpommern', 'Lower Saxony': 'Niedersachsen', 'Land Berlin': 'Berlin' };
+  const lat = +c[9], lon = +c[10], land = LDE[c[3]] || c[3]; if (!lat || !lon) continue;
   for (const n of new Set([c[2], c[7]].filter(Boolean))) {
     const k = String(n).replace(/\s*\(.*?\)/g, '').trim(), kk = k + '|' + land;
     const a = (acc[kk] = acc[kk] || [k, land, 0, 0, 0]); a[2] += lat; a[3] += lon; a[4]++;

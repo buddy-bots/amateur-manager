@@ -1,0 +1,21 @@
+name: Orte holen
+on:
+  push:
+    branches: [umbau]
+    paths: ['data/.orte-trigger', 'tools/make-orte.mjs']
+permissions:
+  contents: write
+jobs:
+  o:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: umbau }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: |
+          curl -sSfL -o /tmp/plz.json https://raw.githubusercontent.com/zauberware/postal-codes-json-xml-csv/master/data/DE/zipcodes.de.json
+          node tools/make-orte.mjs /tmp/plz.json
+          git config user.name "amateur-manager-bot"; git config user.email "bot@amateur-manager.de"
+          git add data/orte-de.json; git commit -m "Orte mit Koordinaten (zauberware/postal-codes)" || true
+          git pull --rebase origin umbau; git push origin HEAD:umbau

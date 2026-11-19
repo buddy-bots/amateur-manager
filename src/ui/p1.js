@@ -239,12 +239,14 @@ function teamColor(n) {
 }
 
 /* ===================================================================== Startseite */
+var MEDIA_OK = false;
+function titleSrc() { var u = imgOf('bg', 'titel'); if (u) return u; if (!MEDIA_OK) { try { u = localStorage.getItem('am_titel'); } catch (e) {} if (u) return u; return 'PH'; } return TITLEIMG; }
 function boot() {
   sessLoad();
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
-  loadMedia().then(function () { var t = document.querySelector('.titleimg'), u = imgOf('bg', 'titel'); if (t && u && ST.screen === 'start') t.src = u; });
+  loadMedia().then(function () { MEDIA_OK = true; var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
   if (back && back.error) toast(back.error, true);
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
@@ -265,7 +267,7 @@ function homeInfo() {
 }
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
-  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '<img class="titleimg" src="' + (imgOf('bg', 'titel') || TITLEIMG) + '" onerror="if(this.src!==TITLEIMG)this.src=TITLEIMG" alt="Amateur Manager"><div class="tboard box"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span><div class="xs muted" id="homeinfo" style="margin-top:6px">' + homeInfo() + '</div></div>' +
+  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '' + (function () { var ts = titleSrc(), ph = ts === 'PH'; return '<img class="titleimg' + (ph ? ' ph' : '') + '" src="' + (ph ? TITLEIMG : ts) + '" onload="if(!this.classList.contains(\'ph\'))this.style.opacity=1" onerror="if(this.src!==TITLEIMG){this.classList.remove(\'ph\');this.src=TITLEIMG}" style="opacity:0;transition:opacity .4s" alt="Amateur Manager">'; })() + '<div class="tboard box"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span><div class="xs muted" id="homeinfo" style="margin-top:6px">' + homeInfo() + '</div></div>' +
     '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button></div>' +
     '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a></div></div>';
 }

@@ -175,7 +175,7 @@ function ligList() {
 function ligSaveS(id) { var v = $('#sn_' + id).value.trim(); if (!v) return; rest('ligen_staffeln?id=eq.' + id, { method: 'PATCH', body: { name: v, name_fix: true } }).then(function () { toast('Gespeichert ✓'); }).catch(function (e) { toast(e.message, true); }); }
 function ligTeamRows(rows) {
   return '<table>' + rows.map(function (t) {
-    return '<tr><td style="width:55%"><input value="' + esc(t.name) + '" id="tn_' + t.id + '"></td><td class="muted">' + esc(ligDec(t.name_fd)) + (t.staffel ? ' · ' + esc(t.staffel) : '') + '</td><td><label class="muted"><input type="checkbox" style="width:auto" ' + (t.aktiv ? 'checked' : '') + ' onchange="ligAkt(\'' + t.id + '\',this.checked)"> spielbar</label></td><td class="r"><button class="btn" onclick="ligSaveT(\'' + t.id + '\')">Speichern</button></td></tr>';
+    return '<tr><td style="width:55%"><input value="' + esc(t.name) + '" id="tn_' + t.id + '"></td><td class="muted">' + (t.name_fd && ligDec(t.name_fd) !== t.name ? 'fussball.de: ' + esc(ligDec(t.name_fd)) : '') + (t.staffel ? ' ' + esc(t.staffel) : '') + '</td><td><label class="muted"><input type="checkbox" style="width:auto" ' + (t.aktiv ? 'checked' : '') + ' onchange="ligAkt(\'' + t.id + '\',this.checked)"> spielbar</label></td><td class="r"><button class="btn" onclick="ligSaveT(\'' + t.id + '\')">Speichern</button></td></tr>';
   }).join('') + '</table>';
 }
 function ligTeams(id) {

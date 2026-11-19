@@ -1,3 +1,4 @@
+var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
 /* ===================================================================== Server-Anbindung (Supabase)
  * Login (E-Mail, Google, Passwort vergessen), Datenbank-Zugriffe und Spiel-Server.
  * Ohne externe Bibliothek: alles über die offizielle REST-Schnittstelle.
@@ -224,7 +225,7 @@ var API = {
     return game('deleteAccount', { confirm: String(confirm || '').trim().toUpperCase() }).then(function () { authSignOut(); return { ok: true }; });
   },
   apiWappen: function () { return Promise.resolve({ ok: true, w: {} }); },
-  apiHandoff: function () { return Promise.resolve({ ok: false, error: 'Auf dem Handy einfach mit Google oder E-Mail anmelden.' }); },
+  apiHandoff: function () { return game('handoff', {}).then(function (r) { return { ok: true, url: location.origin + location.pathname + '?mh=' + encodeURIComponent(r.hash) + (SAVEID ? '&s=' + encodeURIComponent(SAVEID) : '') }; }); },
   apiHandoffUse: function () { return Promise.resolve({ ok: false, error: 'Bitte mit Google oder E-Mail anmelden.' }); }
 };
 function call(fn) {

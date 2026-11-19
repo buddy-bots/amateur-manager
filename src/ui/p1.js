@@ -135,7 +135,7 @@ function pop(html, opts) {
   if (keepLeft != null) { p.style.left = keepLeft; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   else if (px != null) { var pw = p.offsetWidth; p.style.left = Math.max(8, Math.min(document.documentElement.clientWidth - pw - 8, px - pw / 2)) + 'px'; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   if (!opts.lock) $('#ov').onclick = closePop;
-  var f = p.querySelector('input'); if (f && !opts.nofocus) try { f.focus({ preventScroll: true }); } catch (e) {}
+  var f = p.querySelector('input'); if (f && !opts.nofocus && !LITE && !(navigator.maxTouchPoints > 0)) try { f.focus({ preventScroll: true }); } catch (e) {}
   return p;
 }
 function closePop() { document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
@@ -243,18 +243,32 @@ var MEDIA_OK = false;
 function popRecenter() { var p = $('#pop'); if (!p || !document.body.classList.contains('intro')) return; var vh = window.innerHeight || 800, ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16), ph = p.offsetHeight; p.style.top = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)) + 'px'; }
 function preloadBg() { var m = (D && D.imgs && D.imgs.bg) || {}, ks = Object.keys(m).filter(function (k) { return k !== 'titel'; }), i = 0; var step = function () { if (i >= ks.length) return; var im = new Image(); im.onload = im.onerror = function () { setTimeout(step, 50); }; im.src = imgOf('bg', ks[i++]); }; setTimeout(step, 1500); }
 function titleSrc() { var u = imgOf('bg', 'titel'); if (u) return u; if (!MEDIA_OK) { try { u = localStorage.getItem('am_titel'); } catch (e) {} if (u) return u; return 'PH'; } return TITLEIMG; }
+var HANDOFF_SAVE = null;
 function boot() {
+  var mh = /[?&]mh=([^&]+)/.exec(location.search), ms = /[?&]s=([^&]+)/.exec(location.search);
+  if (mh) {
+    history.replaceState(null, '', location.pathname);
+    fetch(SB.url + '/auth/v1/verify', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'magiclink', token_hash: decodeURIComponent(mh[1]) }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) { if (x.ok && x.j && x.j.access_token) { sessSave(x.j); HANDOFF_SAVE = ms ? decodeURIComponent(ms[1]) : null; } else HANDOFF_SAVE = 'ERR'; boot0(); }, function () { HANDOFF_SAVE = 'ERR'; boot0(); });
+    return;
+  }
+  boot0();
+}
+function boot0() {
   sessLoad();
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
   loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
   if (back && back.error) toast(back.error, true);
+  if (HANDOFF_SAVE === 'ERR') { HANDOFF_SAVE = null; toast('Der QR-Code ist abgelaufen oder wurde schon benutzt. Erzeuge am Tablet einen neuen.', true); }
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
     loadUser().then(function () { return profileReady(); }).then(function (ok) {
       if (back && ok) toast('Willkommen, ' + ME.vorname + '!');
       refreshHome();
+      if (ok && HANDOFF_SAVE) { var hs = HANDOFF_SAVE; HANDOFF_SAVE = null; toast('Willkommen zurück – dein Spiel wird geladen.'); loadSave(hs); return; }
       if (ok && LAST_INTENT) { var i = LAST_INTENT; LAST_INTENT = null; if (i === 'new') startNew(); else startLoad(); }
     }).catch(function (e) { if (e && (e.status === 401 || e.status === 403)) authSignOut(); refreshHome(); });
   } else refreshHome();
@@ -319,7 +333,9 @@ function mailPortrait(from, size) { var h = 0; for (var i = 0; i < from.length; 
 function levelOf(xp) { return MGR.levelOf(xp || 0); }
 /* ---------- Vollbild */
 function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-function fsBtn(cls) { return '<button class="icbtn fsb ' + (cls || '') + '" onclick="toggleFs()" title="Vollbild">' + (fsOn() ? '🗗' : '⛶') + '</button>'; }
+var ICO = (function () { var w = function (p) { return '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
+  return { fs: w('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'), fsx: w('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'), save: w('<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><rect x="7" y="13" width="10" height="6" rx="1"/>'), power: w('<path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>'), gear: w('<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>') }; })();
+function fsBtn(cls) { return '<button class="icbtn fsb ' + (cls || '') + '" onclick="toggleFs()" title="Vollbild">' + (fsOn() ? ICO.fsx : ICO.fs) + '</button>'; }
 function toggleFs() {
   var d = document, el = d.documentElement;
   try {
@@ -327,7 +343,7 @@ function toggleFs() {
     else { var r = (el.requestFullscreen || el.webkitRequestFullscreen); if (r) { var pr = r.call(el); if (pr && pr.catch) pr.catch(function () { toast('Vollbild wird von deinem Browser hier nicht erlaubt.', true); }); } else toast('Vollbild wird von deinem Browser nicht unterstützt.', true); }
   } catch (e) { toast('Vollbild wird von deinem Browser hier nicht erlaubt.', true); }
 }
-document.addEventListener('fullscreenchange', function () { document.querySelectorAll('.fsb').forEach(function (b) { b.textContent = fsOn() ? '🗗' : '⛶'; }); });
+document.addEventListener('fullscreenchange', function () { document.querySelectorAll('.fsb').forEach(function (b) { b.innerHTML = fsOn() ? ICO.fsx : ICO.fs; }); });
 /* ---------- Anmeldung */
 var BYEARS = (function () { var y = new Date().getFullYear(), o = ''; for (var i = y - 16; i >= y - 90; i--) o += '<option value="' + i + '">' + i + '</option>'; return o; })();
 function consentHTML() {

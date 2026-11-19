@@ -54,7 +54,7 @@ function simRowHTML() {
   if (V.matchToday) { var m = V.matchToday; return '<span class="small muted">Heute: ' + esc(m.label) + ' ' + (m.home === false ? 'bei ' : 'gegen ') + esc(m.opp) + '</span><button class="md" onclick="matchDay()">⚽ MatchDay</button>'; }
   var bl = V.blockMails ? '<button class="btn-r" title="' + V.blockMails + ' Nachricht' + (V.blockMails > 1 ? 'en' : '') + ' beantworten" onclick="mailJump()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><svg width="20" height="15" viewBox="0 0 20 15"><rect x="1" y="1" width="18" height="13" rx="2" fill="#fff"/><path d="M1.5 2 L10 8.5 L18.5 2" fill="none" stroke="#e25c5c" stroke-width="2"/></svg><b>' + V.blockMails + '</b></button>' : '';
   var tr = V.trainToday ? '<button class="btn-r" onclick="trainPop()">🏃 Training festlegen</button>' : '';
-  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">💾</button><button class="icbtn" title="Beenden" onclick="quitPop()">⏻</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">⚙️</button></span>';
+  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button></span>';
 }
 function navHTML(extra) {
   var grp = groupOf(ST.tab);
@@ -117,7 +117,7 @@ function openMails() { return V && V.mails ? V.mails.filter(function (m) { retur
 function featNew(k) { if (!k || !S || !has(k)) return false; if (!S.featSeen) { S.featSeen = {}; GROUPS.forEach(function (g) { (g[2] || []).forEach(function (x) { if (x[2] && has(x[2])) S.featSeen[x[2]] = 1; }); }); } return !S.featSeen[k]; }
 // Perl-Effekt: ein langsamer Lichtschimmer, der ab und zu quer über alle Boxen zieht
 function sheen() {
-  if (ST.screen !== 'game' || document.visibilityState !== 'visible' || document.querySelector('.sheen')) return;
+  if (LITE || ST.screen !== 'game' || document.visibilityState !== 'visible' || document.querySelector('.sheen')) return;
   var el = document.createElement('div'); el.className = 'sheen';
   el.style.setProperty('--ang', (95 + Math.random() * 50).toFixed(0) + 'deg'); el.style.setProperty('--y0', (Math.random() * 50 - 25).toFixed(0) + '%');
   if (Math.random() < 0.5) el.style.animationDirection = 'reverse';

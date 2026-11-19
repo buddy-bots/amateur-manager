@@ -1009,7 +1009,7 @@ function liveAnimStart(L) {
     x.clearRect(0, 0, W, H); var pr = Math.max(5, Math.min(9, W / 34));
     LANIM.P.forEach(function (p, i) { if (!frz) { var sh = (B.x - 50) * 0.6, tx = clampN(p.bx + sh + Math.sin(tm * 1.3 + i) * 5, 2, 98), ty = clampN(p.by + (B.y - p.by) * 0.28 + Math.cos(tm * 1.1 + i * 1.7) * 6, 3, 97); if (i % 11 === 0) { tx = p.bx + (p.home ? Math.max(0, (B.x - 70) * 0.1) : Math.min(0, (B.x - 30) * 0.1)); ty = clampN(50 + (B.y - 50) * 0.3, 30, 70); } p.x += (tx - p.x) * 0.06; p.y += (ty - p.y) * 0.06; } var q = map(p.x, p.y); x.beginPath(); x.arc(q[0], q[1], pr, 0, 7); x.fillStyle = p.home ? '#111' : '#e03030'; x.fill(); x.lineWidth = 1.6; x.strokeStyle = p.home ? '#fff' : '#ffd0d0'; x.stroke(); });
     var bq = map(B.x, B.y); try { ballIcon(x, bq[0], bq[1], 6); } catch (e) { x.beginPath(); x.arc(bq[0], bq[1], 5, 0, 7); x.fillStyle = '#fff'; x.fill(); }
-    LANIM.raf = requestAnimationFrame(frame);
+    LANIM.raf = LITE ? setTimeout(function () { requestAnimationFrame(frame); }, 33) : requestAnimationFrame(frame);
   })(0);
 }
 function clampN(v, a, b) { return Math.max(a, Math.min(b, v)); }

@@ -688,6 +688,16 @@ body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 .verbadge{top:16px!important;left:16px!important;padding:6px!important}.fsstart{top:16px!important;right:16px!important}
 .tbtns{gap:8px!important}.tbtns button{padding:9px 18px!important;font-size:13px!important}
 #pop.wt .spoff .big{font-weight:900!important;text-shadow:0 1px 0 rgba(0,0,0,.12)}
+
+/* Tablet & Handy: leichtere Darstellung (flüssiger) */
+html.lite *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html.lite .sheen{display:none!important}
+html.lite #app .box{box-shadow:0 4px 14px rgba(0,0,0,.35)!important}
+html.lite .hvon .box:hover,html.lite .hvon .item:hover,html.lite .kpi:hover,html.lite .cday:hover{transform:none!important}
+html.lite #pop.wt.navpop,html.lite #pop.sgpop,html.lite .pop.wt.navpop{background:rgba(255,255,255,.95)!important}
+body.gbg{background:transparent!important}
+.icbtn .ico{display:block;margin:auto}.icbtn{line-height:0}
+.adrow2>*{min-width:0}.adtile{min-width:0;overflow:hidden;gap:7px!important;padding:8px 9px!important}.adtile .adtx{min-width:0}.adtile b{white-space:normal;overflow-wrap:anywhere}.adtile .adic{flex:none;width:30px;height:30px;font-size:18px}
 </style>
 </head>
 <body>
@@ -698,6 +708,7 @@ body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 <script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v25.3.0';</script>
 <script>
 
+var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
 /* ===================================================================== Server-Anbindung (Supabase)
  * Login (E-Mail, Google, Passwort vergessen), Datenbank-Zugriffe und Spiel-Server.
  * Ohne externe Bibliothek: alles über die offizielle REST-Schnittstelle.
@@ -924,7 +935,7 @@ var API = {
     return game('deleteAccount', { confirm: String(confirm || '').trim().toUpperCase() }).then(function () { authSignOut(); return { ok: true }; });
   },
   apiWappen: function () { return Promise.resolve({ ok: true, w: {} }); },
-  apiHandoff: function () { return Promise.resolve({ ok: false, error: 'Auf dem Handy einfach mit Google oder E-Mail anmelden.' }); },
+  apiHandoff: function () { return game('handoff', {}).then(function (r) { return { ok: true, url: location.origin + location.pathname + '?mh=' + encodeURIComponent(r.hash) + (SAVEID ? '&s=' + encodeURIComponent(SAVEID) : '') }; }); },
   apiHandoffUse: function () { return Promise.resolve({ ok: false, error: 'Bitte mit Google oder E-Mail anmelden.' }); }
 };
 function call(fn) {
@@ -1094,7 +1105,7 @@ function pop(html, opts) {
   if (keepLeft != null) { p.style.left = keepLeft; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   else if (px != null) { var pw = p.offsetWidth; p.style.left = Math.max(8, Math.min(document.documentElement.clientWidth - pw - 8, px - pw / 2)) + 'px'; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   if (!opts.lock) $('#ov').onclick = closePop;
-  var f = p.querySelector('input'); if (f && !opts.nofocus) try { f.focus({ preventScroll: true }); } catch (e) {}
+  var f = p.querySelector('input'); if (f && !opts.nofocus && !LITE && !(navigator.maxTouchPoints > 0)) try { f.focus({ preventScroll: true }); } catch (e) {}
   return p;
 }
 function closePop() { document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
@@ -1202,18 +1213,32 @@ var MEDIA_OK = false;
 function popRecenter() { var p = $('#pop'); if (!p || !document.body.classList.contains('intro')) return; var vh = window.innerHeight || 800, ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16), ph = p.offsetHeight; p.style.top = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)) + 'px'; }
 function preloadBg() { var m = (D && D.imgs && D.imgs.bg) || {}, ks = Object.keys(m).filter(function (k) { return k !== 'titel'; }), i = 0; var step = function () { if (i >= ks.length) return; var im = new Image(); im.onload = im.onerror = function () { setTimeout(step, 50); }; im.src = imgOf('bg', ks[i++]); }; setTimeout(step, 1500); }
 function titleSrc() { var u = imgOf('bg', 'titel'); if (u) return u; if (!MEDIA_OK) { try { u = localStorage.getItem('am_titel'); } catch (e) {} if (u) return u; return 'PH'; } return TITLEIMG; }
+var HANDOFF_SAVE = null;
 function boot() {
+  var mh = /[?&]mh=([^&]+)/.exec(location.search), ms = /[?&]s=([^&]+)/.exec(location.search);
+  if (mh) {
+    history.replaceState(null, '', location.pathname);
+    fetch(SB.url + '/auth/v1/verify', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'magiclink', token_hash: decodeURIComponent(mh[1]) }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) { if (x.ok && x.j && x.j.access_token) { sessSave(x.j); HANDOFF_SAVE = ms ? decodeURIComponent(ms[1]) : null; } else HANDOFF_SAVE = 'ERR'; boot0(); }, function () { HANDOFF_SAVE = 'ERR'; boot0(); });
+    return;
+  }
+  boot0();
+}
+function boot0() {
   sessLoad();
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
   loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
   if (back && back.error) toast(back.error, true);
+  if (HANDOFF_SAVE === 'ERR') { HANDOFF_SAVE = null; toast('Der QR-Code ist abgelaufen oder wurde schon benutzt. Erzeuge am Tablet einen neuen.', true); }
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
     loadUser().then(function () { return profileReady(); }).then(function (ok) {
       if (back && ok) toast('Willkommen, ' + ME.vorname + '!');
       refreshHome();
+      if (ok && HANDOFF_SAVE) { var hs = HANDOFF_SAVE; HANDOFF_SAVE = null; toast('Willkommen zurück – dein Spiel wird geladen.'); loadSave(hs); return; }
       if (ok && LAST_INTENT) { var i = LAST_INTENT; LAST_INTENT = null; if (i === 'new') startNew(); else startLoad(); }
     }).catch(function (e) { if (e && (e.status === 401 || e.status === 403)) authSignOut(); refreshHome(); });
   } else refreshHome();
@@ -1278,7 +1303,9 @@ function mailPortrait(from, size) { var h = 0; for (var i = 0; i < from.length; 
 function levelOf(xp) { return MGR.levelOf(xp || 0); }
 /* ---------- Vollbild */
 function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-function fsBtn(cls) { return '<button class="icbtn fsb ' + (cls || '') + '" onclick="toggleFs()" title="Vollbild">' + (fsOn() ? '🗗' : '⛶') + '</button>'; }
+var ICO = (function () { var w = function (p) { return '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
+  return { fs: w('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'), fsx: w('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'), save: w('<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><rect x="7" y="13" width="10" height="6" rx="1"/>'), power: w('<path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>'), gear: w('<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>') }; })();
+function fsBtn(cls) { return '<button class="icbtn fsb ' + (cls || '') + '" onclick="toggleFs()" title="Vollbild">' + (fsOn() ? ICO.fsx : ICO.fs) + '</button>'; }
 function toggleFs() {
   var d = document, el = d.documentElement;
   try {
@@ -1286,7 +1313,7 @@ function toggleFs() {
     else { var r = (el.requestFullscreen || el.webkitRequestFullscreen); if (r) { var pr = r.call(el); if (pr && pr.catch) pr.catch(function () { toast('Vollbild wird von deinem Browser hier nicht erlaubt.', true); }); } else toast('Vollbild wird von deinem Browser nicht unterstützt.', true); }
   } catch (e) { toast('Vollbild wird von deinem Browser hier nicht erlaubt.', true); }
 }
-document.addEventListener('fullscreenchange', function () { document.querySelectorAll('.fsb').forEach(function (b) { b.textContent = fsOn() ? '🗗' : '⛶'; }); });
+document.addEventListener('fullscreenchange', function () { document.querySelectorAll('.fsb').forEach(function (b) { b.innerHTML = fsOn() ? ICO.fsx : ICO.fs; }); });
 /* ---------- Anmeldung */
 var BYEARS = (function () { var y = new Date().getFullYear(), o = ''; for (var i = y - 16; i >= y - 90; i--) o += '<option value="' + i + '">' + i + '</option>'; return o; })();
 function consentHTML() {
@@ -1510,7 +1537,7 @@ function simRowHTML() {
   if (V.matchToday) { var m = V.matchToday; return '<span class="small muted">Heute: ' + esc(m.label) + ' ' + (m.home === false ? 'bei ' : 'gegen ') + esc(m.opp) + '</span><button class="md" onclick="matchDay()">⚽ MatchDay</button>'; }
   var bl = V.blockMails ? '<button class="btn-r" title="' + V.blockMails + ' Nachricht' + (V.blockMails > 1 ? 'en' : '') + ' beantworten" onclick="mailJump()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><svg width="20" height="15" viewBox="0 0 20 15"><rect x="1" y="1" width="18" height="13" rx="2" fill="#fff"/><path d="M1.5 2 L10 8.5 L18.5 2" fill="none" stroke="#e25c5c" stroke-width="2"/></svg><b>' + V.blockMails + '</b></button>' : '';
   var tr = V.trainToday ? '<button class="btn-r" onclick="trainPop()">🏃 Training festlegen</button>' : '';
-  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">💾</button><button class="icbtn" title="Beenden" onclick="quitPop()">⏻</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">⚙️</button></span>';
+  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button></span>';
 }
 function navHTML(extra) {
   var grp = groupOf(ST.tab);
@@ -1573,7 +1600,7 @@ function openMails() { return V && V.mails ? V.mails.filter(function (m) { retur
 function featNew(k) { if (!k || !S || !has(k)) return false; if (!S.featSeen) { S.featSeen = {}; GROUPS.forEach(function (g) { (g[2] || []).forEach(function (x) { if (x[2] && has(x[2])) S.featSeen[x[2]] = 1; }); }); } return !S.featSeen[k]; }
 // Perl-Effekt: ein langsamer Lichtschimmer, der ab und zu quer über alle Boxen zieht
 function sheen() {
-  if (ST.screen !== 'game' || document.visibilityState !== 'visible' || document.querySelector('.sheen')) return;
+  if (LITE || ST.screen !== 'game' || document.visibilityState !== 'visible' || document.querySelector('.sheen')) return;
   var el = document.createElement('div'); el.className = 'sheen';
   el.style.setProperty('--ang', (95 + Math.random() * 50).toFixed(0) + 'deg'); el.style.setProperty('--y0', (Math.random() * 50 - 25).toFixed(0) + '%');
   if (Math.random() < 0.5) el.style.animationDirection = 'reverse';
@@ -2151,7 +2178,7 @@ function qrFill() { var el = $('#qrtile'); if (el && QRC.svg) el.innerHTML = QRC
 function qrHover() { if (S && DIRTY) save(true); }
 function qrPop() {
   if (!TOKEN) return toast('Erst einloggen.', true);
-  var show = function () { pop('<div style="text-align:center"><h2 style="padding:0">📱 Auf dem Handy weiterspielen</h2><div class="small muted" style="margin:6px 0 12px">Scanne den Code mit der Handy-Kamera – dein Spiel wird direkt geladen, ohne Login. Der Code gilt 15 Minuten und nur einmal.</div><div style="display:inline-block;padding:10px;background:#fff;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.12)">' + QRG.svg(QRC.url, 230, '#111', '#fff') + '</div><div class="xs muted" style="margin-top:10px">Tipp: Am Handy das Gerät ins Querformat drehen.</div><button style="margin-top:10px" onclick="QRC.url=null;qrRefresh(true);closePop();setTimeout(qrPop,900)">🔄 Neuen Code erzeugen</button></div>', { atx: true }); };
+  var show = function () { pop('<div style="text-align:center"><h2 style="padding:0">📱 Auf dem Handy weiterspielen</h2><div class="small muted" style="margin:6px 0 12px">Scanne den Code mit der Handy-Kamera – dein Spiel wird direkt geladen, ohne Login. Der Code gilt eine Stunde und nur einmal – zeig ihn niemandem.</div><div style="display:inline-block;padding:10px;background:#fff;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.12)">' + QRG.svg(QRC.url, 230, '#111', '#fff') + '</div><div class="xs muted" style="margin-top:10px">Tipp: Am Handy das Gerät ins Querformat drehen.</div><button style="margin-top:10px" onclick="QRC.url=null;qrRefresh(true);closePop();setTimeout(qrPop,900)">🔄 Neuen Code erzeugen</button></div>', { atx: true }); };
   var go2 = function () { if (QRC.url && Date.now() - QRC.t < 12 * 60000) show(); else { loading(true); call('apiHandoff', TOKEN).then(function (r) { loading(false); if (!r || !r.ok) return toast((r && r.error) || 'Fehler', true); QRC.url = r.url; QRC.t = Date.now(); QRC.svg = QRG.svg(r.url, 92, '#111', 'none'); qrFill(); show(); }).catch(function (e) { loading(false); toast(String(e), true); }); } };
   if (S && DIRTY) save(true).then(go2, go2); else go2();
 }
@@ -2239,7 +2266,7 @@ function mgrSide() {
   var L = V.lang || [];
   if (lockP) h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🗣️ Sprachen</b><span class="xs muted">🔒 ab Level ' + MGR.featLvl('privat') + '</span></div></div>'; else h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🗣️ Sprachen</b><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'manager\')">verwalten</a></div><div class="xs" style="margin-top:4px">' + flagImg('de') + ' Deutsch · Muttersprache</div>' + L.map(function (x) { return '<div class="row sp xs" style="margin-top:4px;gap:6px"><span>' + flagImg(FLC[x.k]) + ' ' + esc(x.n) + ' · ' + (CEFR[x.lvl] || '–') + '</span>' + (x.lvl >= 6 ? '<span>✔</span>' : x.exam ? '<button class="sm' + (x.block ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.block ? 'disabled' : '') + ' onclick="act(\'langExam\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.block ? '⏳ ' + dFull(x.block).slice(0, 6) : '🎓 Prüfung') + '</button>' : '<button class="sm' + (x.done ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.done ? 'disabled title="Diese Woche schon geübt"' : '') + ' onclick="act(\'langAsk\',{k:\'' + x.k + '\'},{quiet:true})">' + (x.done ? '✓ geübt' : '📖 Lernen') + '</button>') + '</div>'; }).join('') + '</div>';
   var HB = V.hobbies || [], myH = (V.hobO || []).map(function (k) { return HB.filter(function (x) { return x.k === k; })[0]; }).filter(Boolean);
-  h += '<div style="margin-top:10px"><div class="row sp"><b class="xs">🎯 Hobbys</b><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'manager\')">verwalten</a></div>' + (myH.length ? myH.map(function (x) { return '<div class="row sp xs" style="margin-top:4px;gap:6px"><span>' + x.ic + ' ' + esc(x.n) + ' · ' + x.pct + ' %</span><button class="sm' + (x.done ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.done ? 'disabled' : '') + ' onclick="act(\'hobbyDo\',{k:\'' + x.k + '\'})">' + (x.done ? '✓' : 'Hingehen') + '</button></div>'; }).join('') : '<div class="xs muted" style="margin-top:4px">Noch kein Hobby.</div>') + '</div>';
+  if (lockP) h += '<div style="margin-top:8px"><div class="row sp"><b class="xs">🎯 Hobbys</b><span class="xs muted">🔒 ab Level ' + MGR.featLvl('privat') + '</span></div></div>'; else h += '<div style="margin-top:10px"><div class="row sp"><b class="xs">🎯 Hobbys</b><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'manager\')">verwalten</a></div>' + (myH.length ? myH.map(function (x) { return '<div class="row sp xs" style="margin-top:4px;gap:6px"><span>' + x.ic + ' ' + esc(x.n) + ' · ' + x.pct + ' %</span><button class="sm' + (x.done ? ' done' : ' pri') + '" style="padding:1px 7px;font-size:10px;line-height:1.4;min-height:0;width:auto" ' + (x.done ? 'disabled' : '') + ' onclick="act(\'hobbyDo\',{k:\'' + x.k + '\'})">' + (x.done ? '✓' : 'Hingehen') + '</button></div>'; }).join('') : '<div class="xs muted" style="margin-top:4px">Noch kein Hobby.</div>') + '</div>';
   return h + '</div>';
 }
 function clubSide() {
@@ -4623,7 +4650,7 @@ function liveAnimStart(L) {
     x.clearRect(0, 0, W, H); var pr = Math.max(5, Math.min(9, W / 34));
     LANIM.P.forEach(function (p, i) { if (!frz) { var sh = (B.x - 50) * 0.6, tx = clampN(p.bx + sh + Math.sin(tm * 1.3 + i) * 5, 2, 98), ty = clampN(p.by + (B.y - p.by) * 0.28 + Math.cos(tm * 1.1 + i * 1.7) * 6, 3, 97); if (i % 11 === 0) { tx = p.bx + (p.home ? Math.max(0, (B.x - 70) * 0.1) : Math.min(0, (B.x - 30) * 0.1)); ty = clampN(50 + (B.y - 50) * 0.3, 30, 70); } p.x += (tx - p.x) * 0.06; p.y += (ty - p.y) * 0.06; } var q = map(p.x, p.y); x.beginPath(); x.arc(q[0], q[1], pr, 0, 7); x.fillStyle = p.home ? '#111' : '#e03030'; x.fill(); x.lineWidth = 1.6; x.strokeStyle = p.home ? '#fff' : '#ffd0d0'; x.stroke(); });
     var bq = map(B.x, B.y); try { ballIcon(x, bq[0], bq[1], 6); } catch (e) { x.beginPath(); x.arc(bq[0], bq[1], 5, 0, 7); x.fillStyle = '#fff'; x.fill(); }
-    LANIM.raf = requestAnimationFrame(frame);
+    LANIM.raf = LITE ? setTimeout(function () { requestAnimationFrame(frame); }, 33) : requestAnimationFrame(frame);
   })(0);
 }
 function clampN(v, a, b) { return Math.max(a, Math.min(b, v)); }

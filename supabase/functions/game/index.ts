@@ -152,6 +152,14 @@ async function handle(req: Request, userId: string, body: any) {
   }
   if (!ready) throw new HttpError(403, 'Bitte zuerst das Profil vervollständigen.');
 
+  if (op === 'handoff') {
+    // Einmal-Login für das Handy: Supabase erzeugt einen Magic-Link-Token, ohne eine Mail zu schicken
+    const { data: u, error: ue } = await admin.auth.admin.getUserById(userId);
+    if (ue || !u?.user?.email) throw new HttpError(400, 'Für dieses Konto ist kein Handy-Login möglich.');
+    const { data: lk, error: le } = await admin.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
+    if (le || !lk?.properties?.hashed_token) throw new HttpError(500, 'Code konnte nicht erstellt werden.');
+    return { ok: true, hash: lk.properties.hashed_token };
+  }
   if (op === 'new') {
     const { count } = await admin.from('saves').select('id', { count: 'exact', head: true }).eq('user_id', userId);
     if ((count || 0) >= MAX_SAVES) throw new HttpError(400, 'Maximal ' + MAX_SAVES + ' Spielstände – bitte erst einen löschen.');

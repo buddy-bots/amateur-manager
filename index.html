@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Amateur Manager</title>
 <meta name="description" content="Der Fußballmanager für den Amateurfußball – übernimm deinen Verein bis hinunter zur Kreisliga D.">
+<link rel="preconnect" href="https://wnzrakcsfwxsckrucfan.supabase.co" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--gruen:#8fc852;--g:#8fc852;--r:#e25c5c;--y:#f0c24b;--o:#f0954b;--b:#6fb3e6;--t:#f2f4f0;--m:#a3aa9f;--flaeche:rgba(255,255,255,.055);--flaeche2:rgba(255,255,255,.09);--linie:rgba(255,255,255,.07)}
@@ -682,6 +683,11 @@ body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 #pop.sgpop{background:rgba(255,255,255,.86)!important;backdrop-filter:blur(12px)}#pop.sgpop .box{background:rgba(255,255,255,.55)!important}
 .sgr{grid-template-columns:40px minmax(0,1fr) 54px 86px 72px 40px!important;background:rgba(244,247,241,.75)!important}.sgr .stars{justify-self:start}
 .trcard{background:rgba(255,255,255,.6)!important;backdrop-filter:blur(6px)}
+
+/* Hauptmenü-Feinschliff */
+.verbadge{top:16px!important;left:16px!important;padding:6px!important}.fsstart{top:16px!important;right:16px!important}
+.tbtns{gap:8px!important}.tbtns button{padding:9px 18px!important;font-size:13px!important}
+#pop.wt .spoff .big{font-weight:900!important;text-shadow:0 1px 0 rgba(0,0,0,.12)}
 </style>
 </head>
 <body>
@@ -1193,13 +1199,15 @@ function teamColor(n) {
 
 /* ===================================================================== Startseite */
 var MEDIA_OK = false;
+function popRecenter() { var p = $('#pop'); if (!p || !document.body.classList.contains('intro')) return; var vh = window.innerHeight || 800, ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16), ph = p.offsetHeight; p.style.top = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)) + 'px'; }
+function preloadBg() { var m = (D && D.imgs && D.imgs.bg) || {}, ks = Object.keys(m).filter(function (k) { return k !== 'titel'; }), i = 0; var step = function () { if (i >= ks.length) return; var im = new Image(); im.onload = im.onerror = function () { setTimeout(step, 50); }; im.src = imgOf('bg', ks[i++]); }; setTimeout(step, 1500); }
 function titleSrc() { var u = imgOf('bg', 'titel'); if (u) return u; if (!MEDIA_OK) { try { u = localStorage.getItem('am_titel'); } catch (e) {} if (u) return u; return 'PH'; } return TITLEIMG; }
 function boot() {
   sessLoad();
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
-  loadMedia().then(function () { MEDIA_OK = true; var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
+  loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
   if (back && back.error) toast(back.error, true);
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
@@ -1622,7 +1630,6 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (V.jokNew) { act('jokSeen', {}, { quiet: true, norender: true }); try { SND.joker(); } catch (e) {} pop('<div class="evw" style="text-align:center"><div class="jokcard">🃏</div><h2>Joker erhalten!</h2><div class="small">Für deinen Einsatz bei Fans und Social Media. Direkt nach einem Spiel kannst du damit in der Übersicht die Zeit zurückdrehen und das Spiel wiederholen.</div><button class="pri" style="width:100%;margin-top:12px" onclick="closePop();render(true)">Super!</button></div>', { lock: true }); return; }
   if (V.warnPop) return warnPopShow();
   if (V.inhPop) return inhPopShow();
-  if (V.daily && V.daily.open && !V.live && !V.seasonRep && !V.pressPending && !V.spNeed && !V.kitNeed && !V.needAlloc) return dailyPop();
   if (V.jokIntro) return jokIntroPop();
   if (V.starIntro) return starIntroPop();
   if (V.sellPop) return sellPopShow();
@@ -1658,6 +1665,7 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (V.priv && V.priv.fam && V.priv.fam.pend) return famNamePop();
   if (V.trainToday) return trainPop();
   if (V.prep && V.prep.info) return prepInfoPop();
+  if (V.daily && V.daily.open && !V.live && !document.body.classList.contains('intro') && !$('#pop')) return dailyPop();
 }
 function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (SIMRUN) return;
@@ -1695,6 +1703,7 @@ function pressDraw() {
   var Q = V.press[PRESS.step], el = $('#pressQ'); if (!el) return;
   el.innerHTML = '<div class="row sp"><span class="xs muted">Frage ' + (PRESS.step + 1) + ' von ' + V.press.length + '</span><span class="xs muted">Lokalpresse · Radio · Vereins-TV</span></div><h2 style="padding:0;margin:6px 0 12px;animation:fxin .3s">„' + esc(Q[0]) + '“</h2><div class="pqa">' +
     Q[1].map(function (o, i) { return '<button style="text-align:left;padding:12px;min-height:58px" onclick="pressAns(' + i + ')">' + esc(o[0]) + '</button>'; }).join('') + '</div>';
+  popRecenter();
 }
 function pressAns(i) {
   if (PRESS.busy) return; PRESS.ans.push(i); SND.click();
@@ -1726,7 +1735,7 @@ function negoCard(kind, o, i, head, valHtml, acceptJs, mcol) {
     '<div style="border-top:1px solid var(--linie);padding-top:8px;margin-top:2px"><div class="xs muted" style="margin-bottom:4px">' + (left > 0 ? 'Verhandeln – jeder Klick ist ein Versuch (' + left + ' übrig)' : 'Keine Verhandlung mehr möglich') + '</div><div class="row" style="gap:5px">' + b('y', -1, '− Jahr') + b('y', 1, '+ Jahr') + '</div><div class="row" style="gap:5px;margin-top:5px">' + b('m', 1, moreL) + (kind === 'pv' && !o.army ? b('m', 2, '＋ Kaufoptionen') : '') + '</div></div>' +
     '<button class="pri" style="margin-top:4px" onclick="' + acceptJs + '">Unterschreiben</button></div>';
 }
-function amtCols(O) { var live = O.filter(function (o) { return !o.gone; }).map(function (o) { return o.amt; }).sort(function (a, b) { return a - b; }); return function (a) { if (live.length < 2) return 'var(--g)'; return a === live[live.length - 1] ? 'var(--g)' : a === live[0] ? 'var(--r)' : 'var(--y)'; }; }
+function amtCols(O) { var live = O.filter(function (o) { return !o.gone; }).map(function (o) { return o.amt; }).sort(function (a, b) { return a - b; }); return function (a) { if (live.length < 2) return '#3f9a1c'; return a === live[live.length - 1] ? '#3f9a1c' : a === live[0] ? '#d43c3c' : '#c28400'; }; }
 function spPop(msg0) {
   var O = V.spOffers || [], renew = O.some(function (o) { return o.renew; });
   var h = '<div class="row" style="gap:10px"><span style="font-size:30px">🤝</span><div><h2 style="padding:0;margin:0">' + (renew ? 'Hauptsponsor: Verlängerung' : 'Neuer Hauptsponsor') + '</h2><div class="small muted">Jeder Sponsor nennt Summe und Laufzeit. Jeder Klick auf − Jahr, + Jahr oder Mehr Geld ist ein Verhandlungsversuch (max. 3) – die Laune sinkt. Scheitern zwei Verhandlungen, unterschreibst du automatisch beim dritten.</div></div></div>' + (msg0 ? '<div class="hint">' + esc(msg0) + '</div>' : '') +
@@ -4760,7 +4769,7 @@ function dailyTake(el) {
 function dailyShow(el) {
   V = MGR.view(S, D); var pz = V.dailyLast || {}; el.classList.add('reveal'); el.onclick = null; el.querySelector('.dic').textContent = pz.ic || '🎁'; el.querySelector('b').textContent = pz.txt || '';
   try { SND.coin(); } catch (e) {}
-  setTimeout(function () { closePop(); render(); setTimeout(function () { var tg = pz.t === 'joker' ? '.jokchip' : pz.t === 'star' ? '.stchip' : pz.t === 'club' ? '.kpi.fin' : pz.t === 'xp' ? '.lvbox' : pz.t === 'priv' ? '#tabs button[data-g="managerG"]' : '#tabs button[data-g="home"]'; SKIPRAIN |= 3; chipFly(tg, pz.ic || '🎁', pz.t === 'joker' ? '+1' : pz.t === 'star' ? '+½' : '+'); }, 150); }, 1300);
+  setTimeout(function () { closePop(); render(true); setTimeout(function () { try { afterUpdate(); } catch (e) {} }, 1200); setTimeout(function () { var tg = pz.t === 'joker' ? '.jokchip' : pz.t === 'star' ? '.stchip' : pz.t === 'club' ? '.kpi.fin' : pz.t === 'xp' ? '.lvbox' : pz.t === 'priv' ? '#tabs button[data-g="managerG"]' : '#tabs button[data-g="home"]'; SKIPRAIN |= 3; chipFly(tg, pz.ic || '🎁', pz.t === 'joker' ? '+1' : pz.t === 'star' ? '+½' : '+'); }, 150); }, 1300);
 }
 
 setInterval(function () { try { if (ST.screen === 'start' && !document.querySelector('#pop')) startScreen(); SAL.at = 0; if ($('#salrk')) loadSalary(true); } catch (e) {} }, 3600000);

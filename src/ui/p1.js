@@ -240,13 +240,15 @@ function teamColor(n) {
 
 /* ===================================================================== Startseite */
 var MEDIA_OK = false;
+function popRecenter() { var p = $('#pop'); if (!p || !document.body.classList.contains('intro')) return; var vh = window.innerHeight || 800, ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16), ph = p.offsetHeight; p.style.top = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)) + 'px'; }
+function preloadBg() { var m = (D && D.imgs && D.imgs.bg) || {}, ks = Object.keys(m).filter(function (k) { return k !== 'titel'; }), i = 0; var step = function () { if (i >= ks.length) return; var im = new Image(); im.onload = im.onerror = function () { setTimeout(step, 50); }; im.src = imgOf('bg', ks[i++]); }; setTimeout(step, 1500); }
 function titleSrc() { var u = imgOf('bg', 'titel'); if (u) return u; if (!MEDIA_OK) { try { u = localStorage.getItem('am_titel'); } catch (e) {} if (u) return u; return 'PH'; } return TITLEIMG; }
 function boot() {
   sessLoad();
   D = MGR.normalize(defaultRaw());
   var back = authFromUrl();
   startScreen();
-  loadMedia().then(function () { MEDIA_OK = true; var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
+  loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
   if (back && back.error) toast(back.error, true);
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {

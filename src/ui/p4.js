@@ -1155,7 +1155,7 @@ function dailyTake(el) {
 function dailyShow(el) {
   V = MGR.view(S, D); var pz = V.dailyLast || {}; el.classList.add('reveal'); el.onclick = null; el.querySelector('.dic').textContent = pz.ic || '🎁'; el.querySelector('b').textContent = pz.txt || '';
   try { SND.coin(); } catch (e) {}
-  setTimeout(function () { closePop(); render(); setTimeout(function () { var tg = pz.t === 'joker' ? '.jokchip' : pz.t === 'star' ? '.stchip' : pz.t === 'club' ? '.kpi.fin' : pz.t === 'xp' ? '.lvbox' : pz.t === 'priv' ? '#tabs button[data-g="managerG"]' : '#tabs button[data-g="home"]'; SKIPRAIN |= 3; chipFly(tg, pz.ic || '🎁', pz.t === 'joker' ? '+1' : pz.t === 'star' ? '+½' : '+'); }, 150); }, 1300);
+  setTimeout(function () { closePop(); render(true); setTimeout(function () { try { afterUpdate(); } catch (e) {} }, 1200); setTimeout(function () { var tg = pz.t === 'joker' ? '.jokchip' : pz.t === 'star' ? '.stchip' : pz.t === 'club' ? '.kpi.fin' : pz.t === 'xp' ? '.lvbox' : pz.t === 'priv' ? '#tabs button[data-g="managerG"]' : '#tabs button[data-g="home"]'; SKIPRAIN |= 3; chipFly(tg, pz.ic || '🎁', pz.t === 'joker' ? '+1' : pz.t === 'star' ? '+½' : '+'); }, 150); }, 1300);
 }
 
 setInterval(function () { try { if (ST.screen === 'start' && !document.querySelector('#pop')) startScreen(); SAL.at = 0; if ($('#salrk')) loadSalary(true); } catch (e) {} }, 3600000);

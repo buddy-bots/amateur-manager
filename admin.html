@@ -354,7 +354,7 @@ function showImg(keep) {
     var shop = (MGR.SHOP || []).map(function (s) { return [s[0], s[2] + ' (' + s[1] + ')']; });
     var stad = Object.keys(MAP).filter(function (k) { return k.indexOf('stad.') === 0; }).map(function (k) { return [k.slice(5), k.slice(5)]; });
     $('#main').innerHTML =
-      '<div class="card"><p class="muted">Klick auf ein Feld oder zieh ein Bild aus deinem Ordner direkt darauf, um es hochzuladen oder zu ersetzen. Bilder werden automatisch verkleinert (max. 2000 px). Änderungen sind sofort im Spiel sichtbar (Seite neu laden).</p></div>' +
+      '<div class="card"><p class="muted">Klick auf ein Feld oder zieh ein Bild aus deinem Ordner direkt darauf, um es hochzuladen oder zu ersetzen. Bilder werden automatisch verkleinert und als WebP gespeichert (Hintergründe max. 1920 px, kleine Bilder max. 900 px). Änderungen sind sofort im Spiel sichtbar (Seite neu laden).</p>' + (function () { var n = Object.keys(MAP).filter(function (k) { return !/\.(webp|gif)$/i.test(MAP[k].path); }).length; return n ? '<p><button class="btn" id="optb" onclick="optimizeAll()">⚡ ' + n + ' ältere Bilder optimieren (schnelleres Laden)</button></p>' : '<p class="muted">✓ Alle Bilder sind optimiert.</p>'; })() + '</div>' +
       grp('Titel- & Popup-Bilder', 'bg', BG) +
       grp('Maskottchen', 'masc', MASC, 'Quadratisch sieht am besten aus.') + grp('Scouting-Tools', 'scout', SCOUT) + grp('Fan-Aktionen', 'fans', FANS) +
       grp('Ausbau & Erweiterungen', 'ausbau', items) + grp('Trainingslager', 'camp', camps) + grp('Privat-Shop', 'priv', shop) +
@@ -384,25 +384,36 @@ document.addEventListener('drop', function (e) {
 });
 window.addEventListener('dragover', function (e) { e.preventDefault(); }); window.addEventListener('drop', function (e) { e.preventDefault(); });
 // Verkleinern (GIFs bleiben unverändert, damit die Animation erhalten bleibt)
-function shrink(file) {
+function maxFor(key) { return /^(bg|hintergrund|kauf|verkauf|rel)\./.test(key) ? 1920 : 900; }
+function optimizeAll() {
+  var ks = Object.keys(MAP).filter(function (k) { return !/\.(webp|gif)$/i.test(MAP[k].path); }), i = 0, b = $('#optb'); if (!ks.length) return;
+  if (b) b.disabled = true;
+  var next = function () {
+    if (i >= ks.length) { toast('Fertig – ' + ks.length + ' Bilder optimiert ✓'); return showImg(true); }
+    var k = ks[i++]; if (b) b.textContent = '⏳ Optimiere ' + i + ' / ' + ks.length + ' …';
+    fetch(mediaUrl(MAP[k].path)).then(function (r) { if (!r.ok) throw new Error('Laden fehlgeschlagen'); return r.blob(); }).then(function (bl) { return upload(k, bl, true); }).then(next, function () { next(); });
+  };
+  next();
+}
+function shrink(file, max) {
   if (file.type === 'image/gif') return Promise.resolve({ blob: file, ext: 'gif', type: 'image/gif' });
   return new Promise(function (res, rej) {
     var img = new Image(); img.onload = function () {
-      var s = Math.min(1, 2000 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      var s = Math.min(1, (max || 1920) / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      var png = false; c.toBlob(function (b) { b ? res({ blob: b, ext: png ? 'png' : 'webp', type: png ? 'image/png' : 'image/webp' }) : rej(new Error('Bild konnte nicht gelesen werden.')); }, png ? 'image/png' : 'image/webp', 0.86);
+      var png = false; c.toBlob(function (b) { b ? res({ blob: b, ext: png ? 'png' : 'webp', type: png ? 'image/png' : 'image/webp' }) : rej(new Error('Bild konnte nicht gelesen werden.')); }, png ? 'image/png' : 'image/webp', 0.82);
     }; img.onerror = function () { rej(new Error('Bild konnte nicht gelesen werden.')); }; img.src = URL.createObjectURL(file);
   });
 }
-function upload(key, file) {
-  toast('Lade hoch …');
-  return shrink(file).then(function (o) {
+function upload(key, file, quiet) {
+  if (!quiet) toast('Lade hoch …');
+  return shrink(file, maxFor(key)).then(function (o) {
     var path = key.replace(/[^\w.-]+/g, '_') + '-' + Date.now() + '.' + o.ext;
     return ensureFresh().then(function () {
       return fetch(SB.url + '/storage/v1/object/media/' + encodeURIComponent(path), { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': o.type }, body: o.blob });
     }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('Upload fehlgeschlagen: ' + t); }); })
       .then(function () { var old = MAP[key]; return rest('media', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: key, path: path, updated_at: new Date().toISOString() } }).then(function () { if (old) removeFile(old.path); }); })
-      .then(function () { toast('Gespeichert ✓'); });
+      .then(function () { if (!quiet) toast('Gespeichert ✓'); MAP[key] = { key: key, path: path }; });
   }).catch(function (e) { toast(e.message, true); });
 }
 function removeFile(path) { return ensureFresh().then(function () { return fetch(SB.url + '/storage/v1/object/media', { method: 'DELETE', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: [path] }) }); }).catch(function () { }); }

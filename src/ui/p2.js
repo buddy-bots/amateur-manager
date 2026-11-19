@@ -174,7 +174,6 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (V.jokNew) { act('jokSeen', {}, { quiet: true, norender: true }); try { SND.joker(); } catch (e) {} pop('<div class="evw" style="text-align:center"><div class="jokcard">🃏</div><h2>Joker erhalten!</h2><div class="small">Für deinen Einsatz bei Fans und Social Media. Direkt nach einem Spiel kannst du damit in der Übersicht die Zeit zurückdrehen und das Spiel wiederholen.</div><button class="pri" style="width:100%;margin-top:12px" onclick="closePop();render(true)">Super!</button></div>', { lock: true }); return; }
   if (V.warnPop) return warnPopShow();
   if (V.inhPop) return inhPopShow();
-  if (V.daily && V.daily.open && !V.live && !V.seasonRep && !V.pressPending && !V.spNeed && !V.kitNeed && !V.needAlloc) return dailyPop();
   if (V.jokIntro) return jokIntroPop();
   if (V.starIntro) return starIntroPop();
   if (V.sellPop) return sellPopShow();
@@ -210,6 +209,7 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (V.priv && V.priv.fam && V.priv.fam.pend) return famNamePop();
   if (V.trainToday) return trainPop();
   if (V.prep && V.prep.info) return prepInfoPop();
+  if (V.daily && V.daily.open && !V.live && !document.body.classList.contains('intro') && !$('#pop')) return dailyPop();
 }
 function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (SIMRUN) return;
@@ -247,6 +247,7 @@ function pressDraw() {
   var Q = V.press[PRESS.step], el = $('#pressQ'); if (!el) return;
   el.innerHTML = '<div class="row sp"><span class="xs muted">Frage ' + (PRESS.step + 1) + ' von ' + V.press.length + '</span><span class="xs muted">Lokalpresse · Radio · Vereins-TV</span></div><h2 style="padding:0;margin:6px 0 12px;animation:fxin .3s">„' + esc(Q[0]) + '“</h2><div class="pqa">' +
     Q[1].map(function (o, i) { return '<button style="text-align:left;padding:12px;min-height:58px" onclick="pressAns(' + i + ')">' + esc(o[0]) + '</button>'; }).join('') + '</div>';
+  popRecenter();
 }
 function pressAns(i) {
   if (PRESS.busy) return; PRESS.ans.push(i); SND.click();
@@ -278,7 +279,7 @@ function negoCard(kind, o, i, head, valHtml, acceptJs, mcol) {
     '<div style="border-top:1px solid var(--linie);padding-top:8px;margin-top:2px"><div class="xs muted" style="margin-bottom:4px">' + (left > 0 ? 'Verhandeln – jeder Klick ist ein Versuch (' + left + ' übrig)' : 'Keine Verhandlung mehr möglich') + '</div><div class="row" style="gap:5px">' + b('y', -1, '− Jahr') + b('y', 1, '+ Jahr') + '</div><div class="row" style="gap:5px;margin-top:5px">' + b('m', 1, moreL) + (kind === 'pv' && !o.army ? b('m', 2, '＋ Kaufoptionen') : '') + '</div></div>' +
     '<button class="pri" style="margin-top:4px" onclick="' + acceptJs + '">Unterschreiben</button></div>';
 }
-function amtCols(O) { var live = O.filter(function (o) { return !o.gone; }).map(function (o) { return o.amt; }).sort(function (a, b) { return a - b; }); return function (a) { if (live.length < 2) return 'var(--g)'; return a === live[live.length - 1] ? 'var(--g)' : a === live[0] ? 'var(--r)' : 'var(--y)'; }; }
+function amtCols(O) { var live = O.filter(function (o) { return !o.gone; }).map(function (o) { return o.amt; }).sort(function (a, b) { return a - b; }); return function (a) { if (live.length < 2) return '#3f9a1c'; return a === live[live.length - 1] ? '#3f9a1c' : a === live[0] ? '#d43c3c' : '#c28400'; }; }
 function spPop(msg0) {
   var O = V.spOffers || [], renew = O.some(function (o) { return o.renew; });
   var h = '<div class="row" style="gap:10px"><span style="font-size:30px">🤝</span><div><h2 style="padding:0;margin:0">' + (renew ? 'Hauptsponsor: Verlängerung' : 'Neuer Hauptsponsor') + '</h2><div class="small muted">Jeder Sponsor nennt Summe und Laufzeit. Jeder Klick auf − Jahr, + Jahr oder Mehr Geld ist ein Verhandlungsversuch (max. 3) – die Laune sinkt. Scheitern zwei Verhandlungen, unterschreibst du automatisch beim dritten.</div></div></div>' + (msg0 ? '<div class="hint">' + esc(msg0) + '</div>' : '') +

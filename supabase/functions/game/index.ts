@@ -57,6 +57,55 @@ async function regFor(teamId: string) {
   return MGR.buildReg(verband, st, teamId);
 }
 
+// Ligendaten aus dem öffentlichen Repo (data/nrw-*.json) in die Datenbank übernehmen.
+// Braucht keinen Schlüssel: Quelle ist nur das eigene Repo, höchstens alle 10 Minuten. Von Hand geänderte Namen bleiben.
+const LIG_RAW = 'https://raw.githubusercontent.com/buddy-bots/amateur-manager/';
+const ligDec = (s: string) => String(s).replace(/&#8203;|​/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/\s+/g, ' ').trim();
+const ligTeam = (s: string) => ligDec(s).replace(/\s+(I|1)$/, '');
+function ligStaffel(n: string, gn: string, vb: string) {
+  let s = ligDec(n).replace(/\bHerren\b/gi, '').replace(/\b20\d\d\/20\d\d\b/g, '').replace(/\b\d\d\/\d\d\b/g, '').replace(/^IGA 20\d\d\s+/i, '').replace(/\s+-\s+/g, ' – ').replace(/\s{2,}/g, ' ').replace(/[\s,–-]+$/, '').trim();
+  const kreis = /^Kreis /.test(gn || '') ? gn.replace(/^Kreis /, '') : '';
+  if (kreis && s.toLowerCase().indexOf(kreis.toLowerCase().slice(0, 6)) < 0) {
+    const m = s.match(/^(Kreisliga [A-D])(.*)$/);
+    let rest = m ? m[2].replace(/^[\s,–-]+/, '').trim() : '';
+    if (/^\d+$/.test(rest)) rest = 'Staffel ' + rest;
+    s = m ? m[1] + ' ' + kreis + (rest ? ', ' + rest : '') : s + ' (' + kreis + ')';
+  }
+  const m2 = !kreis && vb && s.indexOf(vb) < 0 && s.match(/^(Landesliga|Bezirksliga|Westfalenliga)[\s,]*(.*)$/);
+  if (m2 && m2[1] !== 'Westfalenliga') s = m2[1] + ' ' + vb + (m2[2] ? ', ' + m2[2].replace(/ 0(\d)$/, ' $1') : '');
+  else if (m2) s = 'Westfalenliga' + (m2[2] ? ', ' + m2[2] : '');
+  return s.replace(/\s+,/g, ',').trim();
+}
+async function ligenImport(ref: string) {
+  const { data: last } = await admin.from('ligen_staffeln').select('updated_at').order('updated_at', { ascending: false }).limit(1);
+  if (last?.[0] && Date.now() - new Date(last[0].updated_at).getTime() < 600_000) return { status: 'recent', at: last[0].updated_at };
+  const r = /^[0-9a-f]{40}$/.test(ref) ? ref : 'umbau';
+  const res = await fetch(LIG_RAW + r + '/data/nrw-2627.json');
+  if (!res.ok) throw new HttpError(502, 'Ligendatei nicht erreichbar (' + res.status + ').');
+  const d = await res.json();
+  const now = new Date().toISOString(), S: any[] = [], T: any[] = [];
+  for (const v of d.verbaende || []) {
+    const order: string[] = [];
+    for (const s of v.staffeln) if (!order.includes(s.skn)) order.push(s.skn);
+    for (const s of v.staffeln) {
+      S.push({ id: s.id, saison: d.season, verband: v.name, ebene: 5 + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
+      for (const t of s.teams) T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', updated_at: now });
+    }
+  }
+  if (S.length < 50) throw new HttpError(422, 'Ligendatei unvollständig.');
+  const fixS: Record<string, string> = {}, fixT: Record<string, string> = {};
+  for (const [tb, fx] of [['ligen_staffeln', fixS], ['ligen_teams', fixT]] as const) {
+    const { data } = await admin.from(tb).select('id, name').eq('name_fix', true).limit(5000);
+    (data || []).forEach((x: any) => { (fx as any)[x.id] = x.name; });
+  }
+  S.forEach((x) => { x.name_fix = !!fixS[x.id]; if (x.name_fix) x.name = fixS[x.id]; });
+  T.forEach((x) => { x.name_fix = !!fixT[x.id]; if (x.name_fix) x.name = fixT[x.id]; });
+  for (let i = 0; i < S.length; i += 300) { const { error } = await admin.from('ligen_staffeln').upsert(S.slice(i, i + 300), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
+  for (let i = 0; i < T.length; i += 800) { const { error } = await admin.from('ligen_teams').upsert(T.slice(i, i + 800), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
+  Object.keys(ligCache).forEach((k) => delete ligCache[k]);
+  return { status: 'ok', staffeln: S.length, teams: T.length, ref: r };
+}
+
 class HttpError extends Error { constructor(public status: number, msg: string) { super(msg); } }
 
 function cors(origin: string | null) {
@@ -293,6 +342,7 @@ Deno.serve(async (req) => {
     if (text.length > 100_000) throw new HttpError(413, 'Anfrage zu groß.');
     const body = JSON.parse(text || '{}');
     if (body.op === 'handoffClaim') return reply(req, await handoffClaim(String(body.code || '')));
+    if (body.op === 'ligenImport') return reply(req, await ligenImport(String(body.ref || '')));
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const { data: auth } = await admin.auth.getUser(token);
     if (!auth?.user) throw new HttpError(401, 'Bitte neu einloggen.');

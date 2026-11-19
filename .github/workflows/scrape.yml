@@ -26,3 +26,10 @@ jobs:
           git commit -m "Ligadaten von fussball.de aktualisiert" || echo "nichts zu tun"
           git pull --rebase origin umbau
           git push origin HEAD:umbau
+      - name: In Datenbank übernehmen
+        run: |
+          SHA=$(git rev-parse HEAD)
+          curl -sS -X POST "https://wnzrakcsfwxsckrucfan.supabase.co/functions/v1/game" \
+            -H "apikey: sb_publishable_xlzCh6qzM_Ve2r9PpOe5Sg_TlzWswH1" -H "Content-Type: application/json" \
+            -d "{\"op\":\"ligenImport\",\"ref\":\"$SHA\"}" | tee /tmp/imp.json
+          grep -q '"status":"\(ok\|recent\)"' /tmp/imp.json

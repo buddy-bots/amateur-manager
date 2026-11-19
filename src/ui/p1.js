@@ -1,6 +1,7 @@
 /* ===================================================================== Basis */
 var TOKEN = 'supabase'; // frühere Sitzungs-ID, nur noch als Platzhalter für alte Aufrufe
 var RAW = null, D = null, S = null, V = null, ME = null, HOME = null, DIRTY = false, SAVEDXP = 0, LASTY = 120, LASTX = 200, AUTOSAVE = null, SIMRUN = false;
+function RX(t) { return S && S.reg && MGR.rx ? MGR.rx(S, t) : t; }
 function DD() { return S && MGR.dOf ? MGR.dOf(S, D) : D; }
 var NOTE = { levelUp: null };
 var ST = { tab: 'home', boardPage: 0, calMonth: null, ligaLvl: null, md: null, trSeg: 'markt', kSort: 'pos', topSeg: 'lt', igIdx: 0, mailOpen: null, vitLvl: null, screen: 'game' };

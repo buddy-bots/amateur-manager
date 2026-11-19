@@ -138,24 +138,10 @@ function delImg(key) {
 start();
 
 /* ---------- Ligen (echte Staffeln aus fussball.de) */
-var LIGA_SRC = 'https://raw.githubusercontent.com/buddy-bots/amateur-manager/umbau/data/nrw-2627.json';
 var LG = { vb: 'Mittelrhein', eb: 0, st: null };
 function ligDec(s) { return String(s).replace(/&#8203;|​/g, '').replace(/&#(\d+);/g, function (_, n) { return String.fromCharCode(+n); }).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/\s+/g, ' ').trim(); }
-function ligTeam(s) { return ligDec(s).replace(/\s+(I|1)$/, ''); }
-function ligStaffel(n, gn, vb) {
-  var s = ligDec(n).replace(/\bHerren\b/gi, '').replace(/\b20\d\d\/20\d\d\b/g, '').replace(/\b\d\d\/\d\d\b/g, '').replace(/^IGA 20\d\d\s+/i, '').replace(/\s+-\s+/g, ' – ').replace(/\s{2,}/g, ' ').replace(/[\s,–-]+$/, '').trim();
-  var kreis = /^Kreis /.test(gn || '') ? gn.replace(/^Kreis /, '') : '';
-  if (kreis && s.toLowerCase().indexOf(kreis.toLowerCase().slice(0, 6)) < 0) {
-    var m = s.match(/^(Kreisliga [A-D])(.*)$/), rest = m ? m[2].replace(/^[\s,–-]+/, '').trim() : '';
-    if (/^\d+$/.test(rest)) rest = 'Staffel ' + rest;
-    s = m ? m[1] + ' ' + kreis + (rest ? ', ' + rest : '') : s + ' (' + kreis + ')';
-  }
-  var m2 = !kreis && vb && s.indexOf(vb) < 0 && s.match(/^(Landesliga|Bezirksliga)[\s,]*(.*)$/);
-  if (m2) s = m2[1] + ' ' + vb + (m2[2] ? ', ' + m2[2].replace(/ 0(\d)$/, ' $1') : '');
-  return s.replace(/\s+,/g, ',').trim();
-}
 function showLig() {
-  $('#main').innerHTML = '<div class="card"><h3>Echte Ligen (NRW)</h3><p class="muted">Quelle: fussball.de, abgerufen per GitHub Actions („Ligadaten holen“). Mit dem Import landen die Daten in der Datenbank. Von Hand geänderte Namen bleiben beim nächsten Import erhalten.</p>' +
+  $('#main').innerHTML = '<div class="card"><h3>Echte Ligen (NRW)</h3><p class="muted">Quelle: fussball.de, abgerufen per GitHub Actions („Ligadaten holen“). Nach jedem Abruf werden sie automatisch übernommen; der Knopf holt den aktuellen Stand von Hand. Von Hand geänderte Namen bleiben beim nächsten Import erhalten.</p>' +
     '<div class="row"><button class="btn" onclick="ligImport()">Ligendaten importieren</button><span class="muted" id="ligst"></span></div>' +
     '<div class="row"><select id="ligvb" onchange="LG.vb=this.value;LG.eb=0;LG.st=null;ligList()">' + ['Mittelrhein', 'Niederrhein', 'Westfalen'].map(function (v) { return '<option' + (v === LG.vb ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>' +
     '<input id="ligq" placeholder="Mannschaft suchen …" onkeydown="if(event.key===\'Enter\')ligSearch()"><button class="btn" onclick="ligSearch()">Suchen</button></div></div><div id="ligbox"><div class="spin"></div></div>';
@@ -192,27 +178,9 @@ function ligSearch() {
 function ligSaveT(id) { var v = $('#tn_' + id).value.trim(); if (!v) return; rest('ligen_teams?id=eq.' + id, { method: 'PATCH', body: { name: v, name_fix: true } }).then(function () { toast('Gespeichert ✓'); }).catch(function (e) { toast(e.message, true); }); }
 function ligAkt(id, on) { rest('ligen_teams?id=eq.' + id, { method: 'PATCH', body: { aktiv: on } }).then(function () { toast(on ? 'Spielbar ✓' : 'Ausgeblendet ✓'); }).catch(function (e) { toast(e.message, true); }); }
 function ligImport() {
-  var st = $('#ligst'), say = function (t) { st.textContent = t; };
-  say('Lade Daten …');
-  var fixS = {}, fixT = {}, S = [], T = [];
-  fetch(LIGA_SRC + '?t=' + Date.now()).then(function (r) { if (!r.ok) throw new Error('Datei nicht gefunden (' + r.status + ')'); return r.json(); }).then(function (d) {
-    d.verbaende.forEach(function (v) {
-      var order = []; v.staffeln.forEach(function (s) { if (order.indexOf(s.skn) < 0) order.push(s.skn); });
-      v.staffeln.forEach(function (s) {
-        S.push({ id: s.id, saison: d.season, verband: v.name, ebene: 5 + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: new Date().toISOString() });
-        s.teams.forEach(function (t) { T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', updated_at: new Date().toISOString() }); });
-      });
-    });
-    say('Prüfe von Hand geänderte Namen …');
-    return Promise.all([rest('ligen_staffeln?select=id,name&name_fix=eq.true&limit=5000'), rest('ligen_teams?select=id,name&name_fix=eq.true&limit=5000')]);
-  }).then(function (fx) {
-    fx[0].forEach(function (r) { fixS[r.id] = r.name; }); fx[1].forEach(function (r) { fixT[r.id] = r.name; });
-    S.forEach(function (r) { if (fixS[r.id]) { r.name = fixS[r.id]; r.name_fix = true; } else r.name_fix = false; });
-    T.forEach(function (r) { if (fixT[r.id]) { r.name = fixT[r.id]; r.name_fix = true; } else r.name_fix = false; });
-    var jobs = [], i;
-    for (i = 0; i < S.length; i += 200) jobs.push(['ligen_staffeln', S.slice(i, i + 200)]);
-    for (i = 0; i < T.length; i += 500) jobs.push(['ligen_teams', T.slice(i, i + 500)]);
-    var n = 0;
-    return jobs.reduce(function (p, j) { return p.then(function () { say('Schreibe ' + (++n) + ' / ' + jobs.length + ' …'); return rest(j[0] + '?on_conflict=id', { method: 'POST', body: j[1], headers: { Prefer: 'resolution=merge-duplicates,return=minimal' } }); }); }, Promise.resolve());
-  }).then(function () { say('Fertig: ' + S.length + ' Staffeln, ' + T.length + ' Mannschaften.'); toast('Import fertig ✓'); ligList(); }).catch(function (e) { say(''); toast(e.message, true); });
+  var st = $('#ligst'); st.textContent = 'Import läuft …';
+  game('ligenImport', {}).then(function (r) {
+    if (r.status === 'recent') { st.textContent = 'Wurde gerade erst importiert (' + dt(r.at) + ') – höchstens alle 10 Minuten.'; return; }
+    st.textContent = 'Fertig: ' + r.staffeln + ' Staffeln, ' + r.teams + ' Mannschaften.'; toast('Import fertig ✓'); ligList();
+  }).catch(function (e) { st.textContent = ''; toast(e.message, true); });
 }

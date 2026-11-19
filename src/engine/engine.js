@@ -733,6 +733,7 @@ var MGR = (function () {
   var SHORTN = { Verbandsliga: { Mittelrhein: 'Mittelrheinliga', Westfalen: 'Westfalenliga' } };
   function buildReg(verband, st, teamId) {
     var own = null, ownT = null;
+    st = st.filter(function (x) { return x.teams && x.teams.length >= 4; });
     st.forEach(function (x) { x.teams.forEach(function (t) { if (t.id === teamId) { own = x; ownT = t; } }); });
     if (!own) throw new Error('Mannschaft nicht gefunden.');
     var clubs = function (x) { var o = {}; x.teams.forEach(function (t) { if (t.verein_id) o[t.verein_id] = 1; }); return o; };

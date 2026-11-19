@@ -1,7 +1,7 @@
 // Erzeugt data/orte-de.json: Ortsname → [Breite, Länge] (gemittelt über alle PLZ eines Orts).
-// Quelle: github.com/zauberware/postal-codes-json-xml-csv (data/DE/zipcodes.de.json)
+// Quelle: GeoNames-Postleitzahlen (download.geonames.org/export/zip/DE.zip, CC BY 4.0)
 import { readFileSync, writeFileSync } from 'node:fs';
-const src = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const src = readFileSync(process.argv[2], 'utf8').split('\n').filter(Boolean).map((l) => { const c = l.split('\t'); return { place: c[2], community: c[7], state: c[3], latitude: c[9], longitude: c[10] }; });
 const acc = {};
 for (const r of src) {
   const lat = +r.latitude, lon = +r.longitude; if (!lat || !lon) continue;

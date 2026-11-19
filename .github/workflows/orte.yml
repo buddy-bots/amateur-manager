@@ -14,8 +14,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: |
-          curl -sSfL -o /tmp/plz.json https://raw.githubusercontent.com/zauberware/postal-codes-json-xml-csv/master/data/DE/zipcodes.de.json
-          node tools/make-orte.mjs /tmp/plz.json
+          curl -sSfL -o /tmp/DE.zip https://download.geonames.org/export/zip/DE.zip
+          unzip -o /tmp/DE.zip -d /tmp/geo
+          node tools/make-orte.mjs /tmp/geo/DE.txt
           git config user.name "amateur-manager-bot"; git config user.email "bot@amateur-manager.de"
-          git add data/orte-de.json; git commit -m "Orte mit Koordinaten (zauberware/postal-codes)" || true
+          git add data/orte-de.json; git commit -m "Orte mit Koordinaten (GeoNames, CC BY 4.0)" || true
           git pull --rebase origin umbau; git push origin HEAD:umbau

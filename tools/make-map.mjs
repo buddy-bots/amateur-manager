@@ -21,5 +21,37 @@ for (const f of g.features) {
   }
   out.push([f.properties.name, dStr, Math.round(ax / aw), Math.round(ay / aw)]);
 }
-writeFileSync(new URL('../src/ui/pmap.js', import.meta.url), '/* Bundesländer-Karte (erzeugt mit tools/make-map.mjs, Quelle: github.com/isellsoap/deutschlandGeoJSON) */\nvar DEMAP = ' + JSON.stringify({ w: W, h: H, p: [+minX.toFixed(4), +minY.toFixed(4), +s.toFixed(4), +kx.toFixed(5)], l: out }) + ';\n');
+// ---- Fußballkreise: Landkreise werden dem Fußballkreis zugeordnet, dessen Vereine (Kreisligen) überwiegend darin liegen
+const { MGR } = await import('../supabase/functions/_shared/engine.js');
+const LIG = JSON.parse(readFileSync(new URL('../data/ligen-2627.json', import.meta.url)));
+const ORTE = JSON.parse(readFileSync(new URL('../data/orte-de.json', import.meta.url)));
+const KR = JSON.parse(readFileSync(new URL('../data/de-kreise.geo.json', import.meta.url)));
+const LANDV = { 'Nordrhein-Westfalen': ['Mittelrhein', 'Niederrhein', 'Westfalen'], 'Rheinland-Pfalz': ['Rheinland', 'Südwest'] };
+const part = MGR.geoIndex(ORTE);
+const inPoly = (x, y, ring) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if (((yi > y) !== (yj > y)) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+const kreise = {};
+for (const land of Object.keys(LANDV)) {
+  const pts = [];
+  for (const v of LIG.verbaende) { if (!LANDV[land].includes(v.name)) continue; for (const st of v.staffeln) { if (!/^Kreis /.test(st.gn || '')) continue; const kn = st.gn.replace(/^Kreis\s+/, ''); for (const t of st.teams) { const g = MGR.geoFind(ORTE, part, String(t.n).replace(/&#8203;/g, ''), v.name, ''); if (g) pts.push({ k: kn, vb: v.name, lon: g[1], lat: g[0] }); } } }
+  const groups = {};
+  const feats = KR.features.filter((f) => f.properties.NAME_1 === land);
+  for (const f of feats) {
+    const cnt = {}; const rings = polys(f).map((p) => p[0]);
+    for (const q of pts) if (rings.some((r) => inPoly(q.lon, q.lat, r))) cnt[q.k] = (cnt[q.k] || 0) + 1;
+    let best = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+    if (!best) { // kein Verein drin: nächstgelegener Punkt
+      let [cx, cy] = rings[0].reduce((a, [x, y]) => [a[0] + x / rings[0].length, a[1] + y / rings[0].length], [0, 0]), bd = 1e9;
+      for (const q of pts) { const dd = (q.lon - cx) ** 2 + (q.lat - cy) ** 2; if (dd < bd) { bd = dd; best = q.k; } }
+    }
+    (groups[best] = groups[best] || []).push(f);
+  }
+  kreise[land] = Object.keys(groups).map((k) => {
+    let d = ''; for (const f of groups[k]) for (const p of polys(f)) { const sp = simplify(p[0].map(P), 0.35); if (sp.length >= 3) d += 'M' + sp.map(([x, y]) => x.toFixed(1) + ' ' + y.toFixed(1)).join('L') + 'Z'; }
+    const my = pts.filter((q) => q.k === k); let A = 0, cx = 0, cy = 0;
+    for (const f of groups[k]) for (const p of polys(f)) { const ring = p[0].map(P); for (let i = 0; i < ring.length - 1; i++) { const [x1, y1] = ring[i], [x2, y2] = ring[i + 1], c = x1 * y2 - x2 * y1; A += c; cx += (x1 + x2) * c; cy += (y1 + y2) * c; } }
+    return [k, (my[0] || {}).vb || '', d, Math.round(cx / (3 * A)), Math.round(cy / (3 * A))];
+  });
+  console.log(land, kreise[land].length, 'Fußballkreise', kreise[land].map((k) => k[0]).join(', '));
+}
+writeFileSync(new URL('../src/ui/pmap.js', import.meta.url), '/* Bundesländer- und Fußballkreis-Karte (erzeugt mit tools/make-map.mjs, Quellen: github.com/isellsoap/deutschlandGeoJSON, GeoNames) */\nvar DEMAP = ' + JSON.stringify({ w: W, h: H, p: [+minX.toFixed(4), +minY.toFixed(4), +s.toFixed(4), +kx.toFixed(5)], l: out, k: kreise }) + ';\n');
 console.log('pmap.js', W, H, out.map((o) => o[0] + ':' + o[1].length).join(' '));

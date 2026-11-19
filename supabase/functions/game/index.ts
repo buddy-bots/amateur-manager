@@ -91,11 +91,9 @@ async function ligenImport(ref: string) {
   if (!res.ok) throw new HttpError(502, 'Ligendatei nicht erreichbar (' + res.status + ').');
   const d = await res.json();
   // Ortskoordinaten für den Kartenmarker (Ort aus dem Vereinsnamen, sonst Kreisstadt)
-  let orte: Record<string, [number, number]> = {};
+  let orte: Record<string, any[]> = {};
   try { const ro = await fetch(LIG_RAW + r + '/data/orte-de.json'); if (ro.ok) orte = await ro.json(); } catch (_) { /* ohne Marker */ }
-  const part: Record<string, [number, number]> = {};
-  for (const k of Object.keys(orte)) for (const p of k.split(/[-\s]+/)) if (p.length > 3 && !part[p]) part[p] = orte[k];
-  const geo = (name: string, gn: string) => { const t = MGR.clubTown(name); const k = String(gn || '').replace(/^Kreis\s+/, '').split(/[-\/\s]/)[0]; return orte[t] || orte[t.replace(/-.*$/, '')] || part[t] || orte[k] || part[k] || null; };
+  const part = MGR.geoIndex(orte);
   const now = new Date().toISOString(), S: any[] = [], T: any[] = [], seen: Record<string, 1> = {}, drop: string[] = [];
   for (const v of d.verbaende || []) {
     const order: string[] = [];
@@ -106,10 +104,16 @@ async function ligenImport(ref: string) {
       if (own.length < 4) { drop.push(s.id); continue; }
       own.forEach((t: any) => { seen[t.id] = 1; });
       S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
-      for (const t of own) { const g = geo(ligTeam(t.n), s.gn); T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', lat: g ? g[0] : null, lon: g ? g[1] : null, updated_at: now }); }
+      for (const t of own) { const g = MGR.geoFind(orte, part, ligTeam(t.n), v.name, s.gn); T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', lat: g ? g[0] : null, lon: g ? g[1] : null, updated_at: now }); }
     }
   }
   if (S.length < 50) throw new HttpError(422, 'Ligendatei unvollständig.');
+  // Fußballkreis je Mannschaft: Kreis der eigenen Kreisliga-Teams des Vereins, sonst der nächstgelegene Kreis (für die Kartenauswahl)
+  const stG: Record<string, string> = {}, stV: Record<string, string> = {}; S.forEach((x) => { stG[x.id] = x.gebiet || ''; stV[x.id] = x.verband; });
+  const clubK: Record<string, string> = {}, cen: Record<string, [number, number, number, string]> = {};
+  T.forEach((t) => { const g = stG[t.staffel_id]; if (!/^Kreis /.test(g)) return; const k = g.replace(/^Kreis\s+/, ''); if (t.verein_id && !clubK[t.verein_id]) clubK[t.verein_id] = k; if (t.lat) { const c = (cen[k] = cen[k] || [0, 0, 0, stV[t.staffel_id]]); c[0] += t.lat; c[1] += t.lon; c[2]++; } });
+  const near = (lat: number, lon: number, vb: string) => { let b = '', bd = 1e9; for (const k of Object.keys(cen)) { const c = cen[k]; if (vb !== 'RV Südwest' && c[3] !== vb) continue; const d = (c[0] / c[2] - lat) ** 2 + (c[1] / c[2] - lon) ** 2; if (d < bd) { bd = d; b = k; } } return b || null; };
+  T.forEach((t) => { t.kreis = (t.verein_id && clubK[t.verein_id]) || (t.lat ? near(t.lat, t.lon, stV[t.staffel_id]) : null); });
   const fixS: Record<string, string> = {}, fixT: Record<string, string> = {};
   for (const [tb, fx] of [['ligen_staffeln', fixS], ['ligen_teams', fixT]] as const) {
     const { data } = await admin.from(tb).select('id, name').eq('name_fix', true).limit(5000);
@@ -122,6 +126,69 @@ async function ligenImport(ref: string) {
   if (drop.length) await admin.from('ligen_staffeln').delete().in('id', drop);
   Object.keys(ligCache).forEach((k) => delete ligCache[k]);
   return { status: 'ok', staffeln: S.length, teams: T.length, ref: r };
+}
+
+// ---------------------------------------------------------------- Einladungen & Konto-Missionen
+const REF_XP = 50; // XP für den Einladenden, sobald sich eine echte Person (bestätigte E-Mail) anmeldet
+const REF_MIS: [string, string, number, { j?: number; h?: number }][] = [
+  ['s1', '1 eingeladene Person spielt eine Saison', 1, { j: 1 }],
+  ['s3', '3 eingeladene Personen spielen eine Saison', 3, { j: 1, h: 2 }],
+  ['s10', '10 eingeladene Personen spielen eine Saison', 10, { j: 3, h: 4 }],
+];
+function refCode(name: string) { const b = String(name || 'AM').normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 5) || 'AM'; const r = Array.from(crypto.getRandomValues(new Uint8Array(4))).map((x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join(''); return b + '-' + r; }
+async function seasonsOf(ids: string[]) {
+  const out: Record<string, number> = {};
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await admin.from('saves').select('user_id, season, start:state->>start').in('user_id', ids.slice(i, i + 200));
+    (data || []).forEach((r: any) => { const y0 = parseInt(String(r.start || '').slice(0, 4)) || r.season; const n = Math.max(0, (Number(r.season) || 0) - y0); out[r.user_id] = Math.max(out[r.user_id] || 0, n); });
+  }
+  return out;
+}
+async function refInfo(userId: string, profile: any) {
+  let { data: c } = await admin.from('invite_codes').select('code').eq('user_id', userId).eq('seller', false).maybeSingle();
+  if (!c) { for (let t = 0; t < 4 && !c; t++) { const code = refCode(profile.display_name); const { error } = await admin.from('invite_codes').insert({ code, user_id: userId }); if (!error) c = { code }; } }
+  const { data: inv } = await admin.from('invites').select('invitee, confirmed, seasons').eq('inviter', userId);
+  const list = inv || [], ss = await seasonsOf(list.map((x: any) => x.invitee));
+  for (const x of list) { const n = ss[x.invitee] || 0; if (n !== x.seasons) { x.seasons = n; await admin.from('invites').update({ seasons: n }).eq('invitee', x.invitee); } }
+  const played = list.filter((x: any) => x.seasons >= 1).length, b = profile.bonus || {}, done = b.m || {};
+  return { code: c?.code, invited: list.length, confirmed: list.filter((x: any) => x.confirmed).length, played, xpEach: REF_XP, credit: b.cr || { j: 0, h: 0 },
+    missions: REF_MIS.map(([k, t, n, rw]) => ({ k, t, n, rw, have: played, st: done[k] ? 'claimed' : played >= n ? 'done' : 'open' })) };
+}
+async function refClaim(userId: string, profile: any, code: string) {
+  code = code.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24);
+  if (!code) return { ok: false };
+  const { data: had } = await admin.from('invites').select('invitee').eq('invitee', userId).maybeSingle();
+  if (had) return { ok: false, why: 'schon zugeordnet' };
+  if (Date.now() - new Date(profile.created_at).getTime() > 14 * 864e5) return { ok: false, why: 'Konto zu alt' };
+  const { data: c } = await admin.from('invite_codes').select('code, user_id').eq('code', code).maybeSingle();
+  if (!c || c.user_id === userId) return { ok: false, why: 'ungültiger Code' };
+  const { data: au } = await admin.auth.admin.getUserById(userId);
+  const confirmed = !!(au?.user?.email_confirmed_at || au?.user?.confirmed_at);
+  const { error } = await admin.from('invites').insert({ invitee: userId, code: c.code, inviter: c.user_id, confirmed });
+  if (error) return { ok: false };
+  if (confirmed && c.user_id) { const { data: ip } = await admin.from('profiles').select('id, xp').eq('id', c.user_id).maybeSingle(); if (ip) await addXp(c.user_id, ip, REF_XP); }
+  return { ok: true };
+}
+async function refMission(userId: string, profile: any, k: string) {
+  const info = await refInfo(userId, profile), m = info.missions.find((x) => x.k === k);
+  if (!m || m.st !== 'done') throw new HttpError(422, 'Diese Mission ist noch nicht geschafft.');
+  const b = { ...(profile.bonus || {}) }; b.m = { ...(b.m || {}), [k]: 1 }; const cr = b.cr || { j: 0, h: 0 }; b.cr = { j: (cr.j | 0) + (m.rw.j || 0), h: (cr.h | 0) + (m.rw.h || 0) };
+  await admin.from('profiles').update({ bonus: b }).eq('id', userId); profile.bonus = b;
+  return await refInfo(userId, profile);
+}
+async function refAdmin(add: string, label: string) {
+  if (add) { const code = add.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24); if (code.length < 4) throw new HttpError(400, 'Code zu kurz.'); const { error } = await admin.from('invite_codes').insert({ code, label: label.slice(0, 60) || null, seller: true }); if (error) throw new HttpError(400, 'Code existiert schon.'); }
+  const { data: codes } = await admin.from('invite_codes').select('code, user_id, label, seller, created_at').limit(5000);
+  const { data: inv } = await admin.from('invites').select('invitee, code, confirmed, seasons, created_at').limit(20000);
+  const ss = await seasonsOf((inv || []).map((x: any) => x.invitee));
+  const owners = [...new Set((codes || []).map((c: any) => c.user_id).filter(Boolean))];
+  const names: Record<string, string> = {};
+  for (let i = 0; i < owners.length; i += 200) { const { data } = await admin.from('profiles').select('id, display_name').in('id', owners.slice(i, i + 200)); (data || []).forEach((p: any) => { names[p.id] = p.display_name; }); }
+  const by: Record<string, any> = {}, now = Date.now();
+  (inv || []).forEach((x: any) => { const n = ss[x.invitee] || 0; const o = (by[x.code] = by[x.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }); o.reg++; if (x.confirmed) o.conf++; if (n >= 1) o.s1++; if (now - new Date(x.created_at).getTime() < 30 * 864e5) o.d30++; });
+  const rows = (codes || []).map((c: any) => ({ code: c.code, seller: c.seller, label: c.label || '', owner: c.user_id ? names[c.user_id] || '' : '', created_at: c.created_at, ...(by[c.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }) }))
+    .filter((r: any) => r.seller || r.reg > 0).sort((a: any, b: any) => (b.seller - a.seller) || (b.reg - a.reg));
+  return { rows };
 }
 
 class HttpError extends Error { constructor(public status: number, msg: string) { super(msg); } }
@@ -209,13 +276,14 @@ async function addXp(userId: string, profile: any, delta: number) {
 
 function sanitize(action: string, params: any) {
   const p = params && typeof params === 'object' ? { ...params } : {};
+  delete p._srv; // nur der Server setzt Bonus-Belohnungen
   if (action === 'dailyCheck') p.today = berlinDay(); // Serverzeit statt Geräteuhr
   return p;
 }
 
 async function handle(req: Request, userId: string, body: any) {
   try { await refreshMedia(); } catch (_e) { /* Bilder sind optional */ }
-  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin').eq('id', userId).single();
+  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);
   const op = String(body.op || '');
@@ -301,6 +369,10 @@ async function handle(req: Request, userId: string, body: any) {
     if (error) throw new HttpError(500, 'Löschen fehlgeschlagen.');
     return { ok: true };
   }
+  if (op === 'refInfo') return await refInfo(userId, profile);
+  if (op === 'refClaim') return await refClaim(userId, profile, String(body.code || ''));
+  if (op === 'refMission') return await refMission(userId, profile, String(body.k || ''));
+  if (op === 'refAdmin') { if (!profile.is_admin) throw new HttpError(403, 'Nur für Admins.'); return await refAdmin(String(body.add || ''), String(body.label || '')); }
   if (op === 'act') {
     const action = String(body.action || '');
     if (!/^[a-zA-Z0-9]{1,40}$/.test(action)) throw new HttpError(400, 'Ungültige Aktion.');
@@ -310,13 +382,17 @@ async function handle(req: Request, userId: string, body: any) {
     const xpBefore = S.xpGame || 0;
     const extra: Record<string, unknown> = {};
     if (action === 'liveStart' && (S.jokers || 0) > 0) { extra.joker_snap = JSON.parse(JSON.stringify(S)); extra.joker_date = S.date; }
+    const params = sanitize(action, body.params);
+    let credit: any = null;
+    if (action === 'bonusRedeem') { credit = (profile.bonus || {}).cr || {}; if (!(credit.j > 0 || credit.h > 0)) throw new HttpError(422, 'Kein Bonus-Guthaben vorhanden.'); params._srv = { j: credit.j | 0, h: credit.h | 0 }; }
     let r: any;
-    try { r = action === 'run' ? runSim(S, String((body.params || {}).mode || 'day')) : MGR.act(S, D, action, sanitize(action, body.params)); }
+    try { r = action === 'run' ? runSim(S, String((body.params || {}).mode || 'day'))    : MGR.act(S, D, action, params); }
     catch (e) { throw new HttpError(422, (e as Error).message || String(e)); }
     if (!extra.joker_snap && sv.joker_date && sv.joker_date !== S.date) { extra.joker_snap = null; extra.joker_date = null; }
     await addXp(userId, profile, (S.xpGame || 0) - xpBefore);
     S.xp = Number(profile.xp) || 0;
     const out = await persist(userId, saveId, S, sv.version, extra);
+    if (credit) { const b = { ...(profile.bonus || {}), cr: { j: 0, h: 0 } }; await admin.from('profiles').update({ bonus: b }).eq('id', userId); }
     const jk = extra.joker_snap === undefined && jokerOk(S, sv);
     return { r: r || {}, ...out, joker: jk };
   }

@@ -280,7 +280,7 @@ function twinGo(take) {
   var keep = Object.keys(TWSEL.o).filter(function (k) { return TWSEL.o[k]; }).map(Number), add = Object.keys(TWSEL.n).filter(function (k) { return TWSEL.n[k]; }).map(Number);
   act('twinDecide', { take: take, keep: keep, add: add }, { quiet: true }).then(function (r) { if (!r) return; TWSEL = null; closePop(); render(true); toast(r.info || '', false, take ? '🏟️ Neue Mannschaft' : 'Entscheidung'); afterUpdate(); });
 }
-function icBar() { return '<span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button></span>'; }
+function icBar() { return '<span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">' + ICO.save + '</button><button class="icbtn" title="Beenden" onclick="quitPop()">' + ICO.power + '</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">' + ICO.gear + '</button><button class="icbtn' + ((V.missions || []).some(function (m) { return m.st === 'done'; }) ? ' dirty' : '') + '" title="Boni &amp; Missionen" onclick="bonusPop()">🎁</button></span>'; }
 /* ---------- Hauptsponsor */
 var NW = {};
 function negoOffers(kind) { return kind === 'sp' ? V.spOffers : kind === 'ps' ? V.psOffers : kind === 'pv' ? V.pvOffers : kind === 'ball' ? V.ballOffers : V.kitOffers; }

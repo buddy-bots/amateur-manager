@@ -22,9 +22,9 @@ textarea,input{width:100%;box-sizing:border-box;background:#0b0f0a;color:#e9ede6
 .toast{position:fixed;right:18px;bottom:18px;background:#1f2a18;border:1px solid #8fc852;color:#e9ede6;padding:10px 14px;border-radius:10px;z-index:99}.toast.err{border-color:#e25c5c}
 .spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:#8fc852;border-radius:50%;animation:s 1s linear infinite;margin:40px auto}@keyframes s{to{transform:rotate(360deg)}}
 </style></head><body>
-<header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a></header>
+<header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button><button data-k="inv" onclick="nav('inv')">Einladungen</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a></header>
 <div id="main"><div class="spin"></div></div>
-<script src="engine.js?v=25.8.0"></script>
+<script src="engine.js?v=25.9.0"></script>
 <script>
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
 /* ===================================================================== Server-Anbindung (Supabase)
@@ -127,8 +127,13 @@ function loadUser() { return sbFetch('/auth/v1/user').then(function (u) { SESSIO
 /* ---------- Spiel-Server */
 function game(op, body) {
   body = body || {}; body.op = op;
-  return sbFetch('/functions/v1/game', { method: 'POST', body: body });
+  var pr = sbFetch('/functions/v1/game', { method: 'POST', body: body });
+  if (op === 'init') pr.then(function (r) { if (r && r.profile && r.profile.ready) refTry(); }, function () {});
+  return pr;
 }
+// Einladungslink: ?ref=CODE merken und nach der Anmeldung einmal dem Einladenden zuordnen
+(function () { var m = /[?&]ref=([A-Za-z0-9-]{4,24})/.exec(location.search); if (m) { try { localStorage.setItem('am_ref', m[1].toUpperCase()); } catch (e) {} history.replaceState(null, '', location.pathname + location.search.replace(/([?&])ref=[^&]*&?/, '$1').replace(/[?&]$/, '')); } })();
+function refTry() { var c = null; try { c = localStorage.getItem('am_ref'); } catch (e) {} if (!c) return; game('refClaim', { code: c }).then(function () { try { localStorage.removeItem('am_ref'); } catch (e) {} }, function () {}); }
 // Aktionen laufen nacheinander (nie zwei gleichzeitig), damit nichts verloren geht
 var ACTQ = Promise.resolve(), BUSY = 0;
 function serverAct(action, params) {
@@ -315,7 +320,7 @@ function start() {
   }).catch(function (e) { gate('Fehler: ' + e.message); });
 }
 function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a></div>'; }
-function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig })[k](); }
+function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv })[k](); }
 
 /* ---------- Übersicht */
 function showOver() {
@@ -471,6 +476,19 @@ function ligImport() {
     if (r.status === 'recent') { st.textContent = 'Wurde gerade erst importiert (' + dt(r.at) + ') – höchstens alle 3 Minuten.'; return; }
     st.textContent = 'Fertig: ' + r.staffeln + ' Staffeln, ' + r.teams + ' Mannschaften.'; toast('Import fertig ✓'); ligList();
   }).catch(function (e) { st.textContent = ''; toast(e.message, true); });
+}
+
+/* ---------- Einladungen / Seller-Team */
+function showInv(add, label) {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  game('refAdmin', add ? { add: add, label: label } : {}).then(function (r) {
+    var rows = r.rows || [], tot = rows.reduce(function (a, x) { return a + x.reg; }, 0);
+    $('#main').innerHTML = '<div class="card"><h3>Einladungen &amp; Seller-Team</h3><p class="muted">Jeder Spieler hat einen persönlichen Link. Für dein Vermarktungsteam legst du hier eigene Codes an (Link: amateur-manager.de/?ref=CODE). Gezählt wird, wer sich über den Code anmeldet und wer mindestens eine Saison spielt.</p>' +
+      '<div class="row"><input id="invc" placeholder="Code, z. B. TEAM-MAX" style="max-width:220px"><input id="invl" placeholder="Name / Notiz" style="max-width:260px"><button class="btn" onclick="showInv($(\'#invc\').value, $(\'#invl\').value)">Seller-Code anlegen</button></div></div>' +
+      '<div class="card"><h3>Übersicht <span class="pill">' + tot + ' Anmeldungen gesamt</span></h3><table><tr><th>Code</th><th>Wer</th><th class="r">Anmeldungen</th><th class="r">bestätigt</th><th class="r">1+ Saison</th><th class="r">letzte 30 Tage</th><th></th></tr>' +
+      (rows.length ? rows.map(function (x) { return '<tr><td><b>' + esc(x.code) + '</b>' + (x.seller ? ' <span class="pill y">Seller</span>' : '') + '</td><td>' + esc(x.label || x.owner || '–') + '</td><td class="r">' + x.reg + '</td><td class="r">' + x.conf + '</td><td class="r">' + x.s1 + '</td><td class="r">' + x.d30 + '</td><td class="r"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'https://amateur-manager.de/?ref=' + esc(x.code) + '\');toast(\'Link kopiert\')">Link</button></td></tr>'; }).join('') : '<tr><td colspan="7" class="muted">Noch keine Einladungen.</td></tr>') + '</table></div>';
+    if (add) toast('Code angelegt ✓');
+  }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }
 
 </script>

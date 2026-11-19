@@ -99,8 +99,13 @@ function loadUser() { return sbFetch('/auth/v1/user').then(function (u) { SESSIO
 /* ---------- Spiel-Server */
 function game(op, body) {
   body = body || {}; body.op = op;
-  return sbFetch('/functions/v1/game', { method: 'POST', body: body });
+  var pr = sbFetch('/functions/v1/game', { method: 'POST', body: body });
+  if (op === 'init') pr.then(function (r) { if (r && r.profile && r.profile.ready) refTry(); }, function () {});
+  return pr;
 }
+// Einladungslink: ?ref=CODE merken und nach der Anmeldung einmal dem Einladenden zuordnen
+(function () { var m = /[?&]ref=([A-Za-z0-9-]{4,24})/.exec(location.search); if (m) { try { localStorage.setItem('am_ref', m[1].toUpperCase()); } catch (e) {} history.replaceState(null, '', location.pathname + location.search.replace(/([?&])ref=[^&]*&?/, '$1').replace(/[?&]$/, '')); } })();
+function refTry() { var c = null; try { c = localStorage.getItem('am_ref'); } catch (e) {} if (!c) return; game('refClaim', { code: c }).then(function () { try { localStorage.removeItem('am_ref'); } catch (e) {} }, function () {}); }
 // Aktionen laufen nacheinander (nie zwei gleichzeitig), damit nichts verloren geht
 var ACTQ = Promise.resolve(), BUSY = 0;
 function serverAct(action, params) {

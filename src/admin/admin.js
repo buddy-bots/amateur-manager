@@ -27,7 +27,7 @@ function start() {
   }).catch(function (e) { gate('Fehler: ' + e.message); });
 }
 function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a></div>'; }
-function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig })[k](); }
+function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv })[k](); }
 
 /* ---------- Übersicht */
 function showOver() {
@@ -183,4 +183,17 @@ function ligImport() {
     if (r.status === 'recent') { st.textContent = 'Wurde gerade erst importiert (' + dt(r.at) + ') – höchstens alle 3 Minuten.'; return; }
     st.textContent = 'Fertig: ' + r.staffeln + ' Staffeln, ' + r.teams + ' Mannschaften.'; toast('Import fertig ✓'); ligList();
   }).catch(function (e) { st.textContent = ''; toast(e.message, true); });
+}
+
+/* ---------- Einladungen / Seller-Team */
+function showInv(add, label) {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  game('refAdmin', add ? { add: add, label: label } : {}).then(function (r) {
+    var rows = r.rows || [], tot = rows.reduce(function (a, x) { return a + x.reg; }, 0);
+    $('#main').innerHTML = '<div class="card"><h3>Einladungen &amp; Seller-Team</h3><p class="muted">Jeder Spieler hat einen persönlichen Link. Für dein Vermarktungsteam legst du hier eigene Codes an (Link: amateur-manager.de/?ref=CODE). Gezählt wird, wer sich über den Code anmeldet und wer mindestens eine Saison spielt.</p>' +
+      '<div class="row"><input id="invc" placeholder="Code, z. B. TEAM-MAX" style="max-width:220px"><input id="invl" placeholder="Name / Notiz" style="max-width:260px"><button class="btn" onclick="showInv($(\'#invc\').value, $(\'#invl\').value)">Seller-Code anlegen</button></div></div>' +
+      '<div class="card"><h3>Übersicht <span class="pill">' + tot + ' Anmeldungen gesamt</span></h3><table><tr><th>Code</th><th>Wer</th><th class="r">Anmeldungen</th><th class="r">bestätigt</th><th class="r">1+ Saison</th><th class="r">letzte 30 Tage</th><th></th></tr>' +
+      (rows.length ? rows.map(function (x) { return '<tr><td><b>' + esc(x.code) + '</b>' + (x.seller ? ' <span class="pill y">Seller</span>' : '') + '</td><td>' + esc(x.label || x.owner || '–') + '</td><td class="r">' + x.reg + '</td><td class="r">' + x.conf + '</td><td class="r">' + x.s1 + '</td><td class="r">' + x.d30 + '</td><td class="r"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'https://amateur-manager.de/?ref=' + esc(x.code) + '\');toast(\'Link kopiert\')">Link</button></td></tr>'; }).join('') : '<tr><td colspan="7" class="muted">Noch keine Einladungen.</td></tr>') + '</table></div>';
+    if (add) toast('Code angelegt ✓');
+  }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }

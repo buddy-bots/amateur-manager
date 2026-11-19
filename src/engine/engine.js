@@ -660,7 +660,13 @@ var MGR = (function () {
     return e;
   }
   function itemMonthly(S, D, it) { return (it.cat === 'Personal' || it.cat === 'Mannschaften') ? nice(it.monthly * Math.max(0.3, Math.pow(moneyScale(S, D), 0.7))) : Math.round(it.monthly * (1 + (((S.upg || {})[it.id] || 1) - 1) * 0.08)); }
-  function capacity(S, D) { return D.cap0 + eff(S, D).kap; }
+  function capacity(S, D) { if (S.built && S.built.arena) return 89000; return (S.cap0 || D.cap0) + (S.capX || 0) + eff(S, D).kap; }
+  // Zuschauerplätze zum Start: zufällig je Spielklasse (Ebene), auf 50 gerundet
+  var CAPR = { 1: [30000, 75000], 2: [15000, 40000], 3: [8000, 25000], 4: [3000, 12000], 5: [1500, 5000], 6: [800, 3000], 7: [500, 2000], 8: [300, 1500], 9: [200, 1000], 10: [150, 800], 11: [100, 600] };
+  function capStart(lvl, seed) { var r = CAPR[lvl] || CAPR[8], x = Math.abs(Math.sin((seed || 1) * 9301 + lvl * 49297)) % 1; return Math.round((r[0] + x * (r[1] - r[0])) / 50) * 50; }
+  // Kleine Ausbauten bis 10.000 Plätze (Box oben links im Verein)
+  var CAPMAX = 10000;
+  function capOpts(S, D) { var c = capacity(S, D); if (S.built && (S.built.arena || S.built.ausbau5k)) return []; var left = CAPMAX - c; if (left <= 0 || S.capB) return []; return [250, 500, 1000, 2500].filter(function (n, i) { return n <= left || i === 0; }).map(function (n) { n = Math.min(n, left); var per = 90 + Math.round(c / 80); return { n: n, cost: Math.round(n * per / 500) * 500, days: Math.round(14 + n / 40) }; }); }
 
   // ============================================================ Welt & Ligen
   function lvMid(D, l) { var L = D.lv[l]; return (L.lo + L.hi) / 2; }
@@ -696,7 +702,7 @@ var MGR = (function () {
     return '';
   }
   function homeStadion(S) { var L = locOf(S); return L ? 'Sportpark ' + L.ort : 'Waldstadion'; }
-  function regFix(S) { if (!S) return; if (S.follow0 == null && S.follow != null) S.follow0 = S.follow; ['kit', 'ball'].forEach(function (k) { var B = k === 'ball' ? BALL_BRANDS : KIT_BRANDS; if (S[k] && B[S[k].brand]) S[k].name = B[S[k].brand]; (S[k + 'Offers'] || []).forEach(function (o) { if (B[o.brand]) o.name = B[o.brand]; }); }); if (S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); (S.cups || []).forEach(function (c) { if (c.k === 'kp' && c.name !== 'Kreispokal') c.name = 'Kreispokal'; }); }
+  function regFix(S) { if (!S) return; if (S.cap0 == null && S.lvl) S.cap0 = capStart((S.reg && S.reg.lvl0) || S.lvl, S.pseed || 7); if (S.follow0 == null && S.follow != null) S.follow0 = S.follow; ['kit', 'ball'].forEach(function (k) { var B = k === 'ball' ? BALL_BRANDS : KIT_BRANDS; if (S[k] && B[S[k].brand]) S[k].name = B[S[k].brand]; (S[k + 'Offers'] || []).forEach(function (o) { if (B[o.brand]) o.name = B[o.brand]; }); }); if (S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); (S.cups || []).forEach(function (c) { if (c.k === 'kp' && c.name !== 'Kreispokal') c.name = 'Kreispokal'; }); }
   // Ortskoordinaten: orte = { Name: [[lat, lon, Land], …] }, part = Index der Namensteile; nur Treffer im passenden Bundesland
   var VB_LAND = { Mittelrhein: ['Nordrhein-Westfalen'], Niederrhein: ['Nordrhein-Westfalen'], Westfalen: ['Nordrhein-Westfalen'], Rheinland: ['Rheinland-Pfalz'], 'Südwest': ['Rheinland-Pfalz'], 'RV Südwest': ['Rheinland-Pfalz', 'Saarland', 'Baden-Württemberg', 'Hessen'], 'RV West': ['Nordrhein-Westfalen'], DFB: [], Bayern: ['Bayern'], Baden: ['Baden-Württemberg'], 'Südbaden': ['Baden-Württemberg'], 'Württemberg': ['Baden-Württemberg'], 'Oberliga BW': ['Baden-Württemberg'] };
   function geoIndex(orte) { var part = {}; Object.keys(orte).forEach(function (k) { k.split(/[-\s]+/).forEach(function (p) { if (p.length > 3) (part[p] = part[p] || []).push.apply(part[p], orte[k]); }); }); return part; }
@@ -891,7 +897,7 @@ var MGR = (function () {
       v: 2, season0: seasonOf(startDate), pseed: Math.floor(R() * 1e6), mgr: mgrName, full: o.full || mgrName, club: D.club, reg: REG ? { key: REG.verband + ':' + REG.team.id, verband: REG.verband, kreis: REG.kreis || '', team: REG.team.id, max: REG.max, lvl0: REG.lvl, lv: REG.lv } : undefined, start: season + '-07-01', date: season + '-07-01', season: season, lvl: D.startLvl, mlvl: Math.max(o.mlvl || 1, levelOf(o.xp || 0).lvl),
       cash: 0, tb: 0, sav: 0, alloc: { cash: 70, tb: 25, sav: 5 }, fans: rint(36, 50), board: 70, moral: 65, lvFans: 1, lvBoard: 1, lvMoral: 1, fanbase: 0,
       goal: null, ticket: L0.ticket, players: [], youth: [], nextPid: 1, lineup: { form: '4-4-2', xi: null }, train: { int: 'normal', focus: 'ausgewogen', fp: [] },
-      camp: null, chem: null, built: {}, building: [], pitch: { type: 'kunst', age: clamp(season - D.turfYear + 0.5, 0, 20), life: 0 },
+      camp: null, chem: null, built: {}, building: [], pitch: { type: 'kunst', age: rnd(2, 7) + 0.3, life: 0 },
       sponsors: [], tmp: { zus: null, sponsors: [] }, betrieb: 0, fix: [], cups: [], qual: {}, tests: [], market: { list: [], loans: [] },
       inbox: [], pending: [], mails: [], mq: [], watch: [], nego: [], dayEv: [], spons: 60, live: null, feed: [], achv: [], fin: { cur: null, hist: [] }, hist: [], evCd: {}, fired: false, days: 0, nextId: 1, reports: [], lastRank: null, peak: D.startLvl,
       xp: o.xp || 0, xpGame: 0, ptsTotal: 0, wins: 0, captain: null, pen: null, loan: null, stadion: 'Waldstadion', jersey: null
@@ -1795,7 +1801,8 @@ var MGR = (function () {
     S.players.forEach(function (p) { if (p.inj > 0) { if (!p.injN || p.inj > (p.injD0 || 0)) { p.injN = injName(p.inj); p.injD0 = p.inj; } } else if (p.injN) { p.injN = null; p.injD0 = 0; p.docD = null; } });
     // Erster Joker am Spieltag des ersten Pflichtspiels, halber Stern nach fünf Ligaspielen
     if (!S.jokIntro || !S.starIntro) { try { var sg = svwGames(S, D);
-      if (!S.jokIntro && !sg.some(function (g) { return g.comp !== 'test' && g.gf != null; }) && sg.some(function (g) { return g.comp !== 'test' && g.gf == null && g.d === d; })) S.jokIntro = 1;
+      // Der Tag eines Spiels wird erst nach dem Spiel verarbeitet: daher schon am Vortag (oder nachholen, falls verpasst)
+      var nd1 = addDays(d, 1); if (!S.jokIntro && sg.some(function (g) { return g.comp !== 'test' && (g.gf != null || (g.d >= d && g.d <= nd1)); })) S.jokIntro = 1;
       if (!S.starIntro && sg.filter(function (g) { return g.comp === 'liga' && g.gf != null; }).length >= 5) S.starIntro = 1; } catch (e) { } }
     if (dow(d) === 1) { utilWeekly(S, D); if (diffDays(S.lastFanAct || S.start, d) > 42 && S.fans > 35) { S.fans = clamp(S.fans - 0.5, 0, 100); } if (S.mktB) S.mktB = Math.max(0, S.mktB - 0.6); if (S.utilB) S.utilB = Math.max(0, S.utilB - 0.4); S.fanPrev = S.fanCur || null; S.fanCur = { f: S.fans, fb: S.fanbase, m: S.members || 0 }; }
     if (dow(d) === 1) { if (S.scout) { var ntl = Object.keys(S.scout.tools || {}).length; S.scout.score = clamp((S.scout.score || 0) + ntl * 0.3 - 0.4, 0, 100); } if (S.masc) { S.mascBond = S.mascBond || {}; S.mascBond[S.masc] = Math.min(100, (S.mascBond[S.masc] || 0) + 0.15); } }
@@ -1824,6 +1831,7 @@ var MGR = (function () {
     var d = S.date, e = eff(S, D);
     // Bauprojekte
     S.building = S.building.filter(function (b) { if (b.done <= d) { S.built[b.id] = true; if (b.id === 'naturrasen') S.pitch.type = 'natur'; msg(S, 'verein', '🏗️ Fertig: ' + (D.items[b.id] ? D.items[b.id].name : b.id) + '.'); return false; } return true; });
+    if (S.capB && S.capB.done <= d) { S.capX = (S.capX || 0) + S.capB.n; msg(S, 'verein', '🏟️ Fertig: +' + S.capB.n + ' Zuschauerplätze. Jetzt passen ' + capacity(S, D) + ' Fans ins Stadion.'); S.capB = null; }
     if (S.pitchBuild && S.pitchBuild <= d) { S.pitch.age = 0; S.pitch.life = rnd(15, 20); S.pitchBuild = null; msg(S, 'verein', '🏗️ Der neue Kunstrasen ist verlegt!'); }
     // Erholung & Verletzungen
     var inCamp = S.camp && S.camp.from <= d && S.camp.to >= d;
@@ -2172,7 +2180,7 @@ var MGR = (function () {
     var dd = diffDays(d, next);
     return { st: dd <= 14 ? 'soon' : 'closed', txt: 'Transfermarkt öffnet am ' + next.slice(8, 10) + '.' + next.slice(5, 7) + '.' + next.slice(0, 4) + (dd <= 14 ? ' (in ' + dd + ' Tagen)' : ''), from: next };
   }
-  var ILVL = { bushalt: 6, sprachschule: 8, agym: 3, internat: 10, jzentrum: 9, aplatz: 4, parkplatz: 5, videowand: 6, flutlicht3: 12, flutlicht2: 7, indoor: 14, kabinen2: 12 };
+  var ILVL = { ausbau5k: 1, ausbau10k: 1, arena: 1, bushalt: 6, sprachschule: 8, agym: 3, internat: 10, jzentrum: 9, aplatz: 4, parkplatz: 5, videowand: 6, flutlicht3: 12, flutlicht2: 7, indoor: 14, kabinen2: 12 };
   function upgOk(it) { return it && it.cat !== 'Personal' && it.cat !== 'Mannschaften' && (it.cost || 0) > 0; }
   function upgCost(it, lv) { return nice((it.cost || 0) * 0.22 * lv); }
   function itemLvl(it) {
@@ -2206,10 +2214,10 @@ var MGR = (function () {
     halle: ['Hallenturnier', 'Ein Tag in der Halle – Spaß, Fitness und Zuschauer', 250, [12, 1, 2], 1],
     gala: ['Spendengala „Kinder in Not“', 'Benefizabend für Kinder in Not – kostet 2.500 €, bringt viel Ansehen bei Fans und Sponsoren', 2500, null, 1, true],
     benefiz: ['Benefizspiel gegen Profiteam', 'Ihr ladet ein Team aus der 1.–3. Liga ein – wer kommt, ist eine Überraschung. Kostet 10.000 €', 10000, null, 1],
-    foerder: ['Förderverein-Treffen', 'Die Gönner des Vereins treffen sich – meistens gibt es ein Geldgeschenk', 0, null, 1, true]
+    foerder: ['Förderverein-Treffen', 'Die Gönner des Vereins treffen sich – kostet 125 €, meistens gibt es ein Geldgeschenk', 125, null, 1, true]
   };
   DAYEV.fan[5] = true; DAYEV.sponsor[5] = true;
-  function dayEvCost(S, D, k) { if (k === 'gala') return 2500; if (k === 'benefiz') return 10000; return nice(DAYEV[k][2] * moneyScale(S, D)); }
+  function dayEvCost(S, D, k) { if (k === 'gala') return 2500; if (k === 'benefiz') return 10000; if (k === 'foerder') return 125; return nice(DAYEV[k][2] * moneyScale(S, D)); }
   function runDayEv(S, D, ev) {
     var k = ev.k, out = [];
     if (k === 'benefiz' && ev.opp) return []; if (k === 'benefiz') { var rr = R(), tier = rr < 0.6 ? 3 : rr < 0.88 ? 2 : 1, opp = benPick(S, tier), inc = tier === 3 ? rint(5000, 8000) : tier === 2 ? rint(8000, 15000) : rint(15000, 30000); inc = nice(inc); var fg = (4 - tier) * rint(250, 600) + rint(150, 400); book(S, 'Benefizspiel', inc); S.fans = clamp(S.fans + 4 + (4 - tier) * 2, 0, 100); S.spons = clamp(S.spons + 2 + (4 - tier), 0, 100); S.fanbase = Math.round(S.fanbase * (1.02 + (4 - tier) * 0.015)); S.follow = (S.follow || 0) + fg; S.board = clamp(S.board + 2, 0, 100); var sc = rint(0, 2) + ':' + rint(2 + (3 - tier), 7 - tier); xp(S, 10); ownPost(S, '⚽ Benefizspiel gegen ' + opp + '! Volle Hütte im Ländchen – ' + sc + '. Danke an alle! 💚❤️', 'stadion'); msg(S, 'verein', '🌟 Benefizspiel: ' + opp + ' (' + ['', 'Bundesliga', '2. Bundesliga', '3. Liga'][tier] + ') kam ins Ländchen – ' + sc + '. Einnahmen ' + euro(inc) + ', +' + num(fg) + ' Follower.'); return ['Gast: ' + opp, 'Einnahmen ' + euro(inc), 'Fans +' + (4 + (4 - tier) * 2), '+' + num(fg) + ' Follower']; }
@@ -2579,10 +2587,16 @@ var MGR = (function () {
       case 'langExam': { var lgE = (S.lang || {})[p.k]; if (!lgE) err('?'); var curL = langLvl(lgE), nl = curL + 1; if (nl > 6 || slpOf(lgE.xp || 0) < nl) err('Für die Prüfung fehlen dir noch Sprach-Punkte.'); if (lgE.block && S.date < lgE.block) err('Wiederholung erst ab ' + fmtD(lgE.block) + '.'); var QE = langQs(p.k, nl), idx = QE.map(function (q, i) { return i; }).sort(function () { return R() - 0.5; }).slice(0, 20); S.langExam = { k: p.k, lv: nl, q: idx }; break; }
       case 'langExamDone': { var LE = S.langExam; if (!LE) err('?'); var lgD = S.lang[LE.k], QD = langQs(LE.k, LE.lv), ans = p.a || [], ok2 = 0; LE.q.forEach(function (qi, i) { var q = QD[qi]; if (q && ans[i] != null && q.o[ans[i]] === q.a) ok2++; }); var need2 = Math.ceil(LE.q.length * 0.55); S.langExam = null;
         if (ok2 >= need2) { lgD.passed = LE.lv; lgD.block = null; xp(S, 30); info = '🎓 Bestanden! ' + ok2 + ' von ' + LE.q.length + ' richtig – ' + LANGS[LE.k][0] + ': ' + SLPN[LE.lv] + ' (+30 XP).'; msg(S, 'privat', '🎓 ' + LANGS[LE.k][0] + ': ' + SLPN[LE.lv] + ' – Prüfung bestanden'); } else { lgD.block = addDays(S.date, 14); xp(S, 3); info = '❌ Nicht bestanden – ' + ok2 + ' von ' + LE.q.length + ' richtig (nötig: ' + need2 + '). Wiederholung ab ' + fmtD(lgD.block) + '.'; } break; }
+      case 'capAdd': {
+        var co = capOpts(S, D).filter(function (o) { return o.n === +p.n; })[0]; if (!co) err('Diese Erweiterung ist gerade nicht möglich.');
+        if (S.cash < co.cost) err('Dafür fehlt das Geld (' + euro(co.cost) + ').');
+        book(S, 'Stadion: +' + co.n + ' Plätze', -co.cost); S.capB = { n: co.n, done: addDays(S.date, co.days) };
+        info = 'Bauauftrag: +' + co.n + ' Zuschauerplätze für ' + euro(co.cost) + '. Fertig am ' + fmtD(S.capB.done) + '.'; msg(S, 'verein', info); break; }
       case 'build': {
         var item = D.items[p.id]; if (!item) err('Unbekannt.'); if ((S.mlvl || 1) < itemLvl(item)) err('Ab Manager-Level ' + itemLvl(item) + ' freigeschaltet: ' + item.name);
         if (S.built[item.id] || S.building.some(function (b) { return b.id === item.id; })) err('Schon vorhanden oder im Bau.');
         if (item.req && !S.built[item.req]) err('Voraussetzung fehlt: ' + (D.items[item.req] ? D.items[item.req].name : item.req));
+        if (item.id === 'ausbau5k' && capacity(S, D) < CAPMAX) err('Stadionausbau Stufe 1 gibt es erst ab 10.000 Plätzen – erweitere vorher über „Mehr Zuschauerplätze“.');
         if (S.cash < item.cost) err('Nicht genug Geld (' + euro(item.cost) + ').');
         if (item.cost) book(S, 'Investitionen', -item.cost);
         if (item.days > 0) { S.building.push({ id: item.id, done: addDays(S.date, item.days) }); info = item.name + ' wird gebaut – fertig am ' + fmtD(addDays(S.date, item.days)) + '.'; }
@@ -3483,7 +3497,7 @@ var MGR = (function () {
     var hist = S.fin.hist.concat(S.fin.cur ? [S.fin.cur] : []).slice(-12).map(function (m) { var i = 0, o = 0; Object.keys(m.inn).forEach(function (k) { i += m.inn[k]; }); Object.keys(m.out).forEach(function (k) { o += m.out[k]; }); return { m: m.m, inn: Math.round(i), out: Math.round(o), detIn: m.inn, detOut: m.out }; });
     var monthlySal = S.players.reduce(function (a, p) { return a + (p.loan && p.loan.to ? 0 : p.sal); }, 0);
     var monthlyItems = Object.keys(S.built).reduce(function (a, id) { return a + (D.items[id] ? itemMonthly(S, D, D.items[id]) : 0); }, 0);
-    var items = D.itemList.map(function (it) { var b = S.building.filter(function (x) { return x.id === it.id; })[0]; return { id: it.id, cat: it.cat, name: it.name, desc: it.desc, cost: it.cost, monthly: itemMonthly(S, D, it), days: it.days, req: it.req, reqName: it.req && D.items[it.req] ? D.items[it.req].name : '', built: !!S.built[it.id], building: b ? b.done : null, locked: !!(it.req && !S.built[it.req]), flvl: itemLvl(it), inc: itemIncome(S, D, it), upg: (S.upg || {})[it.id] || 1, upOk: upgOk(it), upCost: upgCost(it, (S.upg || {})[it.id] || 1), fxTxt: Object.keys(it.fx || {}).map(function (k) { var v = it.fx[k], N = { dev: 'Training', ydev: 'Jugend-Entwicklung', youthq: 'Talent-Qualität', inj: 'Verletzungsrisiko', rec: 'Erholung', heal: 'Heilung', zus: 'Zuschauer', fans: 'Fans', merch: 'Merchandise', food: 'Gastro-Umsatz', spons: 'Sponsoren', moral: 'Moral', cap: 'Plätze', fit: 'Fitness', tac: 'Taktik', att: 'Zuschauer' }; return (N[k] || k) + ' ' + (v > 0 ? '+' : '') + v + (k === 'cap' || k === 'rec' ? '' : ' %'); }) }; });
+    var items = D.itemList.map(function (it) { var b = S.building.filter(function (x) { return x.id === it.id; })[0]; return { id: it.id, cat: it.cat, name: it.name, desc: it.desc, cost: it.cost, monthly: itemMonthly(S, D, it), days: it.days, req: it.req, reqName: it.id === 'ausbau5k' ? '10.000 Plätze' : it.req && D.items[it.req] ? D.items[it.req].name : '', built: !!S.built[it.id], building: b ? b.done : null, locked: !!(it.req && !S.built[it.req]) || (it.id === 'ausbau5k' && capacity(S, D) < CAPMAX), flvl: itemLvl(it), inc: itemIncome(S, D, it), upg: (S.upg || {})[it.id] || 1, upOk: upgOk(it), upCost: upgCost(it, (S.upg || {})[it.id] || 1), fxTxt: Object.keys(it.fx || {}).map(function (k) { var v = it.fx[k], N = { dev: 'Training', ydev: 'Jugend-Entwicklung', youthq: 'Talent-Qualität', inj: 'Verletzungsrisiko', rec: 'Erholung', heal: 'Heilung', zus: 'Zuschauer', fans: 'Fans', merch: 'Merchandise', food: 'Gastro-Umsatz', spons: 'Sponsoren', moral: 'Moral', cap: 'Plätze', fit: 'Fitness', tac: 'Taktik', att: 'Zuschauer' }; return (N[k] || k) + ' ' + (v > 0 ? '+' : '') + v + (k === 'cap' || k === 'rec' ? '' : ' %'); }) }; });
     var worldV = {}; for (var l = 1; l <= D.maxLvl; l++) worldV[l] = { name: D.lv[l].name, short: D.lv[l].short, teams: S.world.lv[l].slice().sort(function (a, b) { return b.s - a.s; }).map(function (t) { return { n: t.n, str: Math.round(t.s * 10) / 10, rating: t.svw ? 'Wir' : rating(S, D, l, t), svw: !!t.svw }; }), last: S.world.last[l] || null };
     var cups = S.cups.map(function (c) { var LSH = function (l) { return D.lv[l] ? D.lv[l].short : ''; }; return { k: c.k, name: CUPS[c.k] ? CUPS[c.k].name : c.name, alive: c.alive, won: !!c.won, rn: c.rn, winner: c.winner || (c.won ? D.club : null), hist: (c.hist || []).map(function (h) { return { name: h.name, ties: h.ties.map(function (t) { return { h: t.h, a: t.a, hl: LSH(t.hl), al: LSH(t.al), hg: t.hg, ag: t.ag, pen: t.pen, w: t.w, own: !!t.own }; }) }; }), ties: (c.ties || []).map(function (t) { return { h: t.h, a: t.a, hl: LSH(t.hl), al: LSH(t.al) }; }), fieldN: (c.field || []).length, round: RNAMES[Math.min(5, c.rn)], games: c.games.map(function (g) { return { d: g.d, round: RNAMES[g.rn], opp: g.opp, home: g.home, gf: g.gf, ga: g.ga, pen: g.pen, win: g.win }; }), next: c.next ? { d: c.next.d, round: RNAMES[c.next.rn], opp: c.next.opp.n, oppLiga: D.lv[c.next.opp.l] ? D.lv[c.next.opp.l].short : '', home: c.next.home } : null }; });
     var pc = pitchCost(S, D);
@@ -3518,7 +3532,7 @@ var MGR = (function () {
       train: { int: S.train.int, focus: S.train.focus, foci: FOCI, fp: S.train.fp }, camp: S.camp, camps: D.camps.map(function (c) { var k = campFeat(c); return Object.assign({}, c, { flvl: featLvl(k) }); }), chem: S.chem && S.chem.until >= S.date ? S.chem : null,
       tests: testOpps(S, D), market: { list: S.market.list.map(mkMarket), loans: S.market.loans.map(mkMarket) },
       fin: { hist: hist, sponsors: S.sponsors.concat(S.tmp.sponsors.map(function (s) { return { slotName: 'Sonderdeal', firm: 'Aktion', m: s.m, until: s.n + ' Monate' }; })), ticket: S.ticket, ticketDef: L.ticket, budget: L.budget, monthlySal: monthlySal, monthlyItems: monthlyItems, tv: L.tv, admin: L.admin },
-      infra: { items: items, cap: capacity(S, D), pitch: { type: S.pitch.type, cond: Math.round(pitchCond(S) * 100), age: Math.round(S.pitch.age * 10) / 10, building: S.pitchBuild || null, cost: pc }, flut: e.flut, lic: licenseIssues(S, D, S.lvl - 1), licLiga: D.lv[S.lvl - 1] ? D.lv[S.lvl - 1].name : null, licOwn: licenseIssues(S, D, S.lvl), licOwnLiga: L.name, life: Math.round(S.pitch.life) },
+      infra: { items: items, cap: capacity(S, D), capOpts: capOpts(S, D), capB: S.capB || null, capMax: CAPMAX, turfY: S.pitch.type === 'kunst' ? Math.round(+String(S.date).slice(0, 4) - S.pitch.age) : null, pitch: { type: S.pitch.type, cond: Math.round(pitchCond(S) * 100), age: Math.round(S.pitch.age * 10) / 10, building: S.pitchBuild || null, cost: pc }, flut: e.flut, lic: licenseIssues(S, D, S.lvl - 1), licLiga: D.lv[S.lvl - 1] ? D.lv[S.lvl - 1].name : null, licOwn: licenseIssues(S, D, S.lvl), licOwnLiga: L.name, life: Math.round(S.pitch.life) },
       cups: cups, world: worldV, hist: S.hist, inbox: S.inbox.slice(0, 80), pending: S.pending[0] || null, pendingCount: S.pending.length, reports: S.reports || [],
       squadValue: S.players.reduce(function (a, p) { return a + mw(p); }, 0),
       matchToday: S.mq.length ? { label: S.mq[0].o.label, comp: S.mq[0].o.comp, opp: S.mq[0].o.opp.n, home: S.mq[0].o.home, d: S.mq[0].o.d, oppLvl: S.mq[0].o.opp.l || S.lvl } : null,

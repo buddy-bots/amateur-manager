@@ -247,9 +247,11 @@ function pressPop() {
 function pressDraw() {
   var Q = V.press[PRESS.step], el = $('#pressQ'); if (!el) return;
   el.innerHTML = '<div class="row sp"><span class="xs muted">Frage ' + (PRESS.step + 1) + ' von ' + V.press.length + '</span><span class="xs muted">Lokalpresse · Radio · Vereins-TV</span></div><h2 style="padding:0;margin:6px 0 12px;animation:fxin .3s">„' + esc(Q[0]) + '“</h2><div class="pqa">' +
-    Q[1].map(function (o, i) { return '<button style="text-align:left;padding:12px;min-height:58px" onclick="pressAns(' + i + ')">' + esc(o[0]) + '</button>'; }).join('') + '</div>';
+    pick3(Q).map(function (i) { var o = Q[1][i]; return '<button style="text-align:left;padding:12px;min-height:58px" onclick="pressAns(' + i + ')">' + esc(o[0]) + '</button>'; }).join('') + '</div>';
   popRecenter();
 }
+// Immer genau drei Antworten (fest je Frage gewählt, Index bleibt der Originalindex)
+function pick3(Q) { var ix = Q[1].map(function (_o, i) { return i; }); if (ix.length <= 3) return ix; var h = 0; String(Q[0]).split('').forEach(function (c) { h = (h * 31 + c.charCodeAt(0)) >>> 0; }); while (ix.length > 3) { ix.splice(h % ix.length, 1); h = Math.floor(h / 7) + 13; } return ix; }
 function pressAns(i) {
   if (PRESS.busy) return; PRESS.ans.push(i); SND.click();
   var o = (V.press[PRESS.step][1] || [])[i] || [], FL = { fans: 'Fans', vorstand: 'Vorstand', moral: 'Moral', sponsoren: 'Sponsoren' };

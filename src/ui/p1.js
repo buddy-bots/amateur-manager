@@ -552,9 +552,8 @@ function cpPick(i) {
   var t = (CP.hits || [])[i]; if (!t) return;
   var eb = (t.ligen_staffeln || {}).ebene, need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl();
   if (need && my < need) { toast('🔒 Vereine aus der ' + ((t.ligen_staffeln || {}).name || 'Liga') + ' kannst du ab Manager-Level ' + need + ' wählen (du bist Level ' + my + '). Aufsteigen darfst du natürlich jederzeit.'); return; }
-  CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '', lat: t.lat, lon: t.lon }; if (t.kreis) CP.kreis = t.kreis;
+  CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '', kl: t.ligen_staffeln ? ligaKl(t.ligen_staffeln) : '', lat: t.lat, lon: t.lon }; if (t.kreis) CP.kreis = t.kreis;
   CP.info = { vb: (t.ligen_staffeln || {}).verband || '', eb: eb };
-  rest('ligen_teams?select=id&aktiv=eq.true&staffel_id=eq.' + encodeURIComponent(t.staffel_id || '')).then(function (r) { if (CP.team && CP.team.id === t.id) { CP.info.n = (r || []).length; mapRedraw(); } }).catch(function () {});
   if (t.verein_id) rest('ligen_teams?select=id&aktiv=eq.true&verein_id=eq.' + encodeURIComponent(t.verein_id)).then(function (r) { if (CP.team && CP.team.id === t.id) { CP.info.m = (r || []).length; mapRedraw(); } }).catch(function () {});
   $('#cphits').innerHTML = ''; $('#cpq').value = ''; cpSel();
   var vb = (t.ligen_staffeln || {}).verband; var kk = CP.kreis; if (t.land && BLAND[t.land]) CP.land = t.land; else Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; } }); CP.kreis = kk; mapRedraw();
@@ -570,12 +569,16 @@ function cpKreisList() {
 function cpKreisDraw() {
   var rows = CP.krows || [], el = $('#cphits'); if (!el) return;
   if (!rows.length) { el.innerHTML = '<div class="xs muted" style="margin-top:6px">Keine Vereine gefunden.</div>'; return; }
+  var chk = '<label class="cpfirst"><input type="checkbox"' + (CP.first ? ' checked' : '') + ' onchange="CP.first=this.checked;cpKreisDraw()"> nur 1. Mannschaften</label>';
+  if (CP.first) rows = rows.filter(function (t) { return firstTeam(t.name); });
   if (!CP.kgrp) { var G = [], seen = {}; rows.forEach(function (t) { var n = ligaKl(t.ligen_staffeln); if (!seen[n]) { seen[n] = { n: n, c: 0, e: t.ligen_staffeln.ebene }; G.push(seen[n]); } seen[n].c++; });
-    el.innerHTML = '<div class="xs muted" style="margin:8px 0 4px">Wähle die Liga:</div><div class="cphits tall">' + G.map(function (g, i) { return '<button class="cphit lg" onclick="CP.kgrp=CP.kgl[' + i + '];cpKreisDraw()"><span class="lgn" title="Spielklasse (Ebene)">' + g.e + '</span><span><b>' + esc(g.n) + '</b><span class="xs muted">' + g.c + (g.c === 1 ? ' Verein' : ' Vereine') + ' aus dem Kreis</span></span><span class="chev">›</span></button>'; }).join('') + '</div>'; CP.kgl = G.map(function (g) { return g.n; }); return; }
+    el.innerHTML = '<div class="row sp" style="margin:8px 0 4px;align-items:center"><span class="xs muted">Wähle die Liga:</span>' + chk + '</div><div class="cphits tall">' + G.map(function (g, i) { return '<button class="cphit lg" onclick="CP.kgrp=CP.kgl[' + i + '];cpKreisDraw()"><span class="lgn" title="Spielklasse (Ebene)">' + g.e + '</span><span><b>' + esc(g.n) + '</b><span class="xs muted">' + g.c + (g.c === 1 ? ' Verein' : ' Vereine') + ' aus dem Kreis</span></span><span class="chev">›</span></button>'; }).join('') + '</div>'; CP.kgl = G.map(function (g) { return g.n; }); return; }
   CP.hits = rows.filter(function (t) { return ligaKl(t.ligen_staffeln) === CP.kgrp; });
-  el.innerHTML = '<div class="row" style="gap:8px;margin:8px 0 4px"><button class="sm" onclick="CP.kgrp=\'\';cpKreisDraw()">‹ Ligen</button><b class="small">' + esc(CP.kgrp) + '</b></div><div class="cphits tall">' + CP.hits.map(function (t, i) { return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b>' + (t.ligen_staffeln.name !== CP.kgrp ? '<span class="xs muted">' + esc(t.ligen_staffeln.name) + '</span>' : '') + '</span></button>'; }).join('') + '</div>';
+  el.innerHTML = '<div class="row" style="gap:8px;margin:8px 0 4px;align-items:center"><button class="sm" onclick="CP.kgrp=\'\';cpKreisDraw()">‹ Ligen</button><b class="small">' + esc(CP.kgrp) + '</b><span style="margin-left:auto">' + chk + '</span></div><div class="cphits tall">' + CP.hits.map(function (t, i) { return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b>' + (t.ligen_staffeln.name !== CP.kgrp ? '<span class="xs muted">' + esc(t.ligen_staffeln.name) + '</span>' : '') + '</span></button>'; }).join('') + '</div>';
 }
 // Spielklasse ohne Staffel/Gruppe: alle Kreisliga-A-Staffeln eines Kreises zusammen usw.
+// 1. Mannschaft = kein II/III/2/3 … am Ende
+function firstTeam(n) { return !/\s(II|III|IV|V|VI|[2-9])\.?$/.test(String(n || '').trim()); }
 function ligaKl(st) { var k = String(st.klasse || st.name || '').replace(/ \(Verband\)$/, ''), vb = st.verband; if (k === 'Verbandsliga') k = vb === 'Mittelrhein' ? 'Mittelrheinliga' : vb === 'Westfalen' ? 'Westfalenliga' : 'Verbandsliga'; if (/^(Oberliga|Regionalliga|3\. Liga|2\. Bundesliga|Bundesliga)/.test(st.name || '') && !/^(Kreisliga|Bezirksliga|Landesliga)/.test(k)) return st.name; return k; }
 function mapRedraw() {
   var el = $('#demapf'); if (!el) return;
@@ -638,7 +641,7 @@ function deMapClub(land, k) {
   var I = CP.info || {}, row = function (a, v) { return v ? '<div class="row sp"><span class="muted">' + a + '</span><b>' + v + '</b></div>' : ''; };
   return '<div class="mapbar"><button onclick="cpLand(\'\')">← Deutschland</button><b>' + esc(land) + '</b><span>Kreis ' + esc(kName(k[0])) + ' <a href="javascript:void 0" onclick="CP.team=null;cpSel();cpKreis(\'' + esc(k[0]).replace(/'/g, "\\'") + '\')">✕</a></span></div>' +
     '<div class="cpclubw"><svg class="zoom club" viewBox="' + (b[0] - pad).toFixed(1) + ' ' + (b[1] - pad - lift).toFixed(1) + ' ' + (w + pad * 2).toFixed(1) + ' ' + (h + pad * 2 + lift).toFixed(1) + '">' + mapDefs() + walls + '<path d="' + k[2] + '" transform="translate(0 ' + (-lift) + ') ' + sc + '" fill="url(#mgA)" stroke="#eaffd2" stroke-width="2" vector-effect="non-scaling-stroke"/>' + dot + '</svg>' +
-    '<div class="cpclub"><div class="row" style="gap:12px"><img src="' + genLogo(t.name) + '" alt=""><div style="min-width:0"><b style="font-size:17px">' + esc(t.name) + '</b><div class="xs muted">' + esc(t.liga) + '</div></div></div><div class="cpci">' + row('Ort', esc(clubTownUI(t.name))) + row('Kreis', esc(kName(k[0]))) + row('Verband', esc(I.vb || '')) + row('Bundesland', esc(land)) + row('Spielklasse', I.eb ? I.eb + '. Liga-Ebene' : '') + row('Gegner in der Liga', I.n ? String(I.n - 1) : '') + row('Mannschaften im Verein', I.m ? String(I.m) : '') + '</div></div></div>';
+    '<div class="cpclub"><div class="row" style="gap:12px"><img src="' + genLogo(t.name) + '" alt=""><div style="min-width:0"><b style="font-size:17px">' + esc(t.name) + '</b><div class="xs muted">' + esc(t.kl || t.liga) + '</div></div></div><div class="cpci">' + row('Ort', esc(clubTownUI(t.name))) + row('Verband', esc(I.vb || '')) + row('Bundesland', esc(land)) + row('Spielklasse', I.eb ? I.eb + '. Liga' : '') + row('Mannschaften im Verein', I.m ? String(I.m) : '') + '</div></div></div>';
 }
 function clubTownUI(n) { try { return MGR.clubTown(n) || ''; } catch (e) { return ''; } }
 // Ein Land groß mit seinen Fußballkreisen
@@ -653,6 +656,7 @@ function deMapLand(land) {
 }
 function createGame() {
   if (!CP.team) return toast('Bitte zuerst deinen Verein suchen.', true);
+  var nd = MGR.LIGA_LVL[(CP.info || {}).eb] || 0; if (nd && cpMyLvl() < nd) return toast('🔒 Diese Liga kannst du erst ab Manager-Level ' + nd + ' wählen.', true);
   var sp = $('#selfpos') ? $('#selfpos').value : '';
   loading(true); game('new', { self: sp ? { pos: sp } : null, team: CP.team.id }).then(function (r) {
     SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state; NOTE = { levelUp: null };

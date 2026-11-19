@@ -72,9 +72,11 @@ async function regFor(teamId: string) {
 // Braucht keinen Schlüssel: Quelle ist nur das eigene Repo, höchstens alle 3 Minuten. Von Hand geänderte Namen bleiben.
 const LIG_RAW = 'https://raw.githubusercontent.com/buddy-bots/amateur-manager/';
 const ligDec = (s: string) => String(s).replace(/&#8203;|​/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/\s+/g, ' ').trim();
-const ligTeam = (s: string) => ligDec(s).replace(/\s+(I|1)$/, '');
+// Mannschaftsnummer immer römisch: „SV Musterdorf 2“ → „SV Musterdorf II“
+const ROM = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+const ligTeam = (s: string) => ligDec(s).replace(/\s+(I|1)\.?$/, '').replace(/\s+([2-9])\.?$/, (_m, d) => ' ' + ROM[+d]).replace(/\s+([2-9])\.?\s*(Mannschaft|Mannsch\.)$/i, (_m, d) => ' ' + ROM[+d]);
 function ligStaffel(n: string, gn: string, vb: string) {
-  let s = ligDec(n).replace(/\bHerren\b/gi, '').replace(/\b20\d\d\/20\d\d\b/g, '').replace(/\b\d\d\/\d\d\b/g, '').replace(/^IGA 20\d\d\s+/i, '').replace(/\s+-\s+/g, ' – ').replace(/\s{2,}/g, ' ').replace(/[\s,–-]+$/, '').trim();
+  let s = ligDec(n).replace(/^\d{2,4}\s+/, '').replace(/^BZL\b/, 'Bezirksliga').replace(/^KL\b/, 'Kreisliga').replace(/^KK\b/, 'Kreisklasse').replace(/^LL\b/, 'Landesliga').replace(/\bHerren\b/gi, '').replace(/\b20\d\d\/20\d\d\b/g, '').replace(/\b\d\d\/\d\d\b/g, '').replace(/^IGA 20\d\d\s+/i, '').replace(/\s+-\s+/g, ' – ').replace(/\s{2,}/g, ' ').replace(/[\s,–-]+$/, '').trim();
   const kreis = /^Kreis /.test(gn || '') ? gn.replace(/^Kreis /, '') : '';
   if (kreis && s.toLowerCase().indexOf(kreis.toLowerCase().slice(0, 6)) < 0) {
     const m = s.match(/^(Kreisliga [A-D])(.*)$/);

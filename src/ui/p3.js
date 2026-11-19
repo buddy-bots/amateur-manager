@@ -153,7 +153,7 @@ function compBox() {
   var st = function (k) { var c = cup(k); if (!c) return null; return c.won ? '<b style="color:#f0c24b">🏆 Pokalsieger</b>' : c.alive ? '<b style="color:var(--g)">' + esc(c.round || '1. Runde') + '</b>' : '<b style="color:#e25c5c">' + esc(c.round || '') + ' · raus</b>'; };
   var lg = function (k) { return '<img src="' + VLOGO[k] + '" style="height:16px;width:16px;object-fit:contain;vertical-align:-3px">'; };
   var row = function (ic, n, v) { ic = ic === '🏟️' ? lg(V.lvl <= 4 ? 'dfb' : 'fvm') : ic === '🇩🇪' ? lg('dfb') : (ic === '🥇' || ic === '🍺') ? lg('fvm') : ic; return '<div class="row sp small" style="padding:7px 0;border-top:1px solid var(--linie);gap:8px"><span style="min-width:0">' + ic + ' ' + esc(n) + '</span><span style="white-space:nowrap">' + v + '</span></div>'; };
-  var h = '<div class="box"><h3>🏆 Wettbewerbe</h3>' + row('🏟️', lsh(V.liga || V.ligaK || 'Liga'), '<b>' + (me + 1) + '. Platz</b>');
+  var h = '<div class="box"><h3>🏆 Wettbewerbe</h3>' + row('🏟️', lsh(V.ligaK || V.liga || 'Liga'), '<b>' + (me + 1) + '. Platz</b>');
   h += row('🥇', 'Kreispokal', st('kp') || '<span class="muted">nicht dabei</span>');
   var mr = cup('mrp'); if (mr || Q.mrp) h += row('🍺', VPN(), st('mrp') || '<b style="color:var(--g)">qualifiziert (nächste Saison)</b>');
   if (cup('dfb') || Q.dfb) h += row('🇩🇪', 'DFB-Pokal', st('dfb') || '<b style="color:var(--g)">qualifiziert (nächste Saison)</b>');
@@ -237,7 +237,7 @@ function reachBox() {
     '<button class="adtile ad" ' + (V.socUsed || V.pots.cash < V.adCost ? 'disabled' : '') + ' onclick="adDo(event)"><span class="adic">📢</span><span class="adtx"><b>' + (V.adDone ? 'Werbung lief' : 'Werbung schalten') + '</b><small>' + (V.adDone ? (V.adLast && V.adLast.g ? '+' + num(V.adLast.g) + ' Follower' : 'ohne Wirkung') : eur(V.adCost)) + '</small></span></button>' +
     '<button class="adtile fl" ' + (V.socUsed || V.pots.cash < 40 ? 'disabled' : '') + ' onclick="flyDo(event)"><span class="adic">📄</span><span class="adtx"><b>' + (V.flyDone ? 'Flyer verteilt' : 'Flyer verteilen') + '</b><small>' + (V.flyDone ? '+' + V.flyLast + ' Follower' : '40 €') + '</small></span></button></div>';
   var msH = '<div class="msrow">' + MS.map(function (x, k) { var ok = f >= x[0]; return '<div class="msb' + (ok ? ' ok' : '') + '" title="' + num(x[0]) + ' Follower"><span>📣</span><b>' + (x[0] >= 1000 ? num(x[0] / 1000) + 'k' : num(x[0])) + '</b><small>' + esc(['Erste Fans online', 'Lokale Sponsoren', 'Sponsoren-Interesse', 'Überregionale Sponsoren', 'Große Firmen', 'Nationale Marken', 'Top-Marken', 'Internationale Marke'][k] || x[1] || '') + '</small></div>'; }).join('') + '</div>';
-  return '<div class="box reach reachw" style="margin:0 0 14px"><div class="row sp"><h3 style="margin:0">📣 Reichweite</h3>' + (V.hype ? '<span class="pill hypep">🔥 Guter Zeitpunkt</span>' : '') + '</div><div class="reachg"><div>' +
+  return '<div class="box reach reachw" style="margin:0 0 14px"><div class="row sp"><h3 style="margin:0">📣 Reichweite' + (V.hype ? ' <span class="hypef" title="Guter Zeitpunkt für Beiträge">' + '🔥🔥🔥'.slice(0, 2 * (V.hype >= 2 ? 3 : V.hype >= 1 ? 2 : 1)) + '</span>' : '') + '</h3></div><div class="reachg"><div>' +
     '<div class="row" style="gap:12px;align-items:center;margin-top:4px">' + ring + '<div style="flex:1;min-width:0"><div class="xs muted">Follower</div><div id="follownum" class="fnum">' + num(f) + '</div>' + (V.followWeek ? '<span class="pill ' + (V.followWeek > 0 ? 'g' : 'r') + '" style="font-size:11px">' + (V.followWeek > 0 ? '+' : '') + num(V.followWeek) + ' letzte Woche</span>' : '') + '</div></div>' +
     '<div style="margin-top:6px"><div class="row sp xs"><b>💼 ' + st[1] + '</b><span class="muted">' + num(f) + ' / ' + num(st[0]) + '</span></div><div class="rbar"><i style="width:' + sp + '%"></i></div></div>' +
     '<div class="row sp xs" style="margin-top:5px"><span class="muted">Vermarktung</span><b style="color:' + (m >= 60 ? '#8fc852' : m >= 35 ? '#ffd34d' : '#ff6b6b') + '">' + m + ' / 100</b></div>' +
@@ -742,15 +742,19 @@ function initDrag() {
     var row = e.target.closest('.pl[data-pid]'), spid = null;
     if (!row) { var sl0 = e.target.closest('.slot'); if (sl0) { spid = (V.lineup.slots[+sl0.getAttribute('data-slot')] || {}).pid; if (spid) row = sl0; } }
     if (!row) return;
-    DRAG = { pid: spid || +row.getAttribute('data-pid'), x0: e.clientX, y0: e.clientY, on: false, el: null, row: row };
+    DRAG = { pid: spid || +row.getAttribute('data-pid'), x0: e.clientX, y0: e.clientY, on: false, el: null, row: row, touch: e.pointerType === 'touch' && !spid, armed: e.pointerType !== 'touch' || !!spid };
+    // Tablet: in Listen erst nach kurzem Halten ziehen (sonst scrollt man), auf dem Spielfeld sofort
+    if (DRAG.touch) { var dd = DRAG; dd.tm = setTimeout(function () { if (DRAG === dd) { dd.armed = true; try { navigator.vibrate && navigator.vibrate(15); } catch (x) {} row.classList.add('dragarm'); } }, 220); }
   });
+  if (!window.DRAGTM) { window.DRAGTM = 1; document.addEventListener('touchmove', function (e) { if (DRAG && DRAG.armed) e.preventDefault(); }, { passive: false }); window.addEventListener('pointercancel', function () { if (DRAG && DRAG.el) DRAG.el.remove(); if (DRAG && DRAG.row) DRAG.row.classList.remove('dragarm'); DRAG = null; }); }
   window.onpointermove = function (e) {
     if (!DRAG) return;
+    if (!DRAG.armed) { if (Math.abs(e.clientX - DRAG.x0) + Math.abs(e.clientY - DRAG.y0) > 8) { clearTimeout(DRAG.tm); DRAG = null; } return; }
     if (!DRAG.on && Math.abs(e.clientX - DRAG.x0) + Math.abs(e.clientY - DRAG.y0) > 8) { DRAG.on = true; var p = V.players.filter(function (q) { return q.id === DRAG.pid; })[0]; DRAG.el = document.createElement('div'); DRAG.el.className = 'drag'; DRAG.el.textContent = p ? p.pos + ' · ' + p.n : ''; document.body.appendChild(DRAG.el); }
     if (DRAG.on) { e.preventDefault(); DRAG.el.style.left = e.clientX + 'px'; DRAG.el.style.top = e.clientY + 'px'; document.querySelectorAll('.slot').forEach(function (s) { s.classList.remove('over'); }); var t = document.elementFromPoint(e.clientX, e.clientY); var sl = t && t.closest ? t.closest('.slot') : null; if (sl) sl.classList.add('over'); }
   };
   window.onpointerup = function (e) {
-    if (!DRAG) return; var d = DRAG; DRAG = null;
+    if (!DRAG) return; var d = DRAG; DRAG = null; clearTimeout(d.tm); if (d.row) d.row.classList.remove('dragarm');
     if (!d.on) return; if (d.el) d.el.remove();
     var t = document.elementFromPoint(e.clientX, e.clientY); var sl = t && t.closest ? t.closest('.slot') : null;
     d.row.onclick = null; setTimeout(function () { }, 0);
@@ -1252,9 +1256,14 @@ function tFin() {
 function sparkL(arr, col) { if (!arr || arr.length < 2) return ''; var mn = Math.min.apply(null, arr), mx = Math.max.apply(null, arr), W = 300, H = 60, rg = mx - mn || 1; var pts = arr.map(function (v, i) { return (i * W / (arr.length - 1)).toFixed(1) + ',' + (H - 6 - (v - mn) / rg * (H - 12)).toFixed(1); }); return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:60px;display:block;margin-top:6px"><polyline points="0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H + '" fill="' + col + '22" stroke="none"/><polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.5" stroke-linejoin="round"/></svg>'; }
 function dkBox() {
   var K = V.dk; if (!K) return '';
-  var H = K.hist || [], mx = Math.max.apply(null, H.map(function (x) { return x.n; }).concat([10])), W = 300, Hh = 110, bw = H.length ? Math.min(46, (W - 10) / H.length - 8) : 40;
-  var bars = H.map(function (x, i) { var h0 = Math.max(4, x.n / mx * (Hh - 34)), xx = 6 + i * ((W - 12) / Math.max(1, H.length)) + ((W - 12) / Math.max(1, H.length) - bw) / 2; return '<g><rect x="' + xx.toFixed(1) + '" y="' + (Hh - 18 - h0).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h0.toFixed(1) + '" rx="6" fill="url(#dkg)"/><text x="' + (xx + bw / 2).toFixed(1) + '" y="' + (Hh - 22 - h0).toFixed(1) + '" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">' + x.n + '</text><text x="' + (xx + bw / 2).toFixed(1) + '" y="' + (Hh - 5) + '" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.6)">' + String(x.s).slice(2) + '/' + String(x.s + 1).slice(2) + '</text></g>'; }).join('');
-  var last = H[H.length - 1];
+  // 10 Saisons: 2 frühere (gewürfelt, fest je Verein), die echten Werte, Rest leer; ab 11 rückt die älteste raus
+  var H0 = (K.hist || []).slice(), f0 = H0[0], sd = 0; String(V.club || '').split('').forEach(function (c) { sd = (sd * 31 + c.charCodeAt(0)) >>> 0; });
+  if (f0) { for (var pi = 1; pi <= 2; pi++) { sd = (sd * 1103515245 + 12345) >>> 0; H0.unshift({ s: f0.s - pi, n: Math.max(1, Math.round(f0.n * (0.82 + (sd % 30) / 100))), pre: 1 }); } H0.sort(function (a, b) { return a.s - b.s; }); }
+  if (H0.length > 10) H0 = H0.slice(-10);
+  var s0 = H0.length ? H0[0].s : (+V.season || 2026) - 2; var H = []; for (var hi = 0; hi < 10; hi++) H.push(H0[hi] || { s: s0 + hi, n: null });
+  var mx = Math.max.apply(null, H.map(function (x) { return x.n || 0; }).concat([10])), W = 300, Hh = 110, bw = Math.min(46, (W - 10) / H.length - 6);
+  var bars = H.map(function (x, i) { if (x.n == null) { var xe = 6 + i * ((W - 12) / H.length) + ((W - 12) / H.length - bw) / 2; return '<g><rect x="' + xe.toFixed(1) + '" y="' + (Hh - 30) + '" width="' + bw.toFixed(1) + '" height="12" rx="4" fill="none" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 3"/><text x="' + (xe + bw / 2).toFixed(1) + '" y="' + (Hh - 5) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,.4)">' + String(x.s).slice(2) + '/' + String(x.s + 1).slice(2) + '</text></g>'; } var h0 = Math.max(4, x.n / mx * (Hh - 34)), xx = 6 + i * ((W - 12) / Math.max(1, H.length)) + ((W - 12) / Math.max(1, H.length) - bw) / 2; return '<g><rect x="' + xx.toFixed(1) + '" y="' + (Hh - 18 - h0).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h0.toFixed(1) + '" rx="4" fill="url(#dkg)"' + (x.pre ? ' opacity=".6"' : '') + '/><text x="' + (xx + bw / 2).toFixed(1) + '" y="' + (Hh - 22 - h0).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">' + x.n + '</text><text x="' + (xx + bw / 2).toFixed(1) + '" y="' + (Hh - 5) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,.6)">' + String(x.s).slice(2) + '/' + String(x.s + 1).slice(2) + '</text></g>'; }).join('');
+  var last = (K.hist || [])[(K.hist || []).length - 1];
   return '<div class="box"><h3>🎫 Dauerkarten</h3><svg viewBox="0 0 ' + W + ' ' + Hh + '" style="width:100%;height:auto;display:block"><defs><linearGradient id="dkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9e68a"/><stop offset="1" stop-color="#4f8f25"/></linearGradient></defs>' + bars + '</svg>' +
     (last ? kv('Diese Saison', '<b>' + last.n + ' Stück · ' + eur(last.rev) + '</b>') : '') + kv('Preis', '<b>' + eur(K.price) + '</b>') +
     (K.canSet ? '<div class="row" style="gap:6px;margin-top:8px"><input id="dkp" type="number" min="10" max="2000" step="1" value="' + K.price + '" style="flex:1"><button class="sm pri" onclick="act(\'dkPrice\',{price:+$(\'#dkp\').value})">Für nächste Saison festlegen</button></div><div class="xs muted" style="margin-top:4px">Einmal pro Saison änderbar. Zu teuer = weniger Käufer.</div>' : '<div class="xs muted" style="margin-top:6px">' + ((V.hist || []).length ? 'Preis für diese Saison schon festgelegt.' : 'Den Preis legst du ab der zweiten Saison fest.') + '</div>') + '</div>';

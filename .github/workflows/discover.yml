@@ -1,0 +1,20 @@
+name: Mandanten suchen
+on:
+  push:
+    branches: [umbau]
+    paths: ['tools/discover-fd.mjs']
+permissions:
+  contents: write
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: umbau }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node tools/discover-fd.mjs
+      - run: |
+          git config user.name "amateur-manager-bot"; git config user.email "bot@amateur-manager.de"
+          git add data/mandanten.json; git commit -m "fussball.de-Mandanten" || true
+          git pull --rebase origin umbau; git push origin HEAD:umbau

@@ -1,0 +1,28 @@
+name: Ligadaten holen
+on:
+  workflow_dispatch:
+  push:
+    branches: [umbau]
+    paths: ['tools/scrape-fussballde.mjs', 'data/.scrape-trigger']
+permissions:
+  contents: write
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: umbau
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/scrape-fussballde.mjs
+      - name: Daten speichern
+        run: |
+          git config user.name "amateur-manager-bot"
+          git config user.email "bot@amateur-manager.de"
+          git add data/
+          git commit -m "Ligadaten von fussball.de aktualisiert" || echo "nichts zu tun"
+          git pull --rebase origin umbau
+          git push origin HEAD:umbau

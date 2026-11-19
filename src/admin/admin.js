@@ -58,8 +58,9 @@ function answer(id) {
 
 /* ---------- Bilder */
 function loadMap() { return fetch(SB.url + '/rest/v1/media?select=key,path,updated_at&order=key&limit=3000', { headers: sbHeaders() }).then(function (r) { return r.json(); }).then(function (rows) { MAP = {}; (rows || []).forEach(function (m) { MAP[m.key] = m; }); }); }
-function showImg() {
-  $('#main').innerHTML = '<div class="spin"></div>';
+function showImg(keep) {
+  var y = keep ? window.scrollY : 0;
+  if (!keep) $('#main').innerHTML = '<div class="spin"></div>';
   loadMap().then(function () {
     var grp = function (title, g, list, note) { return '<div class="card"><h3>' + title + '</h3>' + (note ? '<p class="muted">' + note + '</p>' : '') + '<div class="grid">' + list.map(function (x) { return slot(g + '.' + x[0], x[1]); }).join('') + '</div></div>'; };
     var items = (D0.itemList || []).map(function (it) { return [it.id, it.name + ' (' + it.cat + ')']; });
@@ -67,22 +68,35 @@ function showImg() {
     var shop = (MGR.SHOP || []).map(function (s) { return [s[0], s[2] + ' (' + s[1] + ')']; });
     var stad = Object.keys(MAP).filter(function (k) { return k.indexOf('stad.') === 0; }).map(function (k) { return [k.slice(5), k.slice(5)]; });
     $('#main').innerHTML =
-      '<div class="card"><p class="muted">Klick auf ein Feld, um ein Bild hochzuladen oder zu ersetzen. Bilder werden automatisch verkleinert (max. 2000 px). Änderungen sind sofort im Spiel sichtbar (Seite neu laden).</p></div>' +
+      '<div class="card"><p class="muted">Klick auf ein Feld oder zieh ein Bild aus deinem Ordner direkt darauf, um es hochzuladen oder zu ersetzen. Bilder werden automatisch verkleinert (max. 2000 px). Änderungen sind sofort im Spiel sichtbar (Seite neu laden).</p></div>' +
       grp('Titel- & Popup-Bilder', 'bg', BG) +
       grp('Maskottchen', 'masc', MASC, 'Quadratisch sieht am besten aus.') + grp('Scouting-Tools', 'scout', SCOUT) + grp('Fan-Aktionen', 'fans', FANS) +
       grp('Ausbau & Erweiterungen', 'ausbau', items) + grp('Trainingslager', 'camp', camps) + grp('Privat-Shop', 'priv', shop) +
       '<div class="card"><h3>Stadionbilder (Eintrittskarte)</h3><p class="muted">Vereinsname exakt wie im Spiel.</p><div class="row"><input id="stn" placeholder="Vereinsname, z. B. SV Wachtberg"><button class="btn" onclick="pickNamed()">Bild wählen</button></div><div class="grid">' + stad.map(function (x) { return slot('stad.' + x[0], x[1]); }).join('') + '</div></div>' +
-      LISTS.map(function (l) { var ks = Object.keys(MAP).filter(function (k) { return k.indexOf(l[0] + '.') === 0; }); return '<div class="card"><h3>' + l[1] + '</h3><div class="grid">' + ks.map(function (k) { return slot(k, ''); }).join('') + '<div class="slot add" onclick="pickList(\'' + l[0] + '\')"><span>＋ Bilder hinzufügen</span></div></div></div>'; }).join('');
+      LISTS.map(function (l) { var ks = Object.keys(MAP).filter(function (k) { return k.indexOf(l[0] + '.') === 0; }); return '<div class="card"><h3>' + l[1] + '</h3><div class="grid">' + ks.map(function (k) { return slot(k, ''); }).join('') + '<div class="slot add" data-list="' + l[0] + '" onclick="pickList(\'' + l[0] + '\')"><span>＋ Bilder hinzufügen<br><small>oder hierher ziehen</small></span></div></div></div>'; }).join('');
+    if (keep) window.scrollTo(0, y);
   });
 }
 function slot(key, label) {
   var m = MAP[key], u = m ? mediaUrl(m.path) : '';
-  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + '</div>';
+  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + '</div>';
 }
 function chooser(multi, cb) { var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.multiple = !!multi; i.onchange = function () { cb(Array.prototype.slice.call(i.files)); }; i.click(); }
-function pick(key) { chooser(false, function (f) { if (f[0]) upload(key, f[0]).then(showImg); }); }
+function pick(key) { chooser(false, function (f) { if (f[0]) upload(key, f[0]).then(function () { showImg(true); }); }); }
 function pickNamed() { var n = $('#stn').value.trim(); if (!n) return toast('Bitte Vereinsnamen eingeben.', true); pick('stad.' + n); }
-function pickList(g) { chooser(true, function (fs) { var n = Date.now(), p = Promise.resolve(); fs.forEach(function (f, i) { p = p.then(function () { return upload(g + '.' + (n + i), f); }); }); p.then(showImg); }); }
+function pickList(g) { chooser(true, function (fs) { uploadList(g, fs); }); }
+function uploadList(g, fs) { var n = Date.now(), p = Promise.resolve(); fs.forEach(function (f, i) { p = p.then(function () { return upload(g + '.' + (n + i), f); }); }); return p.then(function () { showImg(true); }); }
+// Bilder aus dem Explorer/Finder direkt auf ein Feld ziehen
+function dropTarget(e) { var t = e.target.closest && e.target.closest('.th[data-key], .slot.add[data-list]'); return t; }
+document.addEventListener('dragover', function (e) { var t = dropTarget(e); if (!t) return; e.preventDefault(); document.querySelectorAll('.drop').forEach(function (x) { if (x !== t) x.classList.remove('drop'); }); t.classList.add('drop'); });
+document.addEventListener('dragleave', function (e) { var t = dropTarget(e); if (t && !t.contains(e.relatedTarget)) t.classList.remove('drop'); });
+document.addEventListener('drop', function (e) {
+  var t = dropTarget(e); if (!t) return; e.preventDefault(); t.classList.remove('drop');
+  var fs = Array.prototype.slice.call(e.dataTransfer.files || []).filter(function (f) { return /^image\//.test(f.type); });
+  if (!fs.length) return toast('Bitte eine Bilddatei hierher ziehen.', true);
+  if (t.dataset.list) uploadList(t.dataset.list, fs); else upload(t.dataset.key, fs[0]).then(function () { showImg(true); });
+});
+window.addEventListener('dragover', function (e) { e.preventDefault(); }); window.addEventListener('drop', function (e) { e.preventDefault(); });
 // Verkleinern (GIFs bleiben unverändert, damit die Animation erhalten bleibt)
 function shrink(file) {
   if (file.type === 'image/gif') return Promise.resolve({ blob: file, ext: 'gif', type: 'image/gif' });
@@ -99,7 +113,7 @@ function upload(key, file) {
   return shrink(file).then(function (o) {
     var path = key.replace(/[^\w.-]+/g, '_') + '-' + Date.now() + '.' + o.ext;
     return ensureFresh().then(function () {
-      return fetch(SB.url + '/storage/v1/object/media/' + encodeURIComponent(path), { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': o.type, 'x-upsert': 'true' }, body: o.blob });
+      return fetch(SB.url + '/storage/v1/object/media/' + encodeURIComponent(path), { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': o.type }, body: o.blob });
     }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('Upload fehlgeschlagen: ' + t); }); })
       .then(function () { var old = MAP[key]; return rest('media', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: key, path: path, updated_at: new Date().toISOString() } }).then(function () { if (old) removeFile(old.path); }); })
       .then(function () { toast('Gespeichert ✓'); });
@@ -108,6 +122,6 @@ function upload(key, file) {
 function removeFile(path) { return ensureFresh().then(function () { return fetch(SB.url + '/storage/v1/object/media', { method: 'DELETE', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: [path] }) }); }).catch(function () { }); }
 function delImg(key) {
   if (!confirm('Bild entfernen? Im Spiel erscheint dann wieder die Standardgrafik.')) return;
-  var m = MAP[key]; rest('media?key=eq.' + encodeURIComponent(key), { method: 'DELETE' }).then(function () { if (m) removeFile(m.path); toast('Entfernt.'); showImg(); }).catch(function (e) { toast(e.message, true); });
+  var m = MAP[key]; rest('media?key=eq.' + encodeURIComponent(key), { method: 'DELETE' }).then(function () { if (m) removeFile(m.path); toast('Entfernt.'); showImg(true); }).catch(function (e) { toast(e.message, true); });
 }
 start();

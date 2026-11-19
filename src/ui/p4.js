@@ -64,7 +64,7 @@ var COBJ = [['sitztrib', 'Sitzplatztribüne', 'stand'], ['stehtrib', 'Stehtribü
 function coHover(id, click) { isoInfo(id, 'coinfo', click); }
 function clubMap() {
   var objs = COBJ.filter(function (q) { return (V.infra.items || []).some(function (x) { return x.id === q[0]; }); });
-  return isoWrap('🏗️ Vereinsgelände', campusScene({ objs: objs, fn: 'coHover', hub: V.club || 'SV Wachtberg', unit: 'Anlagen', state: function (id) { return itemSt(id); }, sub: itemSub }), 'coinfo');
+  return isoWrap('🏗️ Vereinsgelände', campusScene({ objs: objs, fn: 'coHover', hub: V.club || 'SV Wachtberg', unit: 'Anlagen', bg: 'karte_verein', state: function (id) { return itemSt(id); }, sub: itemSub }), 'coinfo');
 }
 var MOBJ = [['physio', 'Physio', 'clinic'], ['arzt', 'Mannschaftsarzt', 'clinic'], ['reha', 'Reha-Raum', 'pool'], ['lab', 'Leistungsdiagnostik', 'lab'], ['ernaehrung', 'Ernährung', 'kiosk'], ['mrt', 'MRT', 'lab'], ['pool', 'Schwimmbad', 'pool'], ['therapeut', 'Therapeut', 'clinic'], ['ortho', 'Orthopädie', 'clinic'], ['auge', 'Augenarzt', 'clinic'], ['zahn', 'Zahnarzt', 'clinic']];
 function medHover(id, click) {
@@ -74,7 +74,7 @@ function medHover(id, click) {
 }
 function medMap() {
   var M = V.medItems || [], g = function (id) { return M.filter(function (x) { return x.k === id; })[0]; };
-  return isoWrap('🏥 Medizin-Campus', campusScene({ objs: MOBJ.filter(function (q) { return g(q[0]); }), fn: 'medHover', hub: 'Med. Abteilung', unit: 'Bereiche', state: function (id) { var m = g(id); return m && m.lvl && !(m.bld && m.lvl === 1) ? 'on' : 'off'; }, sub: function (id, st) { var m = g(id); return m.bld ? '🏗️ im Bau' : st === 'on' ? 'Stufe ' + m.lvl + '/3' + (m.staff ? '' : ' · kein Personal') : eurK(m.next) + ' · bauen'; } }), 'medinfo', 'Fahr über einen Bereich');
+  return isoWrap('🏥 Medizin-Campus', campusScene({ objs: MOBJ.filter(function (q) { return g(q[0]); }), fn: 'medHover', hub: 'Med. Abteilung', unit: 'Bereiche', bg: 'karte_med', state: function (id) { var m = g(id); return m && m.lvl && !(m.bld && m.lvl === 1) ? 'on' : 'off'; }, sub: function (id, st) { var m = g(id); return m.bld ? '🏗️ im Bau' : st === 'on' ? 'Stufe ' + m.lvl + '/3' + (m.staff ? '' : ' · kein Personal') : eurK(m.next) + ' · bauen'; } }), 'medinfo', 'Fahr über einen Bereich');
 }
 function itemCard(it, c) {
       var lk = V.mlvl < (it.flvl || 1);

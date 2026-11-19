@@ -243,17 +243,45 @@ var MEDIA_OK = false;
 function popRecenter() { var p = $('#pop'); if (!p || !document.body.classList.contains('intro')) return; var vh = window.innerHeight || 800, ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16), ph = p.offsetHeight; p.style.top = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)) + 'px'; }
 function preloadBg() { var m = (D && D.imgs && D.imgs.bg) || {}, ks = Object.keys(m).filter(function (k) { return k !== 'titel'; }), i = 0; var step = function () { if (i >= ks.length) return; var im = new Image(); im.onload = im.onerror = function () { setTimeout(step, 50); }; im.src = imgOf('bg', ks[i++]); }; setTimeout(step, 1500); }
 function titleSrc() { var u = imgOf('bg', 'titel'); if (u) return u; if (!MEDIA_OK) { try { u = localStorage.getItem('am_titel'); } catch (e) {} if (u) return u; return 'PH'; } return TITLEIMG; }
-var HANDOFF_SAVE = null;
+var HANDOFF_SAVE = null, HOFF = { code: null, t: 0, timer: null, asking: false };
+/* Handy-Übergabe – Handy-Seite: Code melden und warten, bis der PC zustimmt */
+function hoffClaim(code) { return fetch(SB.url + '/functions/v1/game', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'handoffClaim', code: code }) }).then(function (r) { return r.json(); }); }
 function boot() {
-  var mh = /[?&]mh=([^&]+)/.exec(location.search), ms = /[?&]s=([^&]+)/.exec(location.search);
-  if (mh) {
-    history.replaceState(null, '', location.pathname);
-    fetch(SB.url + '/auth/v1/verify', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'magiclink', token_hash: decodeURIComponent(mh[1]) }) })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (x) { if (x.ok && x.j && x.j.access_token) { sessSave(x.j); HANDOFF_SAVE = ms ? decodeURIComponent(ms[1]) : null; } else HANDOFF_SAVE = 'ERR'; boot0(); }, function () { HANDOFF_SAVE = 'ERR'; boot0(); });
-    return;
-  }
-  boot0();
+  var hc = /[?&]hc=([0-9a-f]{40})/.exec(location.search);
+  if (!hc) return boot0();
+  history.replaceState(null, '', location.pathname); var code = hc[1], t0 = Date.now(), done = false;
+  D = MGR.normalize(defaultRaw()); startScreen();
+  pop('<div style="text-align:center"><div style="font-size:44px">📱</div><h2 style="padding:0">Am PC bestätigen</h2><div class="small" style="line-height:1.6;margin:8px 0 12px">Auf deinem PC erscheint gleich die Frage, ob dieses Handy dein Spiel übernehmen darf. Tippe dort auf <b>Zulassen</b>.</div><div class="xs muted" id="hoffst">Warte auf Bestätigung …</div><button class="sm" style="margin-top:12px" onclick="location.reload()">Abbrechen</button></div>', { lock: true, free: true });
+  var finish = function (msg, err) { done = true; closePop(); if (msg) toast(msg, !!err); boot0(); };
+  var tick = function () {
+    if (done) return; if (Date.now() - t0 > 15 * 60000) return finish('Die Bestätigung hat zu lange gedauert. Scanne den Code bitte neu.', true);
+    hoffClaim(code).then(function (r) {
+      if (r.status === 'waiting') return setTimeout(tick, 2500);
+      if (r.status === 'denied') return finish('Am PC wurde die Übernahme abgelehnt.', true);
+      if (r.status !== 'ok') return finish('Der QR-Code ist abgelaufen. Erzeuge am PC einen neuen.', true);
+      return fetch(SB.url + '/auth/v1/verify', { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'magiclink', token_hash: r.hash }) })
+        .then(function (x) { return x.json().then(function (j) { return { ok: x.ok, j: j }; }); })
+        .then(function (x) { if (x.ok && x.j && x.j.access_token) { sessSave(x.j); HANDOFF_SAVE = r.saveId || 'HOME'; finish(); } else finish('Anmeldung fehlgeschlagen. Bitte neu scannen.', true); });
+    }, function () { setTimeout(tick, 4000); });
+  };
+  tick();
+}
+/* Handy-Übergabe – PC-Seite: schauen, ob ein Handy den Code gescannt hat, und nachfragen */
+function hoffWatch() {
+  clearTimeout(HOFF.timer); if (!HOFF.code) return;
+  HOFF.timer = setTimeout(function () {
+    if (!HOFF.code || Date.now() - HOFF.t > 15 * 60000) { HOFF.code = null; return; }
+    if (document.visibilityState !== 'visible' || HOFF.asking || !SESSION) return hoffWatch();
+    game('handoffState', { code: HOFF.code }).then(function (r) {
+      if (r.status === 'scanned') { HOFF.asking = true; pop('<div style="text-align:center"><div style="font-size:44px">📱</div><h2 style="padding:0">Handy möchte übernehmen</h2><div class="small" style="line-height:1.6;margin:8px 0 14px">Gerade hat ein Handy deinen QR-Code gescannt und möchte sich mit <b>deinem Konto</b> anmelden. Warst du das?</div><div class="row" style="gap:8px"><button class="red" style="flex:1" onclick="hoffAnswer(false)">Ablehnen</button><button class="pri" style="flex:1" onclick="hoffAnswer(true)">Zulassen</button></div></div>', { lock: true, free: true }); return; }
+      if (r.status === 'expired' || r.status === 'used' || r.status === 'denied') { HOFF.code = null; return; }
+      hoffWatch();
+    }, function () { hoffWatch(); });
+  }, 4000);
+}
+function hoffAnswer(ok) {
+  var code = HOFF.code; closePop(); HOFF.asking = false; HOFF.code = null;
+  game('handoffApprove', { code: code, ok: !!ok }).then(function () { toast(ok ? 'Freigegeben – dein Spiel öffnet sich jetzt auf dem Handy.' : 'Abgelehnt – das Handy kommt nicht in dein Konto.', !ok); try { QRC.url = null; QRC.svg = null; qrRefresh(true); } catch (e) {} }, function (e) { toast((e && e.message) || String(e), true); });
 }
 function boot0() {
   sessLoad();
@@ -262,13 +290,12 @@ function boot0() {
   startScreen();
   loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
   if (back && back.error) toast(back.error, true);
-  if (HANDOFF_SAVE === 'ERR') { HANDOFF_SAVE = null; toast('Der QR-Code ist abgelaufen oder wurde schon benutzt. Erzeuge am Tablet einen neuen.', true); }
   if (back && back.type === 'recovery') { newPwPop(); return; }
   if (SESSION) {
     loadUser().then(function () { return profileReady(); }).then(function (ok) {
       if (back && ok) toast('Willkommen, ' + ME.vorname + '!');
       refreshHome();
-      if (ok && HANDOFF_SAVE) { var hs = HANDOFF_SAVE; HANDOFF_SAVE = null; toast('Willkommen zurück – dein Spiel wird geladen.'); loadSave(hs); return; }
+      if (ok && HANDOFF_SAVE) { var hs = HANDOFF_SAVE; HANDOFF_SAVE = null; if (hs !== 'HOME') { toast('Angemeldet – dein Spiel wird geladen.'); loadSave(hs); return; } }
       if (ok && LAST_INTENT) { var i = LAST_INTENT; LAST_INTENT = null; if (i === 'new') startNew(); else startLoad(); }
     }).catch(function (e) { if (e && (e.status === 401 || e.status === 403)) authSignOut(); refreshHome(); });
   } else refreshHome();

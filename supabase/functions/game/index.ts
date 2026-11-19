@@ -153,12 +153,29 @@ async function handle(req: Request, userId: string, body: any) {
   if (!ready) throw new HttpError(403, 'Bitte zuerst das Profil vervollständigen.');
 
   if (op === 'handoff') {
-    // Einmal-Login für das Handy: Supabase erzeugt einen Magic-Link-Token, ohne eine Mail zu schicken
-    const { data: u, error: ue } = await admin.auth.admin.getUserById(userId);
-    if (ue || !u?.user?.email) throw new HttpError(400, 'Für dieses Konto ist kein Handy-Login möglich.');
+    // PC zeigt einen QR-Code; das Handy meldet sich damit, der PC muss bestätigen
+    await admin.from('handoffs').delete().eq('user_id', userId);
+    const code = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+    const sid = body.saveId && /^[0-9a-f-]{36}$/.test(String(body.saveId)) ? String(body.saveId) : null;
+    const { error } = await admin.from('handoffs').insert({ code, user_id: userId, save_id: sid });
+    if (error) throw new HttpError(500, 'Code konnte nicht erstellt werden.');
+    return { ok: true, code };
+  }
+  if (op === 'handoffState') {
+    const { data: h } = await admin.from('handoffs').select('status, created_at').eq('code', String(body.code || '')).eq('user_id', userId).maybeSingle();
+    if (!h || Date.now() - Date.parse(h.created_at) > 15 * 60000) return { status: 'expired' };
+    return { status: h.status };
+  }
+  if (op === 'handoffApprove') {
+    const { data: h } = await admin.from('handoffs').select('status, created_at').eq('code', String(body.code || '')).eq('user_id', userId).maybeSingle();
+    if (!h || h.status !== 'scanned' || Date.now() - Date.parse(h.created_at) > 15 * 60000) throw new HttpError(400, 'Die Anfrage ist abgelaufen.');
+    if (!body.ok) { await admin.from('handoffs').update({ status: 'denied' }).eq('code', String(body.code)); return { ok: true }; }
+    const { data: u } = await admin.auth.admin.getUserById(userId);
+    if (!u?.user?.email) throw new HttpError(400, 'Für dieses Konto ist kein Handy-Login möglich.');
     const { data: lk, error: le } = await admin.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
-    if (le || !lk?.properties?.hashed_token) throw new HttpError(500, 'Code konnte nicht erstellt werden.');
-    return { ok: true, hash: lk.properties.hashed_token };
+    if (le || !lk?.properties?.hashed_token) throw new HttpError(500, 'Freigabe fehlgeschlagen.');
+    await admin.from('handoffs').update({ status: 'approved', hash: lk.properties.hashed_token }).eq('code', String(body.code));
+    return { ok: true };
   }
   if (op === 'new') {
     const { count } = await admin.from('saves').select('id', { count: 'exact', head: true }).eq('user_id', userId);
@@ -226,16 +243,29 @@ async function handle(req: Request, userId: string, body: any) {
   throw new HttpError(400, 'Unbekannte Anfrage.');
 }
 
+// Handy ohne Login: meldet den gescannten Code und holt nach der Bestätigung am PC den Einmal-Login ab
+async function handoffClaim(code: string) {
+  if (!/^[0-9a-f]{40}$/.test(code)) throw new HttpError(400, 'Ungültiger Code.');
+  const { data: h } = await admin.from('handoffs').select('status, hash, save_id, created_at').eq('code', code).maybeSingle();
+  if (!h || Date.now() - Date.parse(h.created_at) > 15 * 60000) return { status: 'expired' };
+  if (h.status === 'open') { await admin.from('handoffs').update({ status: 'scanned' }).eq('code', code).eq('status', 'open'); return { status: 'waiting' }; }
+  if (h.status === 'scanned') return { status: 'waiting' };
+  if (h.status === 'denied') return { status: 'denied' };
+  if (h.status === 'approved') { await admin.from('handoffs').update({ status: 'used', hash: null }).eq('code', code); return { status: 'ok', hash: h.hash, saveId: h.save_id }; }
+  return { status: 'expired' };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req.headers.get('Origin')) });
   if (req.method !== 'POST') return reply(req, { error: 'Nur POST.' }, 405);
   try {
-    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    const { data: auth } = await admin.auth.getUser(token);
-    if (!auth?.user) throw new HttpError(401, 'Bitte neu einloggen.');
     const text = await req.text();
     if (text.length > 100_000) throw new HttpError(413, 'Anfrage zu groß.');
     const body = JSON.parse(text || '{}');
+    if (body.op === 'handoffClaim') return reply(req, await handoffClaim(String(body.code || '')));
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    const { data: auth } = await admin.auth.getUser(token);
+    if (!auth?.user) throw new HttpError(401, 'Bitte neu einloggen.');
     return reply(req, await handle(req, auth.user.id, body));
   } catch (e) {
     const status = e instanceof HttpError ? e.status : 500;

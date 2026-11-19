@@ -225,7 +225,7 @@ var API = {
     return game('deleteAccount', { confirm: String(confirm || '').trim().toUpperCase() }).then(function () { authSignOut(); return { ok: true }; });
   },
   apiWappen: function () { return Promise.resolve({ ok: true, w: {} }); },
-  apiHandoff: function () { return game('handoff', {}).then(function (r) { return { ok: true, url: location.origin + location.pathname + '?mh=' + encodeURIComponent(r.hash) + (SAVEID ? '&s=' + encodeURIComponent(SAVEID) : '') }; }); },
+  apiHandoff: function () { return game('handoff', { saveId: SAVEID }).then(function (r) { HOFF.code = r.code; HOFF.t = Date.now(); hoffWatch(); return { ok: true, url: location.origin + location.pathname + '?hc=' + r.code }; }); },
   apiHandoffUse: function () { return Promise.resolve({ ok: false, error: 'Bitte mit Google oder E-Mail anmelden.' }); }
 };
 function call(fn) {

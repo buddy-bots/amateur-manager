@@ -628,5 +628,489 @@
  },
  "60": {
   "arten": []
+ },
+ "61": {
+  "herren": "112",
+  "klassen": {
+   "_247": "Verbandsliga",
+   "_248": "Landesliga",
+   "_249": "Landesklasse",
+   "_735": "Kreisoberliga",
+   "_251": "Kreisliga",
+   "_252": "1.Kreisklasse",
+   "_253": "2.Kreisklasse"
+  },
+  "gebiete": [
+   "Brandenburg",
+   "Brandenburg",
+   "Brandenburg",
+   "Kreis Dahme/Fläming",
+   "Kreis Havelland",
+   "Kreis Niederlausitz",
+   "Kreis Oberhavel/Barnim",
+   "Kreis Ostbrandenburg",
+   "Kreis Prignitz/Ruppin",
+   "Kreis Südbrandenburg",
+   "Kreis Uckermark",
+   "Kreis Dahme/Fläming",
+   "Kreis Havelland",
+   "Kreis Niederlausitz",
+   "Kreis Oberhavel/Barnim",
+   "Kreis Ostbrandenburg",
+   "Kreis Prignitz/Ruppin",
+   "Kreis Südbrandenburg",
+   "Kreis Uckermark",
+   "Kreis Havelland",
+   "Kreis Niederlausitz",
+   "Kreis Südbrandenburg",
+   "Kreis Dahme/Fläming",
+   "Kreis Havelland",
+   "Kreis Niederlausitz",
+   "Kreis Oberhavel/Barnim",
+   "Kreis Ostbrandenburg",
+   "Kreis Prignitz/Ruppin",
+   "Kreis Südbrandenburg",
+   "Kreis Uckermark"
+  ]
+ },
+ "62": {
+  "herren": "331",
+  "klassen": {
+   "_256": "Verbandsliga",
+   "_257": "Landesliga",
+   "_629": "Landesklasse",
+   "_262": "Kreisoberliga",
+   "_263": "Kreisliga",
+   "_264": "1.Kreisklasse"
+  },
+  "gebiete": [
+   "Mecklenburg-Vorpommern",
+   "Mecklenburg-Vorpommern",
+   "Kreis Mecklenburg. Seenplatte",
+   "Kreis Nordvorpommern-Rügen",
+   "Kreis Schwerin-Nordwestmeckl.",
+   "Kreis Vorpommern-Greifswald",
+   "Kreis Warnow",
+   "Kreis Westmecklenburg",
+   "Kreis Mecklenburg. Seenplatte",
+   "Kreis Nordvorpommern-Rügen",
+   "Kreis Schwerin-Nordwestmeckl.",
+   "Kreis Vorpommern-Greifswald",
+   "Kreis Warnow",
+   "Kreis Westmecklenburg",
+   "Kreis Schwerin-Nordwestmeckl.",
+   "Kreis Warnow",
+   "Mecklenburg-Vorpommern"
+  ]
+ },
+ "63": {
+  "herren": "212",
+  "klassen": {
+   "_268": "Landesliga",
+   "_815": "Landesklasse",
+   "_702": "Kreisoberliga",
+   "_273": "1.Kreisliga (A)",
+   "_274": "2.Kreisliga (B)",
+   "_275": "3.Kreisliga (C)",
+   "_277": "1.Kreisklasse",
+   "_278": "2.Kreisklasse"
+  },
+  "gebiete": [
+   "Sachsen",
+   "Kreis Chemnitz",
+   "Kreis Dresden",
+   "Kreis Erzgebirge",
+   "Kreis Leipzig",
+   "Kreis Meißen",
+   "Kreis Mittelsachsen",
+   "Kreis Muldental/Leipziger Land",
+   "Kreis Nordsachsen",
+   "Kreis Oberlausitz",
+   "Kreis Sächs.Schweiz/Osterzgeb.",
+   "Kreis Vogtland",
+   "Kreis Westlausitz",
+   "Kreis Zwickau",
+   "Kreis Dresden",
+   "Kreis Mittelsachsen",
+   "Kreis Muldental/Leipziger Land",
+   "Kreis Sächs.Schweiz/Osterzgeb.",
+   "Kreis Vogtland",
+   "Kreis Dresden",
+   "Kreis Chemnitz",
+   "Kreis Dresden",
+   "Kreis Erzgebirge",
+   "Kreis Leipzig",
+   "Kreis Meißen",
+   "Kreis Oberlausitz",
+   "Kreis Sächs.Schweiz/Osterzgeb.",
+   "Kreis Vogtland",
+   "Kreis Westlausitz",
+   "Kreis Zwickau"
+  ]
+ },
+ "64": {
+  "herren": "127",
+  "klassen": {
+   "_282": "Verbandsliga",
+   "_283": "Landesliga",
+   "_284": "Landesklasse",
+   "_286": "Kreisoberliga",
+   "_287": "Kreisliga",
+   "_288": "1.Kreisklasse",
+   "_289": "2.Kreisklasse",
+   "_290": "3.Kreisklasse"
+  },
+  "gebiete": [
+   "Sachsen-Anhalt",
+   "Sachsen-Anhalt",
+   "Sachsen-Anhalt",
+   "Kreis Altmark Ost",
+   "Kreis Altmark West",
+   "Kreis Anhalt-Bitterfeld",
+   "Kreis Burgenland",
+   "Kreis Börde",
+   "Kreis Harz",
+   "Kreis Jerichower Land",
+   "Kreis Mansfeld-Südharz",
+   "Kreis SFV Halle",
+   "Kreis SFV Magdeburg",
+   "Kreis Saalekreis",
+   "Kreis Salzland",
+   "Kreis Wittenberg",
+   "Kreis Altmark Ost",
+   "Kreis Altmark West",
+   "Kreis Anhalt-Bitterfeld",
+   "Kreis Burgenland",
+   "Kreis Börde",
+   "Kreis Harz",
+   "Kreis Jerichower Land",
+   "Kreis Mansfeld-Südharz",
+   "Kreis SFV Halle",
+   "Kreis SFV Magdeburg",
+   "Kreis Saalekreis",
+   "Kreis Salzland",
+   "Kreis Wittenberg",
+   "Kreis Altmark Ost"
+  ]
+ },
+ "65": {
+  "herren": "197",
+  "klassen": {
+   "_292": "Verbandsliga",
+   "_294": "Landesklasse",
+   "_299": "Kreisoberliga",
+   "_300": "Kreisliga",
+   "_301": "1.Kreisklasse",
+   "_302": "2.Kreisklasse"
+  },
+  "gebiete": [
+   "Thüringen",
+   "Thüringen",
+   "Kreis Eichsf.-Unstrut-Hainich",
+   "Kreis Erfurt-Sömmerda",
+   "Kreis Jena-Saale-Orla",
+   "Kreis Mittelthüringen",
+   "Kreis Nordthüringen",
+   "Kreis Ostthüringen",
+   "Kreis Rhön-Rennsteig",
+   "Kreis Südthüringen",
+   "Kreis Westthüringen",
+   "Kreis Eichsf.-Unstrut-Hainich",
+   "Kreis Erfurt-Sömmerda",
+   "Kreis Jena-Saale-Orla",
+   "Kreis Mittelthüringen",
+   "Kreis Nordthüringen",
+   "Kreis Ostthüringen",
+   "Kreis Rhön-Rennsteig",
+   "Kreis Südthüringen",
+   "Kreis Westthüringen",
+   "Kreis Eichsf.-Unstrut-Hainich",
+   "Kreis Erfurt-Sömmerda",
+   "Kreis Jena-Saale-Orla",
+   "Kreis Mittelthüringen",
+   "Kreis Nordthüringen",
+   "Kreis Ostthüringen",
+   "Kreis Rhön-Rennsteig",
+   "Kreis Südthüringen",
+   "Kreis Westthüringen",
+   "Kreis Erfurt-Sömmerda"
+  ]
+ },
+ "66": {
+  "herren": "27",
+  "klassen": {
+   "_305": "Verbandsliga",
+   "_306": "Landesliga",
+   "_310": "Bezirksliga",
+   "_313": "Kreisliga A",
+   "_314": "Kreisliga B",
+   "_315": "Kreisliga C"
+  },
+  "gebiete": [
+   "Berlin",
+   "Berlin",
+   "Bezirk Berlin",
+   "Kreis Berlin",
+   "Kreis Berlin",
+   "Kreis Berlin"
+  ]
+ },
+ "67": {
+  "arten": []
+ },
+ "68": {
+  "arten": []
+ },
+ "69": {
+  "herren": "1",
+  "klassen": {
+   "_4": "Regionalliga",
+   "_6": "Oberliga"
+  },
+  "gebiete": [
+   "Deutschland",
+   "Deutschland"
+  ]
+ },
+ "70": {
+  "arten": []
+ },
+ "71": {
+  "arten": []
+ },
+ "72": {
+  "arten": []
+ },
+ "73": {
+  "arten": []
+ },
+ "74": {
+  "arten": []
+ },
+ "75": {
+  "arten": []
+ },
+ "76": {
+  "arten": []
+ },
+ "77": {
+  "arten": []
+ },
+ "78": {
+  "arten": []
+ },
+ "79": {
+  "arten": []
+ },
+ "80": {
+  "arten": []
+ },
+ "81": {
+  "arten": []
+ },
+ "82": {
+  "arten": []
+ },
+ "83": {
+  "arten": []
+ },
+ "84": {
+  "arten": []
+ },
+ "85": {
+  "arten": []
+ },
+ "86": {
+  "arten": []
+ },
+ "87": {
+  "arten": []
+ },
+ "88": {
+  "arten": []
+ },
+ "89": {
+  "herren": "1",
+  "klassen": {
+   "_1": "Bundesliga",
+   "_2": "2.Bundesliga",
+   "_43": "3.Liga",
+   "_4": "Regionalliga",
+   "_6": "Oberliga"
+  },
+  "gebiete": [
+   "Deutschland",
+   "Deutschland",
+   "Deutschland",
+   "Deutschland",
+   "Deutschland"
+  ]
+ },
+ "90": {
+  "arten": []
+ },
+ "91": {
+  "arten": []
+ },
+ "92": {
+  "arten": []
+ },
+ "93": {
+  "arten": []
+ },
+ "94": {
+  "arten": []
+ },
+ "95": {
+  "arten": []
+ },
+ "96": {
+  "arten": []
+ },
+ "97": {
+  "arten": []
+ },
+ "98": {
+  "arten": []
+ },
+ "99": {
+  "arten": []
+ },
+ "100": {
+  "arten": []
+ },
+ "101": {
+  "arten": []
+ },
+ "102": {
+  "arten": []
+ },
+ "103": {
+  "arten": []
+ },
+ "104": {
+  "arten": []
+ },
+ "105": {
+  "arten": []
+ },
+ "106": {
+  "arten": []
+ },
+ "107": {
+  "arten": []
+ },
+ "108": {
+  "arten": []
+ },
+ "109": {
+  "arten": []
+ },
+ "110": {
+  "arten": []
+ },
+ "111": {
+  "arten": []
+ },
+ "112": {
+  "arten": []
+ },
+ "113": {
+  "arten": []
+ },
+ "114": {
+  "arten": []
+ },
+ "115": {
+  "arten": []
+ },
+ "116": {
+  "arten": []
+ },
+ "117": {
+  "arten": []
+ },
+ "118": {
+  "arten": []
+ },
+ "119": {
+  "arten": []
+ },
+ "120": {
+  "arten": []
+ },
+ "121": {
+  "arten": []
+ },
+ "122": {
+  "arten": []
+ },
+ "123": {
+  "arten": []
+ },
+ "124": {
+  "arten": []
+ },
+ "125": {
+  "arten": []
+ },
+ "126": {
+  "arten": []
+ },
+ "127": {
+  "arten": []
+ },
+ "128": {
+  "arten": []
+ },
+ "129": {
+  "arten": []
+ },
+ "130": {
+  "arten": []
+ },
+ "rl": {
+  "kinds": {
+   "1": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "4": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "5": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "6": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "7": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "8": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "9": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   },
+   "10": {
+    "4": {
+     "_0123456789ABCDEF0123456700004010": "Deutschland"
+    }
+   }
+  }
  }
 }

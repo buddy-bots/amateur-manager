@@ -36,4 +36,4 @@ jobs:
       - name: Funktion "game" deployen
         # Die Funktion prüft das Login selbst (auth.getUser), daher ohne Gateway-JWT-Prüfung,
         # damit CORS-Vorabanfragen (OPTIONS) durchgehen.
-        run: supabase functions deploy game --project-ref "$PROJECT_REF" --no-verify-jwt
+        run: supabase functions deploy game --project-ref "$PROJECT_REF" --no-verify-jwt --yes

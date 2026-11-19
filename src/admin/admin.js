@@ -180,7 +180,7 @@ function ligAkt(id, on) { rest('ligen_teams?id=eq.' + id, { method: 'PATCH', bod
 function ligImport() {
   var st = $('#ligst'); st.textContent = 'Import läuft …';
   game('ligenImport', {}).then(function (r) {
-    if (r.status === 'recent') { st.textContent = 'Wurde gerade erst importiert (' + dt(r.at) + ') – höchstens alle 10 Minuten.'; return; }
+    if (r.status === 'recent') { st.textContent = 'Wurde gerade erst importiert (' + dt(r.at) + ') – höchstens alle 3 Minuten.'; return; }
     st.textContent = 'Fertig: ' + r.staffeln + ' Staffeln, ' + r.teams + ' Mannschaften.'; toast('Import fertig ✓'); ligList();
   }).catch(function (e) { st.textContent = ''; toast(e.message, true); });
 }

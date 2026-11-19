@@ -64,7 +64,7 @@ async function regFor(teamId: string) {
 }
 
 // Ligendaten aus dem öffentlichen Repo (data/nrw-*.json) in die Datenbank übernehmen.
-// Braucht keinen Schlüssel: Quelle ist nur das eigene Repo, höchstens alle 10 Minuten. Von Hand geänderte Namen bleiben.
+// Braucht keinen Schlüssel: Quelle ist nur das eigene Repo, höchstens alle 3 Minuten. Von Hand geänderte Namen bleiben.
 const LIG_RAW = 'https://raw.githubusercontent.com/buddy-bots/amateur-manager/';
 const ligDec = (s: string) => String(s).replace(/&#8203;|​/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/\s+/g, ' ').trim();
 const ligTeam = (s: string) => ligDec(s).replace(/\s+(I|1)$/, '');
@@ -84,7 +84,7 @@ function ligStaffel(n: string, gn: string, vb: string) {
 }
 async function ligenImport(ref: string) {
   const { data: last } = await admin.from('ligen_teams').select('updated_at').order('updated_at', { ascending: false }).limit(1);
-  if (last?.[0] && Date.now() - new Date(last[0].updated_at).getTime() < 600_000) return { status: 'recent', at: last[0].updated_at };
+  if (last?.[0] && Date.now() - new Date(last[0].updated_at).getTime() < 180_000) return { status: 'recent', at: last[0].updated_at };
   const r = /^[0-9a-f]{40}$/.test(ref) ? ref : 'umbau';
   let res = await fetch(LIG_RAW + r + '/data/ligen-2627.json');
   if (res.status === 404) res = await fetch(LIG_RAW + r + '/data/nrw-2627.json');

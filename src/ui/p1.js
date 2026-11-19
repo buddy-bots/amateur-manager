@@ -187,7 +187,7 @@ function splitInfo(t) { if (!t) return []; var s = String(t); var i = s.indexOf(
 var WAP = {}, WCOL = {}, WREQ = {}, WQ = [], WT = null;
 try { localStorage.removeItem('svwm_wap2'); } catch (e) {}
 function wapSave() { try { localStorage.setItem('svwm_wap2', JSON.stringify({ w: WAP, c: WCOL })); } catch (e) {} }
-function initials(n) { var p = String(n).replace(/^(SV|FC|SC|TuS|VfL|VfR|SSV|TSV|SpVg|SG|DJK|1\.|BSV|FV|TV)\s+/i, '').split(/[\s-]+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); }
+function initials(n) { var p = String(n).replace(/^(SV|FC|SC|TuS|VfL|VfR|SSV|TSV|SpVg|SG|DJK|1\.|BSV|FV|TV)\s+/i, '').split(/[\s\/-]+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); }
 // Wappen: keine fremden Logos mehr – jedes Team bekommt ein eigenes, aus dem Namen erzeugtes Wappen
 // (Form, Farben und Muster hängen fest am Namen). Nur der SV Wachtberg im Standardspiel behält sein Logo.
 var GENLOGO = {};

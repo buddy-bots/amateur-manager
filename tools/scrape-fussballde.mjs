@@ -78,9 +78,8 @@ for (const [m, vname, start] of VERB) {
 {
   const V = { id: 29, name: 'RV Südwest', start: 4, klassen: {}, staffeln: [] };
   const add = async (id, n, skn, ebene) => { const html = await get(`https://www.fussball.de/ajax.actual.table/-/staffel/${id}`, false); const teams = html ? parseTable(html) : []; V.staffeln.push({ id, n, sk: skn, skn, g: 'RV', gn: 'Südwest', ebene, teams }); console.log(`  ${n}: ${teams.length} Teams`); };
-  const rl = await get(`https://www.fussball.de/wam_competitions_29_${SAISON}_1_1_4_0123456789ABCDEF0123456700004010.json`, true);
-  const rlList = rl?.['4']?.['0123456789ABCDEF0123456700004010'] || {};
-  for (const [uk, n] of Object.entries(rlList)) if (/Südwest/i.test(n)) { const id = (/\/staffel\/([0-9A-Z-]+)/.exec(strip(uk)) || [, ''])[1]; if (id) await add(id, 'Regionalliga Südwest', 'Regionalliga', 4); }
+  // Staffel-IDs der Saison 2026/27 (bei neuer Saison anpassen)
+  await add('031D0NRQ3O000004VS5489BUVUR5FS5A-G', 'Regionalliga Südwest', 'Regionalliga', 4);
   await add('031DMS4JCO000009VS5489BUVUR5FS5A-G', 'Oberliga Rheinland-Pfalz/Saar', 'Oberliga', 5);
   result.verbaende.push(V);
 }

@@ -686,9 +686,10 @@ var MGR = (function () {
   // ---------------------------------------------------------------- Regionale Namen
   // Im Standardspiel (SV Wachtberg) bleiben alle Texte wie sie sind. Bei echten Vereinen werden Bonn/Wachtberg-Bezüge
   // durch Ort, Kreisstadt und Kreis des gewählten Vereins ersetzt (Sponsoren, Versorger, Wohnungen, Spenden, Texte).
-  var TOWN_SKIP = /^(\d+\.?|[IVX]+|e\.?V\.?|SV|FC|TuS|SC|SG|SpVg|Spvgg|SpVgg|VfL|VfB|VfR|DJK|TSV|SSV|BSV|FSV|ESV|PSV|TV|TuRa|TuWa|SuS|SuF|BV|BW|GW|RW|SW|FSG|JSG|SF|SpF|Spfr|FV|TSG|TSC|TuB|TB|TG|SVG|SGE|SpG|KF|SKV|ASV|ATV|BSC|CfR|CSV|DSC|DSV|ETB|FFC|FK|GSV|JFV|KSV|MSV|OSV|RSV|SSG|TTC|VfJ|VFL|VFB|SV\.|S\.C\.|F\.C\.|Sportfreunde|Sportclub|Sportverein|Turnverein|Spielvereinigung|Eintracht|Fortuna|Germania|Borussia|Viktoria|Victoria|Preußen|Preussen|Arminia|Teutonia|Alemannia|Union|Concordia|Westfalia|Rhenania|Olympia|Hertha|Phönix|Adler|Blau-Weiß|Blau-Weiss|Rot-Weiß|Rot-Weiss|Grün-Weiß|Grün-Weiss|Schwarz-Weiß|Schwarz-Weiss|Rot-Gold|Blau-Gelb|Glück-Auf|Glückauf|Sparta|Vorwärts|Wacker|Kickers|Rapid|Dynamo|Ballspiel|Rasensport|Türkspor|Türkiyemspor|Türkgücü|Inter|Real|Sporting|Junkersdorf-|Club|Verein|Jugend|Sport|Spiel|BC|SVS|YEG|Al|Ay|de|von|am|an|der|im|in)$/i;
+  var TOWN_SKIP = /^(\d+\.?|[IVX]+|e\.?V\.?|SV|FC|TuS|SC|SG|SpVg|Spvgg|SpVgg|VfL|VfB|VfR|DJK|TSV|SSV|BSV|FSV|ESV|PSV|TV|TuRa|TuWa|SuS|SuF|BV|BW|GW|RW|SW|FSG|JSG|SF|SpF|Spfr|FV|TSG|TSC|TuB|TB|TG|SVG|SGE|SpG|KF|SKV|ASV|ATV|BSC|CfR|CSV|DSC|DSV|ETB|FFC|FK|GSV|JFV|KSV|MSV|OSV|RSV|SSG|TTC|VfJ|VFL|VFB|SV\.|S\.C\.|F\.C\.|Sportfreunde|Sportclub|Sportverein|Turnverein|Spielvereinigung|Eintracht|Fortuna|Germania|Borussia|Viktoria|Victoria|Preußen|Preussen|Arminia|Teutonia|Alemannia|Union|Concordia|Westfalia|Rhenania|Olympia|Hertha|Phönix|Adler|Blau-Weiß|Blau-Weiss|Rot-Weiß|Rot-Weiss|Grün-Weiß|Grün-Weiss|Schwarz-Weiß|Schwarz-Weiss|Rot-Gold|Blau-Gelb|Glück-Auf|Glückauf|Sparta|Vorwärts|Wacker|Kickers|Wormatia|Rot-Weiss|Rot-Weiß|Palatia|Bavaria|Saxonia|Hassia|Moguntia|Treveris|Sportfreunde|SpVgg|Rapid|Dynamo|Ballspiel|Rasensport|Türkspor|Türkiyemspor|Türkgücü|Inter|Real|Sporting|Junkersdorf-|Club|Verein|Jugend|Sport|Spiel|BC|SVS|YEG|Al|Ay|de|von|am|an|der|im|in)$/i;
   function clubTown(n) {
-    var w = String(n || '').replace(/\(.*?\)/g, ' ').replace(/\b(19|20)\d\d\b/g, ' ').split(/[\s\/]+/).filter(Boolean);
+    // Ort = letztes passendes Wort vor einem „/“ (SV Anadolu Spor Koblenz → Koblenz, SG Holzen/Eisborn → Holzen)
+    var w = String(n || '').replace(/\(.*?\)/g, ' ').split('/')[0].replace(/\b(19|20)\d\d\b/g, ' ').split(/\s+/).filter(Boolean).reverse();
     for (var i = 0; i < w.length; i++) { var x = w[i].replace(/[.,]$/, ''); if (x.length > 2 && /^[A-ZÄÖÜ]/.test(x) && !TOWN_SKIP.test(x) && !/^\d/.test(x) && !/^[A-Z]{2,4}$/.test(x)) return x.replace(/-$/, ''); }
     return '';
   }
@@ -745,8 +746,9 @@ var MGR = (function () {
     var byL = {}; st.forEach(function (x) { (byL[x.ebene] = byL[x.ebene] || []).push(x); });
     var levels = Object.keys(byL).map(Number).sort(function (a, b) { return a - b; }), lo = levels[0], hi = levels[levels.length - 1];
     // Heimatkreis: Kreis-Staffel mit eigener Zweitmannschaft, sonst eigene Staffel, sonst größte Überschneidung
+    var town = clubTown(ownT.name);
     var kreis = isK(own.gebiet) ? own.gebiet : '';
-    if (!kreis) { var kc = {}; st.forEach(function (x) { if (!isK(x.gebiet)) return; kc[x.gebiet] = (kc[x.gebiet] || 0) + (ownT.verein_id && x._c[ownT.verein_id] ? 100 : 0) + ov(own._c, x._c); }); var bk = 0; Object.keys(kc).forEach(function (g) { if (kc[g] > bk) { bk = kc[g]; kreis = g; } }); }
+    if (!kreis) { var kc = {}; st.forEach(function (x) { if (!isK(x.gebiet)) return; kc[x.gebiet] = (kc[x.gebiet] || 0) + (ownT.verein_id && x._c[ownT.verein_id] ? 100 : 0) + ov(own._c, x._c) + (town ? 30 * x.teams.filter(function (t) { return t.name.indexOf(town) >= 0; }).length : 0); }); var bk = 0; Object.keys(kc).forEach(function (g) { if (kc[g] > bk) { bk = kc[g]; kreis = g; } }); }
     var kClubs = {}; st.forEach(function (x) { if (x.gebiet === kreis) for (var k in x._c) kClubs[k] = 1; });
     var chain = {}; chain[own.ebene] = own;
     var best = function (cands, sc) { var b = null, bs = -1; cands.forEach(function (x) { var v = sc(x); if (v > bs) { bs = v; b = x; } }); return b; };

@@ -1,0 +1,632 @@
+{
+ "1": {
+  "arten": []
+ },
+ "2": {
+  "arten": []
+ },
+ "3": {
+  "arten": []
+ },
+ "4": {
+  "arten": []
+ },
+ "5": {
+  "arten": []
+ },
+ "6": {
+  "arten": []
+ },
+ "7": {
+  "arten": []
+ },
+ "8": {
+  "arten": []
+ },
+ "9": {
+  "arten": []
+ },
+ "10": {
+  "arten": []
+ },
+ "11": {
+  "arten": []
+ },
+ "12": {
+  "arten": []
+ },
+ "13": {
+  "arten": []
+ },
+ "14": {
+  "arten": []
+ },
+ "15": {
+  "arten": []
+ },
+ "16": {
+  "arten": []
+ },
+ "17": {
+  "arten": []
+ },
+ "18": {
+  "arten": []
+ },
+ "19": {
+  "arten": []
+ },
+ "20": {
+  "arten": []
+ },
+ "21": {
+  "herren": "41",
+  "klassen": {
+   "_361": "Oberliga Westfalen",
+   "_93": "Verbandsliga",
+   "_94": "Landesliga",
+   "_96": "Bezirksliga",
+   "_99": "Kreisliga A",
+   "_100": "Kreisliga B",
+   "_101": "Kreisliga C",
+   "_102": "Kreisliga D"
+  },
+  "gebiete": [
+   "Westfalen",
+   "Westfalen",
+   "Bezirk Westfalen",
+   "Kreis Ahaus-Coesfeld",
+   "Kreis Arnsberg",
+   "Kreis Beckum",
+   "Kreis Bielefeld",
+   "Kreis Bochum",
+   "Kreis Detmold",
+   "Kreis Dortmund",
+   "Kreis Gelsenkirchen",
+   "Kreis Gütersloh",
+   "Kreis Hagen",
+   "Kreis Herford",
+   "Kreis Herne",
+   "Kreis Hochsauerlandkreis",
+   "Kreis Höxter",
+   "Kreis Iserlohn",
+   "Kreis Lemgo",
+   "Kreis Lippstadt",
+   "Kreis Lübbecke",
+   "Kreis Lüdenscheid",
+   "Kreis Minden",
+   "Kreis Münster",
+   "Kreis Olpe",
+   "Kreis Paderborn",
+   "Kreis Recklinghausen",
+   "Kreis Siegen-Wittgenstein",
+   "Kreis Soest",
+   "Kreis Steinfurt"
+  ]
+ },
+ "22": {
+  "herren": "343",
+  "klassen": {
+   "_584": "Oberliga Niederrhein",
+   "_114": "Landesliga",
+   "_116": "Bezirksliga",
+   "_119": "Kreisliga A",
+   "_120": "Kreisliga B",
+   "_121": "Kreisliga C",
+   "_122": "Kreisliga D"
+  },
+  "gebiete": [
+   "Niederrhein",
+   "Bezirk Niederrhein",
+   "Kreis Duisburg-Mülheim-Dinslak",
+   "Kreis Düsseldorf",
+   "Kreis Essen",
+   "Kreis Grevenbroich-Neuss",
+   "Kreis Kempen-Krefeld",
+   "Kreis Kleve-Geldern",
+   "Kreis Moers",
+   "Kreis Mönchengladbach-Viersen",
+   "Kreis Oberhausen-Bottrop",
+   "Kreis Rees-Bocholt",
+   "Kreis Remscheid-Solingen",
+   "Kreis Wuppertal-Niederberg",
+   "Kreis Duisburg-Mülheim-Dinslak",
+   "Kreis Düsseldorf",
+   "Kreis Essen",
+   "Kreis Grevenbroich-Neuss",
+   "Kreis Kempen-Krefeld",
+   "Kreis Kleve-Geldern",
+   "Kreis Moers",
+   "Kreis Mönchengladbach-Viersen",
+   "Kreis Oberhausen-Bottrop",
+   "Kreis Rees-Bocholt",
+   "Kreis Remscheid-Solingen",
+   "Kreis Wuppertal-Niederberg",
+   "Kreis Duisburg-Mülheim-Dinslak",
+   "Kreis Düsseldorf",
+   "Kreis Essen",
+   "Kreis Grevenbroich-Neuss"
+  ]
+ },
+ "23": {
+  "herren": "95",
+  "klassen": {
+   "_129": "Verbandsliga",
+   "_130": "Landesliga",
+   "_132": "Bezirksliga",
+   "_135": "Kreisliga A",
+   "_136": "Kreisliga B",
+   "_137": "Kreisliga C",
+   "_138": "Kreisliga D"
+  },
+  "gebiete": [
+   "Mittelrhein",
+   "Mittelrhein",
+   "Bezirk Mittelrhein",
+   "Kreis Aachen",
+   "Kreis Berg",
+   "Kreis Bonn",
+   "Kreis Düren",
+   "Kreis Euskirchen",
+   "Kreis Heinsberg",
+   "Kreis Köln",
+   "Kreis Rhein-Erft",
+   "Kreis Sieg",
+   "Kreis Aachen",
+   "Kreis Berg",
+   "Kreis Bonn",
+   "Kreis Düren",
+   "Kreis Euskirchen",
+   "Kreis Heinsberg",
+   "Kreis Köln",
+   "Kreis Rhein-Erft",
+   "Kreis Sieg",
+   "Kreis Aachen",
+   "Kreis Berg",
+   "Kreis Bonn",
+   "Kreis Düren",
+   "Kreis Euskirchen",
+   "Kreis Heinsberg",
+   "Kreis Köln",
+   "Kreis Rhein-Erft",
+   "Kreis Sieg"
+  ]
+ },
+ "24": {
+  "arten": []
+ },
+ "25": {
+  "arten": []
+ },
+ "26": {
+  "arten": []
+ },
+ "27": {
+  "arten": []
+ },
+ "28": {
+  "arten": []
+ },
+ "29": {
+  "herren": "1",
+  "klassen": {
+   "_4": "Regionalliga"
+  },
+  "gebiete": [
+   "Deutschland"
+  ]
+ },
+ "30": {
+  "arten": []
+ },
+ "31": {
+  "herren": "359",
+  "klassen": {
+   "_714": "Regionalliga Bayern",
+   "_520": "Bayernliga",
+   "_387": "Landesliga",
+   "_390": "Bezirksliga",
+   "_392": "Kreisliga",
+   "_393": "Kreisklasse",
+   "_394": "A Klasse",
+   "_395": "B Klasse",
+   "_396": "C Klasse"
+  },
+  "gebiete": [
+   "Bayern",
+   "Bezirk Mittelfranken",
+   "Bezirk Niederbayern",
+   "Bezirk Oberbayern",
+   "Bezirk Oberfranken",
+   "Bezirk Oberpfalz",
+   "Bezirk Schwaben",
+   "Bezirk Unterfranken",
+   "Kreis Allgäu",
+   "Kreis Amberg/Weiden",
+   "Kreis Aschaffenburg",
+   "Kreis Augsburg",
+   "Kreis Bamberg/Bayreuth/Kulmb.",
+   "Kreis Cham/Schwandorf",
+   "Kreis Coburg/Kronach/Lichtenf.",
+   "Kreis Donau",
+   "Kreis Donau/Isar",
+   "Kreis Erlangen/Pegnitzgrund",
+   "Kreis Hof/Tirschenr./Wunsiedel",
+   "Kreis Inn/Salzach",
+   "Kreis München",
+   "Kreis Neumarkt/Jura",
+   "Kreis Niederbayern Ost",
+   "Kreis Niederbayern West",
+   "Kreis Nürnberg/Frankenhöhe",
+   "Kreis Regensburg",
+   "Kreis Rhön",
+   "Kreis Schweinfurt",
+   "Kreis Würzburg",
+   "Kreis Zugspitze"
+  ]
+ },
+ "32": {
+  "herren": "228",
+  "klassen": {
+   "_145": "Verbandsliga",
+   "_146": "Landesliga",
+   "_150": "Kreisliga",
+   "_153": "Kreisklasse A",
+   "_154": "Kreisklasse B",
+   "_155": "Kreisklasse C"
+  },
+  "gebiete": [
+   "Baden",
+   "Baden",
+   "Kreis Bruchsal",
+   "Kreis Buchen",
+   "Kreis Heidelberg",
+   "Kreis Karlsruhe",
+   "Kreis Mannheim",
+   "Kreis Mosbach",
+   "Kreis Pforzheim",
+   "Kreis Sinsheim",
+   "Kreis Tauberbischofsheim",
+   "Kreis Bruchsal",
+   "Kreis Buchen",
+   "Kreis Heidelberg",
+   "Kreis Karlsruhe",
+   "Kreis Mannheim",
+   "Kreis Mosbach",
+   "Kreis Pforzheim",
+   "Kreis Sinsheim",
+   "Kreis Tauberbischofsheim",
+   "Kreis Bruchsal",
+   "Kreis Buchen",
+   "Kreis Heidelberg",
+   "Kreis Karlsruhe",
+   "Kreis Mannheim",
+   "Kreis Mosbach",
+   "Kreis Pforzheim",
+   "Kreis Sinsheim",
+   "Kreis Tauberbischofsheim",
+   "Kreis Bruchsal"
+  ]
+ },
+ "33": {
+  "herren": "241",
+  "klassen": {
+   "_158": "Verbandsliga",
+   "_159": "Landesliga",
+   "_162": "Bezirksliga",
+   "_165": "1.Kreisliga (A)",
+   "_166": "2.Kreisliga (B)",
+   "_167": "3.Kreisliga (C)"
+  },
+  "gebiete": [
+   "Südbaden",
+   "Südbaden",
+   "Bezirk Baden-Baden",
+   "Bezirk Bodensee",
+   "Bezirk Freiburg",
+   "Bezirk Hochrhein",
+   "Bezirk Offenburg",
+   "Bezirk Schwarzwald",
+   "Baden-Baden",
+   "Bodensee",
+   "Freiburg",
+   "Hochrhein",
+   "Offenburg",
+   "Schwarzwald",
+   "Baden-Baden",
+   "Bodensee",
+   "Freiburg",
+   "Hochrhein",
+   "Offenburg",
+   "Schwarzwald",
+   "Baden-Baden",
+   "Bodensee",
+   "Freiburg",
+   "Hochrhein",
+   "Offenburg",
+   "Schwarzwald"
+  ]
+ },
+ "34": {
+  "herren": "281",
+  "klassen": {
+   "_177": "Hessenliga",
+   "_594": "Verbandsliga",
+   "_181": "Gruppenliga",
+   "_627": "Kreisoberliga",
+   "_184": "Kreisliga A",
+   "_185": "Kreisliga B",
+   "_186": "Kreisliga C",
+   "_187": "Kreisliga D",
+   "_188": "1.Kreisklasse/Kreisklasse",
+   "_411": "2.Kreisklasse"
+  },
+  "gebiete": [
+   "Hessen",
+   "Region Darmstadt",
+   "Region Frankfurt",
+   "Region Fulda",
+   "Region Gießen / Marburg",
+   "Region Kassel",
+   "Region Wiesbaden",
+   "Kreis Alsfeld",
+   "Kreis Bergstraße",
+   "Kreis Biedenkopf",
+   "Kreis Büdingen",
+   "Kreis Darmstadt",
+   "Kreis Dieburg",
+   "Kreis Dillenburg",
+   "Kreis Frankenberg",
+   "Kreis Frankfurt",
+   "Kreis Friedberg",
+   "Kreis Fulda",
+   "Kreis Gelnhausen",
+   "Kreis Gießen",
+   "Kreis Groß-Gerau",
+   "Kreis Hanau",
+   "Kreis Hersfeld-Rotenburg",
+   "Kreis Hochtaunus",
+   "Kreis Hofgeismar-Wolfhagen",
+   "Kreis Kassel",
+   "Kreis Lauterbach-Hünfeld",
+   "Kreis Limburg-Weilburg",
+   "Kreis Maintaunus",
+   "Kreis Marburg"
+  ]
+ },
+ "35": {
+  "herren": "254",
+  "klassen": {
+   "_631": "Oberliga",
+   "_190": "Verbandsliga",
+   "_191": "Landesliga",
+   "_195": "Bezirksliga",
+   "_198": "Kreisliga A; Kreisliga",
+   "_199": "Kreisliga B",
+   "_200": "Kreisliga C"
+  },
+  "gebiete": [
+   "Württemberg",
+   "Württemberg",
+   "Bezirk Alb",
+   "Bezirk Bodensee",
+   "Bezirk Donau/Iller",
+   "Bezirk Enz/Murr",
+   "Bezirk Franken",
+   "Bezirk Neckar/Fils",
+   "Bezirk Nordschwarzwald",
+   "Bezirk Oberschwaben",
+   "Bezirk Ostwürttemberg",
+   "Bezirk Rems/Murr/Hall",
+   "Bezirk Schwarzwald/Zollern",
+   "Bezirk Stuttgart/Böblingen",
+   "Bezirk Alb (K)",
+   "Bezirk Bodensee (K)",
+   "Bezirk Donau/Iller (K)",
+   "Bezirk Enz/Murr (K)",
+   "Bezirk Franken (K)",
+   "Bezirk Neckar/Fils (K)",
+   "Bezirk Nordschwarzwald (K)",
+   "Bezirk Oberschwaben (K)",
+   "Bezirk Ostwürttemberg (K)",
+   "Bezirk Rems/Murr/Hall (K)",
+   "Bezirk Schwarzwald/Zollern (K)",
+   "Bezirk Stuttgart/Böblingen (K)",
+   "Bezirk Alb (K)",
+   "Bezirk Bodensee (K)",
+   "Bezirk Donau/Iller (K)",
+   "Bezirk Enz/Murr (K)"
+  ]
+ },
+ "36": {
+  "arten": []
+ },
+ "37": {
+  "arten": []
+ },
+ "38": {
+  "arten": []
+ },
+ "39": {
+  "arten": [
+   "A-Junioren",
+   "B-Junioren",
+   "C-Junioren",
+   "Frauen",
+   "B-Juniorinnen"
+  ]
+ },
+ "40": {
+  "arten": []
+ },
+ "41": {
+  "herren": "74",
+  "klassen": {
+   "_207": "Rheinlandliga",
+   "_210": "Bezirksliga",
+   "_213": "Kreisliga A",
+   "_214": "Kreisliga B",
+   "_215": "Kreisliga C",
+   "_219": "Reserveklasse"
+  },
+  "gebiete": [
+   "Rheinland",
+   "Bezirk Rheinland",
+   "Kreis Eifel",
+   "Kreis Hunsrück/Mosel",
+   "Kreis Koblenz",
+   "Kreis Mosel",
+   "Kreis Rhein/Ahr",
+   "Kreis Rhein/Lahn",
+   "Kreis Trier/Saarburg",
+   "Kreis Westerwald/Sieg",
+   "Kreis Westerwald/Wied",
+   "Kreis Eifel",
+   "Kreis Hunsrück/Mosel",
+   "Kreis Koblenz",
+   "Kreis Mosel",
+   "Kreis Rhein/Ahr",
+   "Kreis Rhein/Lahn",
+   "Kreis Trier/Saarburg",
+   "Kreis Westerwald/Sieg",
+   "Kreis Westerwald/Wied",
+   "Kreis Eifel",
+   "Kreis Hunsrück/Mosel",
+   "Kreis Koblenz",
+   "Kreis Mosel",
+   "Kreis Rhein/Ahr",
+   "Kreis Rhein/Lahn",
+   "Kreis Trier/Saarburg",
+   "Kreis Westerwald/Sieg",
+   "Kreis Westerwald/Wied",
+   "Kreis Eifel"
+  ]
+ },
+ "42": {
+  "herren": "142",
+  "klassen": {
+   "_221": "Verbandsliga",
+   "_222": "Landesliga",
+   "_711": "Bezirksliga (Verband)",
+   "_713": "A-Klasse",
+   "_723": "B-Klasse",
+   "_724": "C-Klasse"
+  },
+  "gebiete": [
+   "Südwest",
+   "Südwest",
+   "Südwest",
+   "Kreis Alzey-Worms",
+   "Kreis Bad Kreuznach",
+   "Kreis Birkenfeld",
+   "Kreis Kaiserslaut.-Donnersberg",
+   "Kreis Kusel-Kaiserslautern",
+   "Kreis Mainz-Bingen",
+   "Kreis Pirmasens/Zweibrücken",
+   "Kreis Rhein-Mittelhaardt",
+   "Kreis Rhein-Pfalz",
+   "Kreis Südpfalz",
+   "Kreis Alzey-Worms",
+   "Kreis Bad Kreuznach",
+   "Kreis Birkenfeld",
+   "Kreis Kaiserslaut.-Donnersberg",
+   "Kreis Kusel-Kaiserslautern",
+   "Kreis Mainz-Bingen",
+   "Kreis Pirmasens/Zweibrücken",
+   "Kreis Rhein-Mittelhaardt",
+   "Kreis Rhein-Pfalz",
+   "Kreis Südpfalz",
+   "Kreis Alzey-Worms",
+   "Kreis Bad Kreuznach",
+   "Kreis Birkenfeld",
+   "Kreis Kaiserslaut.-Donnersberg",
+   "Kreis Kusel-Kaiserslautern",
+   "Kreis Mainz-Bingen",
+   "Kreis Pirmasens/Zweibrücken"
+  ]
+ },
+ "43": {
+  "herren": "158",
+  "klassen": {
+   "_626": "Saarland-Liga",
+   "_232": "Verbandsliga",
+   "_233": "Landesliga",
+   "_235": "Bezirksliga",
+   "_238": "Kreisliga A / Kreisliga",
+   "_239": "Kreisliga B / 1.Kreisklasse"
+  },
+  "gebiete": [
+   "Saarland",
+   "Saarland",
+   "Bezirk Saarland",
+   "Kreis Nordsaar",
+   "Kreis Ostsaar",
+   "Kreis Südsaar",
+   "Kreis Westsaar",
+   "Kreis Nordsaar",
+   "Kreis Ostsaar",
+   "Kreis Südsaar",
+   "Kreis Westsaar",
+   "Saarland"
+  ]
+ },
+ "44": {
+  "arten": []
+ },
+ "45": {
+  "arten": []
+ },
+ "46": {
+  "arten": []
+ },
+ "47": {
+  "arten": []
+ },
+ "48": {
+  "arten": []
+ },
+ "49": {
+  "herren": "1",
+  "klassen": {
+   "_4": "Regionalliga",
+   "_6": "Oberliga"
+  },
+  "gebiete": [
+   "Deutschland",
+   "Deutschland"
+  ]
+ },
+ "50": {
+  "arten": []
+ },
+ "51": {
+  "arten": []
+ },
+ "52": {
+  "arten": []
+ },
+ "53": {
+  "arten": []
+ },
+ "54": {
+  "arten": []
+ },
+ "55": {
+  "arten": []
+ },
+ "56": {
+  "arten": []
+ },
+ "57": {
+  "arten": []
+ },
+ "58": {
+  "arten": []
+ },
+ "59": {
+  "arten": []
+ },
+ "60": {
+  "arten": []
+ }
+}

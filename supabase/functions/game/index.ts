@@ -36,8 +36,8 @@ async function verbandStaffeln(verband: string) {
   const { data: st, error } = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').eq('verband', verband).eq('aktiv', true).limit(1000);
   if (error || !st?.length) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
   const ids = st.map((x: any) => x.id), teams: any[] = [];
-  for (let i = 0; i < ids.length; i += 60) {
-    const { data, error: e2 } = await admin.from('ligen_teams').select('id, staffel_id, verein_id, name, zone, aktiv').in('staffel_id', ids.slice(i, i + 60)).limit(1000);
+  for (let i = 0; i < ids.length; i += 40) {
+    const { data, error: e2 } = await admin.from('ligen_teams').select('id, staffel_id, verein_id, name, zone, aktiv').in('staffel_id', ids.slice(i, i + 40)).limit(1000);
     if (e2) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
     teams.push(...(data || []));
   }

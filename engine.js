@@ -992,6 +992,8 @@ var MGR = (function () {
     for (var i = 0; i < w.length; i++) { var x = w[i].replace(/[.,]$/, ''); if (x.length > 2 && /^[A-ZÄÖÜ]/.test(x) && !TOWN_SKIP.test(x) && !/^\d/.test(x) && !/^[A-Z]{2,4}$/.test(x)) return x.replace(/-$/, ''); }
     return '';
   }
+  function homeStadion(S) { var L = locOf(S); return L ? 'Sportpark ' + L.ort : 'Waldstadion'; }
+  function regFix(S) { if (S && S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); }
   function adjOf(o) { return /e$/.test(o) ? o + 'r' : o + 'er'; }
   var LOCC = {};
   function locOf(S) {
@@ -1006,14 +1008,14 @@ var MGR = (function () {
   function rxPairs(L, list) {
     var p = [[/SV Wachtberg/g, L.club], [/Förderverein SVW/g, 'Förderverein ' + L.ini], [/\bdie Macht im Ländchen\b/g, 'die Macht in ' + L.ort], [/\bder SVW\b/g, 'der ' + L.ini], [/\bSVW\b/g, L.ini],
       [/vom Ländchen auf den Drachenfels/g, 'über ' + L.ort], [/ins Ländchen/g, 'nach ' + L.ort], [/für das Ländchen/g, 'für ' + L.ort], [/im Ländchen/g, 'in ' + L.ort], [/aus dem Ländchen/g, 'aus ' + L.ort], [/Wachtberger/g, L.ortA], [/Wachtberg/g, L.ort], [/Bonner/g, L.stadtA], [/\bBonn\b/g, L.stadt],
-      [/Ländchen-/g, L.ort + '-'], [/Ländchen/g, L.ort], [/Rhein-Sieg/g, L.kreis], [/Penthouse am Rhein|Villa am Rhein/g, function (m) { return m.split(' ')[0] + ' in ' + L.stadt; }], [/am Rhein/g, 'in ' + L.stadt]];
+      [/Ländchen-/g, L.ort + '-'], [/Ländchen/g, L.ort], [/Waldstadion/g, 'Sportpark ' + L.ort], [/Rhein-Sieg/g, L.kreis], [/Penthouse am Rhein|Villa am Rhein/g, function (m) { return m.split(' ')[0] + ' in ' + L.stadt; }], [/am Rhein/g, 'in ' + L.stadt]];
     if (list) p = p.concat([[/Berkumer|Villiper|Niederbachemer|Pecher|Adendorfer|Arzdorfer|Meckenheimer/g, L.ortA], [/Villiprott|Niederbachem|Fritzdorf|Adendorf|Arzdorf|Berkum|Villip|\bPech\b/g, L.ort],
       [/Siebengebirgs-/g, L.kreis + '-'], [/Siebengebirge/g, L.kreis], [/Drachenfels/g, L.ort], [/Rheintal|Rheinhöhe|Rheinquelle/g, L.ort], [/Rheinblick/g, L.stadt + '-Blick'], [/RheinFunk/g, L.stadtA + ' Funk'],
       [/Hotel Godesburg-Blick/g, 'Hotel ' + L.stadt], [/Bad Godesberg|Godesberg|Godesburg/g, L.stadt], [/Godesnet/g, L.ort + 'Net'], [/Siebennet/g, L.kreis + ' Net'], [/Ahrtal/g, L.kreis], [/Kottenforst/g, 'Stadtwald'], [/Voreifel/g, L.kreis], [/Ville\b/g, L.kreis]]);
     return p;
   }
   function rxDo(S, t, list) {
-    var L = locOf(S); if (!L || t == null || typeof t !== 'string' || !/Wachtberg|Bonn|SVW|Ländchen|Rhein|Siebengeb|Drachenfels|Berkum|Villip|Godes|Ahrtal|Kottenforst|Voreifel|Ville|Pech|Adendorf|Arzdorf|Niederbachem|Meckenheim|Fritzdorf|Siebennet/.test(t)) return t;
+    var L = locOf(S); if (!L || t == null || typeof t !== 'string' || !/Wachtberg|Bonn|SVW|Ländchen|Waldstadion|Rhein|Siebengeb|Drachenfels|Berkum|Villip|Godes|Ahrtal|Kottenforst|Voreifel|Ville|Pech|Adendorf|Arzdorf|Niederbachem|Meckenheim|Fritzdorf|Siebennet/.test(t)) return t;
     // echte Gegner mit solchen Namen (z. B. SV Wachtberg in der eigenen Liga) bleiben unverändert
     var keep = []; t = t.replace(/(SV Wachtberg|SC Fortuna Bonn|Bonner SC|[A-Za-zÄÖÜäöüß.\d]+ (Bonn|Wachtberg)[A-Za-zÄÖÜäöüß\-]*( II| III)?)/g, function (m) { if (m !== L.club && S.world && teamExists(S, m)) { keep.push(m); return '\u0001' + (keep.length - 1) + '\u0001'; } return m; });
     rxPairs(L, list).forEach(function (r) { t = t.replace(r[0], r[1]); });
@@ -1023,7 +1025,7 @@ var MGR = (function () {
   function rxPub(S, t) { return S && S.reg ? rx(S, t) : t; }
   // Fan-Nutzernamen: Ortsteil-Präfixe (berkum_kicker …) durch den eigenen Ort ersetzen
   function rxU(S, u) { var L = locOf(S); if (!L) return u; var o = L.ort.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '');
-    return u.replace(/^(wachtberger|wachtberg|laendchen|ländchen|drachenfels|berkum|pech|villip|niederbachem|adendorf|ließem|werthhoven|fritzdorf|arzdorf)(?=_)/, o).replace(/^svw_/, L.ini.toLowerCase() + '_'); }
+    return u.replace(/^(wachtberger|wachtberg|laendchen|ländchen|waldstadion|drachenfels|berkum|pech|villip|niederbachem|adendorf|ließem|werthhoven|fritzdorf|arzdorf)(?=_)/, o).replace(/^svw_/, L.ini.toLowerCase() + '_'); }
   function rxL(S, t) { return rxDo(S, t, true); }
   function teamExists(S, n) { var w = S.world; for (var l in w.lv) for (var i = 0; i < w.lv[l].length; i++) if (w.lv[l][i].n === n) return true; for (l in w.pool) for (i = 0; i < w.pool[l].length; i++) if (w.pool[l][i].n === n) return true; return false; }
 
@@ -1052,10 +1054,10 @@ var MGR = (function () {
     var max = own.ebene;
     for (l = own.ebene + 1; l <= hi; l++) { var above = chain[l - 1]; var all = byL[l] || [], c = all.some(function (x) { return isK(x.gebiet); }) ? all.filter(function (x) { return x.gebiet === kreis; }) : all; if (!c.length) break; chain[l] = best(c, function (x) { return 2 * ov(x._c, above._c) + ov(x._c, kClubs) - (x.teams.length < 6 ? 50 : 0); }); max = l; }
     var reg = { verband: verband, kreis: kreis.replace(/^Kreis /, ''), team: { id: ownT.id, n: ownT.name }, lvl: own.ebene, max: max, lv: {}, teams: {}, pool: {} };
-    for (l = 5; l <= max; l++) {
+    for (l = Math.min(5, lo); l <= max; l++) {
       var x = chain[l]; if (!x) continue;
       var z = { up: 0, up2: 0, down: 0, down2: 0 }; x.teams.forEach(function (t) { if (z[t.zone] != null) z[t.zone]++; });
-      var any = z.up + z.up2 + z.down + z.down2 > 0, sh = (SHORTN[x.klasse] || {})[verband] || x.klasse.replace(/ (Niederrhein|Westfalen|Mittelrhein)$/, '');
+      var any = z.up + z.up2 + z.down + z.down2 > 0, sh = (SHORTN[x.klasse] || {})[verband] || x.klasse.replace(/ \(Verband\)$/, '').replace(/ (Niederrhein|Westfalen|Mittelrhein)$/, '');
       reg.lv[l] = { name: x.name, short: sh, size: Math.max(6, x.teams.length) };
       if (any) { reg.lv[l].up = l === 5 ? Math.max(1, z.up) : z.up; reg.lv[l].upRel = z.up2; reg.lv[l].down = z.down; reg.lv[l].downRel = z.down2; }
       if (l === max) { reg.lv[l].down = 0; reg.lv[l].downRel = 0; }
@@ -1071,9 +1073,9 @@ var MGR = (function () {
   function buildWorldReg(S, D, reg) {
     S.world = { lv: {}, pool: {}, last: {} };
     for (var l = 1; l <= D.maxLvl; l++) {
-      var src = l <= 4 ? (D.teams[l] || []) : (reg.teams[l] || []).map(function (n) { return { n: n, b: null }; });
+      var src = l <= 4 && !reg.teams[l] ? (D.teams[l] || []) : (reg.teams[l] || []).map(function (n) { return { n: n, b: null }; });
       var list = src.filter(function (t) { return t.n !== S.club; }).map(function (t) { var x = mkTeam(D, l, t); if (l >= 5 || MR_TOP.indexOf(t.n) >= 0) x.r = 1; return x; });
-      var pool = (l <= 4 ? (D.pool[l] || []) : (reg.pool[l] || []).map(function (n) { return { n: n, b: null }; })).filter(function (t) { return t.n !== S.club; }).map(function (t) { var x = mkTeam(D, l, t); if (l >= 5) x.r = 1; return x; });
+      var pool = (l <= 4 && !reg.teams[l] ? (D.pool[l] || []) : (reg.pool[l] || []).map(function (n) { return { n: n, b: null }; })).filter(function (t) { return t.n !== S.club; }).map(function (t) { var x = mkTeam(D, l, t); if (l >= 5) x.r = 1; return x; });
       S.world.pool[l] = pool;
       var need = D.lv[l].size - (l === S.lvl ? 1 : 0);
       list = list.slice(0, need);
@@ -1181,7 +1183,7 @@ var MGR = (function () {
     S.pitch.life = Math.max(rnd(15, 20), S.pitch.age + rnd(2, 4));
     var reserve = D.reserve * ((S.mlvl >= featLvl('legende')) ? 1.15 : 1);
     bookPot(S, 'Rücklagen', reserve, 'cash');
-    if (REG) buildWorldReg(S, D, REG); else buildWorld(S, D);
+    if (REG) { buildWorldReg(S, D, REG); S.stadion = homeStadion(S); } else buildWorld(S, D);
     var plan = { TW: 3, AB: 8, MF: 8, ST: 5 };
     Object.keys(plan).forEach(function (pos) { for (var i = 0; i < plan[pos]; i++) S.players.push(newPlayer(S, D, { lvl: S.lvl, pos: pos })); });
     var target = L0.hi - (L0.hi - L0.lo) * 0.18 + rnd(0, 1.2);
@@ -1389,7 +1391,7 @@ var MGR = (function () {
     S.goal = sug;
     pend(S, { type: 'goal', title: 'Saisonziel ' + S.season + '/' + String(S.season + 1).slice(2), text: 'Der Vorstand schätzt den Kader auf Platz ' + myR + ' von ' + n + ' ein und schlägt „' + GOALS[sug] + '“ vor. Ein höheres Ziel bringt mehr Geld und Fan-Begeisterung, aber der Druck steigt.', opts: Object.keys(GOALS).map(function (k) { return { k: k, label: GOALS[k] + (k === sug ? ' (Vorschlag)' : '') }; }) });
   }
-  var VPOKAL = { Mittelrhein: 'Bitburger-Pokal', Niederrhein: 'Niederrheinpokal', Westfalen: 'Westfalenpokal' };
+  var VPOKAL = { Mittelrhein: 'Bitburger-Pokal', Niederrhein: 'Niederrheinpokal', Westfalen: 'Westfalenpokal', Rheinland: 'Rheinlandpokal', 'Südwest': 'Verbandspokal Südwest' };
   function cupName(S, k) { var c = CUPS[k]; if (!S.reg) return c.name; if (k === 'kp') return S.reg.kreis ? 'Kreispokal ' + S.reg.kreis : 'Kreispokal'; if (k === 'mrp') return VPOKAL[S.reg.verband] || c.name; return c.name; }
   function newCup(S, k) { var c = CUPS[k]; return { k: k, name: cupName(S, k), alive: true, rn: 0, games: [], next: null, field: null, hist: [], ties: [], dates: c.dates.map(function (x, i) { var d = sd(S.season, x); return (i === 5 || (k === 'dfb' && i === 0)) ? toDow(d, 6) : toDow(d, 3); }) }; }
   function drawCup(S, D, c) {
@@ -2169,7 +2171,7 @@ var MGR = (function () {
     if (S.loan) { var rate = Math.min(S.loan.rest, S.loan.monthly); bookPot(S, 'Kreditrate', -rate, 'cash'); S.loan.rest -= rate; if (S.loan.rest <= 1) { S.loan = null; msg(S, 'finanzen', 'Der Kredit ist vollständig abbezahlt.'); } }
     var merch = S.fanbase * (S.fans / 100) * 0.15 * e.merch * (mon(S.date) === 7 ? 3 : 1) * merchF(S) * (1 + (11 - S.lvl) * 0.05);
     book(S, 'Merchandise & Trikots', Math.round(merch));
-    S.sponsors = S.sponsors.filter(function (s) { if (s.until < S.date.slice(0, 7)) { msg(S, 'finanzen', 'Werbevertrag mit ' + s.firm + ' (' + s.slotName + ') ist ausgelaufen.'); if (s.slot === 'stadion') S.stadion = 'Waldstadion'; if (s.slot === 'brust') S.jersey = null; return false; } book(S, 'Werbedeals', s.m); return true; });
+    S.sponsors = S.sponsors.filter(function (s) { if (s.until < S.date.slice(0, 7)) { msg(S, 'finanzen', 'Werbevertrag mit ' + s.firm + ' (' + s.slotName + ') ist ausgelaufen.'); if (s.slot === 'stadion') S.stadion = homeStadion(S); if (s.slot === 'brust') S.jersey = null; return false; } book(S, 'Werbedeals', s.m); return true; });
     S.tmp.sponsors = S.tmp.sponsors.filter(function (s) { if (s.n <= 0) return false; book(S, 'Werbedeals', s.m); s.n--; return true; });
     if (mon(S.date) === 1 || mon(S.date) === 4) { var exp = S.players.filter(function (p) { return p.ce <= S.season + 1 && !p.loan && !p.block; }); if (exp.length) msg(S, 'transfer', '📝 Verträge laufen im Sommer aus: ' + exp.map(function (p) { return p.n; }).join(', ') + '. Im Kader verlängern, sonst gehen sie ablösefrei!'); }
     // Platz
@@ -2459,7 +2461,7 @@ var MGR = (function () {
     if (m <= 0 || (cur && m <= cur.m)) return;
     var years = rint(1, 3), firm = rxL(S, pick(FIRMS)), bonus = nice(m * rnd(1, 4));
     var brand = slot === 'stadion' ? firm.split(' ').slice(-1)[0] + '-Arena' : slot === 'training' ? firm.split(' ').slice(-1)[0] + '-Trainingspark' : '';
-    var deal = { slot: slot, slotName: SPONS[slot].n, firm: firm, m: m, bonus: bonus, until: (S.season + years) + '-06', brand: brand, desc: SPONS[slot].brand };
+    var deal = { slot: slot, slotName: SPONS[slot].n, firm: firm, m: m, bonus: bonus, until: (S.season + years) + '-06', brand: brand, desc: rx(S, SPONS[slot].brand) };
     pend(S, { type: 'sponsor', deal: deal, title: 'Angebot: ' + SPONS[slot].n, text: firm + ' bietet ' + euro(m) + ' pro Monat + ' + euro(bonus) + ' Unterschriftsprämie bis 06/' + (S.season + years) + '. Leistung: ' + SPONS[slot].brand + (brand ? ' („' + brand + '“)' : '') + '.' + (cur ? ' Ersetzt den Vertrag mit ' + cur.firm + ' (' + euro(cur.m) + '/Monat).' : ''), opts: [{ k: 'yes', label: 'Unterschreiben' }, { k: 'no', label: 'Ablehnen' }] });
   }
 
@@ -3703,6 +3705,6 @@ var MGR = (function () {
     };
   }
 
-  function wrapD(fn) { return function (S, D) { var a = Array.prototype.slice.call(arguments); a[1] = dOf(S, D); return fn.apply(null, a); }; }
+  function wrapD(fn) { return function (S, D) { regFix(S); var a = Array.prototype.slice.call(arguments); a[1] = dOf(S, D); return fn.apply(null, a); }; }
   return { dOf: dOf, buildReg: buildReg, rx: rxPub, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(act), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
 })();

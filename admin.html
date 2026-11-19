@@ -429,9 +429,9 @@ start();
 var LG = { vb: 'Mittelrhein', eb: 0, st: null };
 function ligDec(s) { return String(s).replace(/&#8203;|​/g, '').replace(/&#(\d+);/g, function (_, n) { return String.fromCharCode(+n); }).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/\s+/g, ' ').trim(); }
 function showLig() {
-  $('#main').innerHTML = '<div class="card"><h3>Echte Ligen (NRW)</h3><p class="muted">Quelle: fussball.de, abgerufen per GitHub Actions („Ligadaten holen“). Nach jedem Abruf werden sie automatisch übernommen; der Knopf holt den aktuellen Stand von Hand. Von Hand geänderte Namen bleiben beim nächsten Import erhalten.</p>' +
+  $('#main').innerHTML = '<div class="card"><h3>Echte Ligen (NRW und Rheinland-Pfalz)</h3><p class="muted">Quelle: fussball.de, abgerufen per GitHub Actions („Ligadaten holen“). Nach jedem Abruf werden sie automatisch übernommen; der Knopf holt den aktuellen Stand von Hand. Von Hand geänderte Namen bleiben beim nächsten Import erhalten.</p>' +
     '<div class="row"><button class="btn" onclick="ligImport()">Ligendaten importieren</button><span class="muted" id="ligst"></span></div>' +
-    '<div class="row"><select id="ligvb" onchange="LG.vb=this.value;LG.eb=0;LG.st=null;ligList()">' + ['Mittelrhein', 'Niederrhein', 'Westfalen'].map(function (v) { return '<option' + (v === LG.vb ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>' +
+    '<div class="row"><select id="ligvb" onchange="LG.vb=this.value;LG.eb=0;LG.st=null;ligList()">' + ['Mittelrhein', 'Niederrhein', 'Westfalen', 'Rheinland', 'Südwest', 'RV Südwest'].map(function (v) { return '<option' + (v === LG.vb ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>' +
     '<input id="ligq" placeholder="Mannschaft suchen …" onkeydown="if(event.key===\'Enter\')ligSearch()"><button class="btn" onclick="ligSearch()">Suchen</button></div></div><div id="ligbox"><div class="spin"></div></div>';
   ligList();
 }

@@ -33,7 +33,8 @@ const ligCache: Record<string, { at: number; st: any[] }> = {};
 async function verbandStaffeln(verband: string) {
   const c = ligCache[verband];
   if (c && Date.now() - c.at < 600_000) return c.st;
-  const { data: st, error } = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').eq('verband', verband).eq('aktiv', true).limit(1000);
+  const vbs = verband === 'Rheinland' || verband === 'Südwest' ? [verband, 'RV Südwest'] : [verband];
+  const { data: st, error } = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').in('verband', vbs).eq('aktiv', true).limit(1000);
   if (error || !st?.length) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
   const ids = st.map((x: any) => x.id), teams: any[] = [];
   for (let i = 0; i < ids.length; i += 40) {
@@ -49,10 +50,15 @@ async function verbandStaffeln(verband: string) {
 }
 async function regFor(teamId: string) {
   if (!/^[0-9A-Z]{10,40}$/.test(teamId)) throw new HttpError(400, 'Ungültige Mannschaft.');
-  const { data: t } = await admin.from('ligen_teams').select('id, aktiv, ligen_staffeln(verband)').eq('id', teamId).maybeSingle();
+  const { data: t } = await admin.from('ligen_teams').select('id, aktiv, verein_id, ligen_staffeln(verband)').eq('id', teamId).maybeSingle();
   if (!t || !(t as any).ligen_staffeln) throw new HttpError(400, 'Mannschaft nicht gefunden.');
   if (!(t as any).aktiv) throw new HttpError(400, 'Diese Mannschaft ist nicht spielbar.');
-  const verband = (t as any).ligen_staffeln.verband;
+  let verband = (t as any).ligen_staffeln.verband;
+  if (verband === 'RV Südwest') {
+    // Oberliga/Regionalliga: Verband über die eigenen Zweitmannschaften bestimmen, sonst Südwest
+    const { data: o } = await admin.from('ligen_teams').select('ligen_staffeln!inner(verband)').eq('verein_id', (t as any).verein_id).in('ligen_staffeln.verband', ['Rheinland', 'Südwest']).limit(1);
+    verband = (o?.[0] as any)?.ligen_staffeln?.verband || 'Südwest';
+  }
   const st = JSON.parse(JSON.stringify(await verbandStaffeln(verband)));
   return MGR.buildReg(verband, st, teamId);
 }
@@ -80,7 +86,8 @@ async function ligenImport(ref: string) {
   const { data: last } = await admin.from('ligen_teams').select('updated_at').order('updated_at', { ascending: false }).limit(1);
   if (last?.[0] && Date.now() - new Date(last[0].updated_at).getTime() < 600_000) return { status: 'recent', at: last[0].updated_at };
   const r = /^[0-9a-f]{40}$/.test(ref) ? ref : 'umbau';
-  const res = await fetch(LIG_RAW + r + '/data/nrw-2627.json');
+  let res = await fetch(LIG_RAW + r + '/data/ligen-2627.json');
+  if (res.status === 404) res = await fetch(LIG_RAW + r + '/data/nrw-2627.json');
   if (!res.ok) throw new HttpError(502, 'Ligendatei nicht erreichbar (' + res.status + ').');
   const d = await res.json();
   const now = new Date().toISOString(), S: any[] = [], T: any[] = [], seen: Record<string, 1> = {}, drop: string[] = [];
@@ -92,7 +99,7 @@ async function ligenImport(ref: string) {
       const own = s.teams.filter((t: any) => !seen[t.id]);
       if (own.length < 4) { drop.push(s.id); continue; }
       own.forEach((t: any) => { seen[t.id] = 1; });
-      S.push({ id: s.id, saison: d.season, verband: v.name, ebene: 5 + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
+      S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
       for (const t of own) T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', updated_at: now });
     }
   }

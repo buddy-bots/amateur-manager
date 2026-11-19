@@ -2345,7 +2345,10 @@ var MGR = (function () {
       case 'noop': break;
       case 'misClaim': { var MV = misView(S, D), mk = String(p.k || ''), mm = MV.daily.concat(MV.career).filter(function (x) { return x.id === mk; })[0]; if (!mm || mm.st !== 'done') err('Diese Mission ist noch nicht geschafft.');
         if (mk.indexOf('d:') === 0) { if (!MV.dailyOn) err('Tagesmissionen gibt es ab Level ' + featLvl('tagesmissionen') + '.'); S.dm.got[mk.slice(2)] = 1; } else { if (!MV.careerOn) err('Karriere-Missionen gibt es ab Level ' + featLvl('missionen') + '.'); S.cm = S.cm || {}; S.cm[+mk.slice(2)] = 1; }
-        info = misPay(S, mm.rw, mm.t); break; }
+        info = misPay(S, mm.rw, mm.t);
+        // Tagesmission: kleiner Nebeneffekt auf Follower, Fans und Moral
+        if (mk.indexOf('d:') === 0) { var fo = rint(4, 12) + Math.round(Math.sqrt(S.follow || 0) * 0.15); followAdd(S, fo); S.fans = clamp((S.fans || 50) + 0.3, 0, 100); S.moral = clamp((S.moral || 60) + 0.5, 0, 100); info += ' · +' + fo + ' Follower'; }
+        break; }
       case 'bonusRedeem': { var rw = p._srv; if (!rw) err('Kein Bonus verfügbar.'); info = giveBonus(S, rw, 'Bonus eingelöst'); break; }
       case 'twinDecide': { var TW = S.twin; if (!TW) err('Keine Entscheidung offen.');
         if (!p.take) { S.twin = null; info = 'Du bleibst bei der ' + S.club + '.'; break; }

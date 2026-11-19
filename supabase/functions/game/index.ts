@@ -105,10 +105,12 @@ async function ligenImport(ref: string) {
     for (const s of v.staffeln) if (!order.includes(s.skn)) order.push(s.skn);
     for (const s of v.staffeln) {
       // Eine Mannschaft steht manchmal in zwei Runden (Findungs-/Meisterrunde): nur die erste zählt, leere Staffeln entfallen
-      const own = s.teams.filter((t: any) => !seen[t.id]);
+      // Ohne Team-ID (z. B. Bayern) eine feste ID aus Staffel und Name bilden; zurückgezogene Mannschaften (zg.) entfallen
+      const hid = (x: string) => { let h1 = 5381, h2 = 52711; for (let i = 0; i < x.length; i++) { const c = x.charCodeAt(i); h1 = (h1 * 33) ^ c; h2 = (h2 * 31) ^ c; } return 'N' + ((h1 >>> 0).toString(36) + (h2 >>> 0).toString(36)).toUpperCase(); };
+      for (const t of s.teams) if (!t.id) t.id = hid(s.id + '|' + t.n);
+      const own = s.teams.filter((t: any) => { if (seen[t.id] || /\bzg\.?\s*$/i.test(String(t.n).trim())) return false; seen[t.id] = 1; return true; });
       const eb = s.ebene || (v.start || 5) + order.indexOf(s.skn);
       if (own.length < 4 || eb > 11) { drop.push(s.id); continue; }
-      own.forEach((t: any) => { seen[t.id] = 1; });
       S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
       for (const t of own) { const g = MGR.geoFind(orte, part, ligTeam(t.n), v.name, s.gn); T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', lat: g ? g[0] : null, lon: g ? g[1] : null, updated_at: now }); }
     }
@@ -138,6 +140,7 @@ async function ligenImport(ref: string) {
   T.forEach((x) => { x.name_fix = !!fixT[x.id]; if (x.name_fix) x.name = fixT[x.id]; });
   for (let i = 0; i < S.length; i += 300) { const { error } = await admin.from('ligen_staffeln').upsert(S.slice(i, i + 300), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
   for (let i = 0; i < T.length; i += 800) { const { error } = await admin.from('ligen_teams').upsert(T.slice(i, i + 800), { onConflict: 'id' }); if (error) throw new HttpError(500, error.message); }
+  await admin.from('ligen_teams').delete().like('name', '% zg.');
   for (let i = 0; i < drop.length; i += 100) await admin.from('ligen_staffeln').delete().in('id', drop.slice(i, i + 100));
   Object.keys(ligCache).forEach((k) => delete ligCache[k]);
   return { status: 'ok', staffeln: S.length, teams: T.length, ref: r };

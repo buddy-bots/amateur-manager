@@ -532,14 +532,14 @@ function cpLands() { return (CP.land ? [CP.land] : Object.keys(BLAND)).map(encod
 function cpVbs() { var L = BLAND[CP.land]; if (L) return L.vb; var a = []; Object.keys(BLAND).forEach(function (k) { a = a.concat(BLAND[k].vb); }); return a; }
 function cpSel() {
   var t = CP.team, el = $('#cpsel'); if (!el) return;
-  el.innerHTML = t ? '<div class="cpcard"><img src="' + genLogo(t.name) + '" alt=""><div><b>' + esc(t.name) + '</b><div class="xs muted">' + esc(t.liga) + '</div></div><button class="x2" onclick="CP.team=null;cpSel()" title="Andere Wahl">✕</button></div>' : '<div class="xs muted" style="margin-top:8px">' + (CP.land ? 'Suche jetzt deinen Verein in ' + esc(CP.land) + '.' : 'Tipp auf dein Bundesland oder such direkt nach deinem Verein.') + '</div>';
+  el.innerHTML = t ? '<div class="cpcard"><img src="' + genLogo(t.name) + '" alt=""><div><b>' + esc(t.name) + '</b><div class="xs muted">' + esc(t.liga) + '</div></div><button class="x2" onclick="CP.team=null;cpSel();mapRedraw()" title="Andere Wahl">✕</button></div>' : '<div class="xs muted" style="margin-top:8px">' + (CP.land ? 'Suche jetzt deinen Verein in ' + esc(CP.land) + '.' : 'Tipp auf dein Bundesland oder such direkt nach deinem Verein.') + '</div>';
 }
 var CPQT = null;
 function cpSearch(q) {
   clearTimeout(CPQT); q = q.trim(); if (q.length < 3) { if (CP.kreis) cpKreisList(); else $('#cphits').innerHTML = ''; return; }
   CPQT = setTimeout(function () {
     var qq = encodeURIComponent(q.replace(/[*,()]/g, ' '));
-    rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
+    rest('ligen_teams?select=id,name,lat,lon,kreis,staffel_id,verein_id,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
       CP.hits = rows;
       $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span>' + cpLock(st.ebene) + '</button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
     }).catch(function (e) { $('#cphits').innerHTML = '<div class="xs muted">' + esc(e.message) + '</div>'; });
@@ -550,13 +550,16 @@ function cpPick(i) {
   var eb = (t.ligen_staffeln || {}).ebene, need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl();
   if (need && my < need) { toast('🔒 Vereine aus der ' + ((t.ligen_staffeln || {}).name || 'Liga') + ' kannst du ab Manager-Level ' + need + ' wählen (du bist Level ' + my + '). Aufsteigen darfst du natürlich jederzeit.'); return; }
   CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '', lat: t.lat, lon: t.lon }; if (t.kreis) CP.kreis = t.kreis;
+  CP.info = { vb: (t.ligen_staffeln || {}).verband || '', eb: eb };
+  rest('ligen_teams?select=id&aktiv=eq.true&staffel_id=eq.' + encodeURIComponent(t.staffel_id || '')).then(function (r) { if (CP.team && CP.team.id === t.id) { CP.info.n = (r || []).length; mapRedraw(); } }).catch(function () {});
+  if (t.verein_id) rest('ligen_teams?select=id&aktiv=eq.true&verein_id=eq.' + encodeURIComponent(t.verein_id)).then(function (r) { if (CP.team && CP.team.id === t.id) { CP.info.m = (r || []).length; mapRedraw(); } }).catch(function () {});
   $('#cphits').innerHTML = ''; $('#cpq').value = ''; cpSel();
   var vb = (t.ligen_staffeln || {}).verband; var kk = CP.kreis; Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; } }); CP.kreis = kk; mapRedraw();
 }
 function cpKreis(k) { CP.kreis = k; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = k ? '🔎 Verein im Kreis ' + kName(k) + ' suchen …' : '🔎 Verein in ' + CP.land + ' suchen …'; if (q.value.trim().length >= 3) cpSearch(q.value); else if (k) cpKreisList(); else $('#cphits').innerHTML = ''; } }
 function cpKreisList() {
   $('#cphits').innerHTML = '<div class="xs muted" style="margin-top:6px">Lade Vereine …</div>';
-  rest('ligen_teams?select=id,name,lat,lon,kreis,ligen_staffeln!inner(name,verband,ebene,aktiv,klasse)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
+  rest('ligen_teams?select=id,name,lat,lon,kreis,staffel_id,verein_id,ligen_staffeln!inner(name,verband,ebene,aktiv,klasse)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
     rows.sort(function (a, b) { return (a.ligen_staffeln.ebene - b.ligen_staffeln.ebene) || a.name.localeCompare(b.name, 'de'); }); CP.krows = rows; CP.kgrp = ''; cpKreisDraw();
   });
 }
@@ -581,6 +584,9 @@ function mapRedraw() {
     el.style.left = L + 'px'; el.style.right = '28px'; el.style.width = 'auto'; el.style.setProperty('--mh', (innerHeight - (+el.dataset.top) - 50) + 'px');
   } else { delete el.dataset.top; el.style.top = ''; el.style.transform = ''; el.style.left = ''; el.style.right = ''; el.style.width = ''; }
   el.innerHTML = deMap();
+  // Pfad (Deutschland › Land › Kreis) in die Zeile der Menüknöpfe, links davor
+  var mb = el.querySelector('.mapbar'), tb = $('.tbtns');
+  if (mb && tb) { var r = tb.getBoundingClientRect(); mb.style.position = 'fixed'; mb.style.margin = '0'; mb.style.right = Math.round(innerWidth - r.left + 12) + 'px'; mb.style.top = Math.round(r.top + r.height / 2) + 'px'; mb.style.transform = 'translateY(-50%)'; mb.style.zIndex = '62'; }
 }
 function cpLand(n) { if (n && !BLAND[n]) return toast(n + ': Coming soon – bald spielbar!'); CP.land = n; CP.kreis = ''; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = CP.land ? '🔎 Verein in ' + CP.land + ' suchen …' : '🔎 Verein suchen …'; if (!LITE && !navigator.maxTouchPoints) q.focus(); if (q.value.trim().length >= 3) cpSearch(q.value); } }
 function cpCounts() {
@@ -600,6 +606,7 @@ function mapPin(lift, sz) { if (!CP.team || !CP.team.lat) return ''; var q = map
 function mapDefs() { return '<defs><linearGradient id="mgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9f27a"/><stop offset="1" stop-color="#6fb43a"/></linearGradient><linearGradient id="mgK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a5e36a"/><stop offset="1" stop-color="#5c9d2e"/></linearGradient><filter id="mblur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4"/></filter><filter id="mglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'; }
 function deMap() {
   if (typeof DEMAP === 'undefined') return '';
+  if (CP.land && CP.team && CP.kreis && DEMAP.k && DEMAP.k[CP.land]) { var kk = DEMAP.k[CP.land].filter(function (k) { return k[0] === CP.kreis; })[0]; if (kk) return deMapClub(CP.land, kk); }
   if (CP.land && DEMAP.k && DEMAP.k[CP.land]) return deMapLand(CP.land);
   var W = DEMAP.w, H = Math.round(DEMAP.h * MAPK), flat = '', soon = '', sc = 'scale(1 ' + MAPK + ')'; AIRL = [];
   DEMAP.l.forEach(function (l) {
@@ -620,6 +627,17 @@ function deMap() {
   var vb = '-12 -60 ' + (W + 24) + ' ' + (H + 80);
   return '<div class="mapst"><svg class="mbase" viewBox="' + vb + '" aria-label="Deutschlandkarte">' + mapDefs() + flat + soon + '</svg>' + AIRL.map(function (a, i) { return '<svg class="mair" style="animation-delay:' + (i * -1.1) + 's" viewBox="' + vb + '">' + mapDefs() + a + '</svg>'; }).join('') + '</div>';
 }
+// Gewählter Verein: nur sein Kreis, groß, mit Vereinsinfos
+function deMapClub(land, k) {
+  var b = pathBox(k[2]), w = b[2] - b[0], h = b[3] - b[1], pad = Math.max(w, h) * 0.08, lift = Math.max(w, h) * 0.05, sc = 'scale(1 ' + MAPK + ')', t = CP.team;
+  var walls = ''; for (var j = 6; j >= 1; j--) walls += '<path d="' + k[2] + '" transform="translate(0 ' + (lift * j / 6 - lift) + ') ' + sc + '" fill="' + (j > 3 ? '#2f5d18' : '#3d7420') + '"/>';
+  var dot = ''; if (t.lat) { var q = mapXY(t.lat, t.lon), r = Math.max(w, h) / 45; dot = '<g transform="translate(' + q[0].toFixed(2) + ' ' + (q[1] - lift).toFixed(2) + ')"><circle r="' + (r * 2.2).toFixed(2) + '" fill="rgba(255,77,61,.25)"><animate attributeName="r" values="' + (r * 1.2).toFixed(2) + ';' + (r * 2.6).toFixed(2) + ';' + (r * 1.2).toFixed(2) + '" dur="2s" repeatCount="indefinite"/></circle><circle r="' + r.toFixed(2) + '" fill="#ff4d3d" stroke="#fff" stroke-width="' + (r / 3).toFixed(2) + '"/></g>'; }
+  var I = CP.info || {}, row = function (a, v) { return v ? '<div class="row sp"><span class="muted">' + a + '</span><b>' + v + '</b></div>' : ''; };
+  return '<div class="mapbar"><button onclick="cpLand(\'\')">← Deutschland</button><b>' + esc(land) + '</b><span>Kreis ' + esc(kName(k[0])) + ' <a href="javascript:void 0" onclick="CP.team=null;cpSel();cpKreis(\'' + esc(k[0]).replace(/'/g, "\\'") + '\')">✕</a></span></div>' +
+    '<div class="cpclubw"><svg class="zoom club" viewBox="' + (b[0] - pad).toFixed(1) + ' ' + (b[1] - pad - lift).toFixed(1) + ' ' + (w + pad * 2).toFixed(1) + ' ' + (h + pad * 2 + lift).toFixed(1) + '">' + mapDefs() + walls + '<path d="' + k[2] + '" transform="translate(0 ' + (-lift) + ') ' + sc + '" fill="url(#mgA)" stroke="#eaffd2" stroke-width="2" vector-effect="non-scaling-stroke"/>' + dot + '</svg>' +
+    '<div class="cpclub"><div class="row" style="gap:12px"><img src="' + genLogo(t.name) + '" alt=""><div style="min-width:0"><b style="font-size:17px">' + esc(t.name) + '</b><div class="xs muted">' + esc(t.liga) + '</div></div></div><div class="cpci">' + row('Ort', esc(clubTownUI(t.name))) + row('Kreis', esc(kName(k[0]))) + row('Verband', esc(I.vb || '')) + row('Bundesland', esc(land)) + row('Spielklasse', I.eb ? I.eb + '. Liga-Ebene' : '') + row('Gegner in der Liga', I.n ? String(I.n - 1) : '') + row('Mannschaften im Verein', I.m ? String(I.m) : '') + '</div></div></div>';
+}
+function clubTownUI(n) { try { return MGR.clubTown(n) || ''; } catch (e) { return ''; } }
 // Ein Land groß mit seinen Fußballkreisen
 function deMapLand(land) {
   var l = DEMAP.l.filter(function (x) { return x[0] === land; })[0], K = DEMAP.k[land], bx = pathBox(l[1]), w = bx[2] - bx[0], h = bx[3] - bx[1], pad = w * 0.06, lift = w * 0.035, sc = 'scale(1 ' + MAPK + ')', fs = w / 44;

@@ -104,6 +104,7 @@ async function ligenImport(ref: string) {
     const order: string[] = [];
     for (const s of v.staffeln) if (!order.includes(s.skn)) order.push(s.skn);
     for (const s of v.staffeln) {
+      s.gn = MGR.gebietNorm(v.name, s.gn);
       // Eine Mannschaft steht manchmal in zwei Runden (Findungs-/Meisterrunde): nur die erste zählt, leere Staffeln entfallen
       // Ohne Team-ID (z. B. Bayern) eine feste ID aus Staffel und Name bilden; zurückgezogene Mannschaften (zg.) entfallen
       const hid = (x: string) => { let h1 = 5381, h2 = 52711; for (let i = 0; i < x.length; i++) { const c = x.charCodeAt(i); h1 = (h1 * 33) ^ c; h2 = (h2 * 31) ^ c; } return 'N' + ((h1 >>> 0).toString(36) + (h2 >>> 0).toString(36)).toUpperCase(); };

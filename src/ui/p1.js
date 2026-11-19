@@ -526,7 +526,9 @@ function newGameSetup() {
 var CP = { land: '', team: null }, CPN = null;
 var BLAND = {
   'Nordrhein-Westfalen': { vb: ['Mittelrhein', 'Niederrhein', 'Westfalen'], k: 'NRW', ab: 'WDFV', c: ['#2a8a3e', '#ffffff', '#d52b1e'] },
-  'Rheinland-Pfalz': { vb: ['Rheinland', 'Südwest', 'RV Südwest'], k: 'RLP', ab: 'FVR · SWFV', c: ['#1a1a1a', '#d4202a', '#f2c200'] }
+  'Rheinland-Pfalz': { vb: ['Rheinland', 'Südwest', 'RV Südwest'], k: 'RLP', ab: 'FVR · SWFV', c: ['#1a1a1a', '#d4202a', '#f2c200'] },
+  'Baden-Württemberg': { vb: ['Baden', 'Südbaden', 'Württemberg', 'Oberliga BW'], k: 'BW', ab: 'bfv · SBFV · wfv', c: ['#111111', '#f6c400', '#111111'] },
+  'Bayern': { vb: ['Bayern'], k: 'BY', ab: 'BFV', c: ['#0a7fd0', '#ffffff', '#0a7fd0'] }
 };
 function cpLands() { return (CP.land ? [CP.land] : Object.keys(BLAND)).map(encodeURIComponent).join(','); }
 function cpVbs() { var L = BLAND[CP.land]; if (L) return L.vb; var a = []; Object.keys(BLAND).forEach(function (k) { a = a.concat(BLAND[k].vb); }); return a; }
@@ -539,7 +541,7 @@ function cpSearch(q) {
   clearTimeout(CPQT); q = q.trim(); if (q.length < 3) { if (CP.kreis) cpKreisList(); else $('#cphits').innerHTML = ''; return; }
   CPQT = setTimeout(function () {
     var qq = encodeURIComponent(q.replace(/[*,()]/g, ' '));
-    rest('ligen_teams?select=id,name,lat,lon,kreis,staffel_id,verein_id,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
+    rest('ligen_teams?select=id,name,lat,lon,kreis,land,staffel_id,verein_id,ligen_staffeln!inner(name,verband,ebene,aktiv)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')' + (CP.kreis ? '&kreis=eq.' + encodeURIComponent(CP.kreis) : '') + '&name=ilike.*' + qq + '*&order=name&limit=10').then(function (rows) {
       CP.hits = rows;
       $('#cphits').innerHTML = rows.length ? '<div class="cphits">' + rows.map(function (t, i) { var st = t.ligen_staffeln || {}; return '<button class="cphit" onclick="cpPick(' + i + ')"><img src="' + genLogo(t.name) + '" alt=""><span><b>' + esc(t.name) + '</b><span class="xs muted">' + esc(st.name || '') + '</span></span>' + cpLock(st.ebene) + '</button>'; }).join('') + '</div>' : '<div class="xs muted" style="margin-top:6px">Nichts gefunden.</div>';
     }).catch(function (e) { $('#cphits').innerHTML = '<div class="xs muted">' + esc(e.message) + '</div>'; });
@@ -554,12 +556,12 @@ function cpPick(i) {
   rest('ligen_teams?select=id&aktiv=eq.true&staffel_id=eq.' + encodeURIComponent(t.staffel_id || '')).then(function (r) { if (CP.team && CP.team.id === t.id) { CP.info.n = (r || []).length; mapRedraw(); } }).catch(function () {});
   if (t.verein_id) rest('ligen_teams?select=id&aktiv=eq.true&verein_id=eq.' + encodeURIComponent(t.verein_id)).then(function (r) { if (CP.team && CP.team.id === t.id) { CP.info.m = (r || []).length; mapRedraw(); } }).catch(function () {});
   $('#cphits').innerHTML = ''; $('#cpq').value = ''; cpSel();
-  var vb = (t.ligen_staffeln || {}).verband; var kk = CP.kreis; Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; } }); CP.kreis = kk; mapRedraw();
+  var vb = (t.ligen_staffeln || {}).verband; var kk = CP.kreis; if (t.land && BLAND[t.land]) CP.land = t.land; else Object.keys(BLAND).forEach(function (k) { if (BLAND[k].vb.indexOf(vb) >= 0 && CP.land !== k) { CP.land = k; } }); CP.kreis = kk; mapRedraw();
 }
 function cpKreis(k) { CP.kreis = k; mapRedraw(); cpSel(); var q = $('#cpq'); if (q) { q.placeholder = k ? '🔎 Verein im Kreis ' + kName(k) + ' suchen …' : '🔎 Verein in ' + CP.land + ' suchen …'; if (q.value.trim().length >= 3) cpSearch(q.value); else if (k) cpKreisList(); else $('#cphits').innerHTML = ''; } }
 function cpKreisList() {
   $('#cphits').innerHTML = '<div class="xs muted" style="margin-top:6px">Lade Vereine …</div>';
-  rest('ligen_teams?select=id,name,lat,lon,kreis,staffel_id,verein_id,ligen_staffeln!inner(name,verband,ebene,aktiv,klasse)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
+  rest('ligen_teams?select=id,name,lat,lon,kreis,land,staffel_id,verein_id,ligen_staffeln!inner(name,verband,ebene,aktiv,klasse)&aktiv=eq.true&ligen_staffeln.aktiv=eq.true&land=in.(' + cpLands() + ')&kreis=eq.' + encodeURIComponent(CP.kreis) + '&limit=400').then(function (rows) {
     rows.sort(function (a, b) { return (a.ligen_staffeln.ebene - b.ligen_staffeln.ebene) || a.name.localeCompare(b.name, 'de'); }); CP.krows = rows; CP.kgrp = ''; cpKreisDraw();
   });
 }
@@ -600,7 +602,7 @@ function cpCounts() {
 // Karte (modern, schräg von oben): Übersicht mit schwebenden spielbaren Ländern; Klick auf ein Land zoomt hinein und zeigt die Fußballkreise
 var MAPK = 0.74, MAPLIFT = 16, AIRL = [];
 function mapXY(lat, lon) { var p = DEMAP.p; return [(lon * p[3] - p[0]) * p[2], ((-lat) - p[1]) * p[2] * MAPK]; }
-function kName(k) { return String(k).replace(/Dinslak$/, 'Dinslaken').replace(/Kaiserslaut\./, 'Kaiserslautern'); }
+function kName(k) { return String(k).replace(/ \(K\)$/, '').replace(/Dinslak$/, 'Dinslaken').replace(/Kaiserslaut\./, 'Kaiserslautern').replace(/Bamberg\/Bayreuth\/Kulmb\./, 'Bamberg/Bayreuth/Kulmbach').replace(/Lichtenf\./, 'Lichtenfels').replace(/Tirschenr\./, 'Tirschenreuth'); }
 function pathBox(d) { var n = d.match(/-?\d+(\.\d+)?/g).map(Number), x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (var i = 0; i + 1 < n.length; i += 2) { x0 = Math.min(x0, n[i]); x1 = Math.max(x1, n[i]); y0 = Math.min(y0, n[i + 1]); y1 = Math.max(y1, n[i + 1]); } return [x0, y0 * MAPK, x1, y1 * MAPK]; }
 function mapPin(lift, sz) { if (!CP.team || !CP.team.lat) return ''; var q = mapXY(CP.team.lat, CP.team.lon), k = sz || 1; return '<g transform="translate(' + q[0].toFixed(2) + ' ' + (q[1] - lift).toFixed(2) + ') scale(' + k + ')"><g class="mpin"><ellipse rx="6" ry="2.4" fill="rgba(0,0,0,.35)"/><path d="M0 0C-3-7-11-12-11-21a11 11 0 0 1 22 0c0 9-8 14-11 21z" fill="#ff4d3d" stroke="#fff" stroke-width="2"/><circle cy="-21" r="4.2" fill="#fff"/></g></g>'; }
 function mapDefs() { return '<defs><linearGradient id="mgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9f27a"/><stop offset="1" stop-color="#6fb43a"/></linearGradient><linearGradient id="mgK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a5e36a"/><stop offset="1" stop-color="#5c9d2e"/></linearGradient><filter id="mblur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4"/></filter><filter id="mglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'; }

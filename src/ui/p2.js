@@ -328,13 +328,13 @@ function examEnd() { clearInterval(EXAM.t); var a = EXAM.ans.slice(); EXAM = { t
 function sgPop() {
   var L = V.giftPop;
   var h = '<div class="evw"><div style="text-align:center"><div style="font-size:42px">🎁</div><h2 style="padding:0">Geschenk vom Hauptsponsor</h2><div class="small" style="line-height:1.6;max-width:520px;margin:0 auto">Der <b>Transfermarkt</b> ist erst ab <b>Manager-Level ' + (MGR.featLvl('transfers') || 5) + '</b> verfügbar – aber ' + (V.fin && V.fin.sponsors && V.fin.sponsors[0] ? 'dein Hauptsponsor <b>' + esc(V.fin.sponsors[0].firm) + '</b>' : 'dein Hauptsponsor') + ' übernimmt die Ablöse für deinen <b>ersten Transfer</b>. Wähle einen Spieler:</div></div>' +
-    '<div class="sgl">' + L.map(function (p, i) { return '<button class="sgr" onclick="closePop();act(\'giftPick\',{i:' + i + '})"><span class="pos">' + p.dp + '</span><b class="sgn">' + esc(p.n) + '</b><span class="small">' + p.age + ' J.</span>' + strBox(p.str) + stars(p.talLo, p.talHi) + '<span class="small muted">' + eur(p.sal) + '/M</span></button>'; }).join('') + '</div><div class="small muted" style="text-align:center;margin-top:8px">Junge Spieler: viel Talent, noch wenig Stärke · Erfahrene: stark, aber älter</div></div>';
+    '<div class="sgl">' + L.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return (PORD[a.p.dp] || 0) - (PORD[b.p.dp] || 0) || b.p.str - a.p.str; }).map(function (o) { var p = o.p, i = o.i; return '<button class="sgr" onclick="closePop();act(\'giftPick\',{i:' + i + '})"><span class="pb ' + p.dp + '">' + p.dp + '</span><b class="sgn">' + esc(p.n) + '</b><span class="wchip">' + p.age + ' J.</span>' + stars(p.talLo, p.talHi) + '<span class="small muted" style="text-align:right">' + eur(p.sal) + '/M</span>' + strBox(p.str) + '</button>'; }).join('') + '</div></div>';
   var pm = {}; V.players.forEach(function (p) { pm[p.id] = p; });
   var row = function (p, pos) { return p ? '<div class="row" style="gap:6px;padding:4px 0;border-top:1px solid #e3e8df"><span class="pb ' + (pos || p.pos) + '">' + (pos || p.pos) + '</span><span class="small" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.n) + '</span>' + strBox(p.str) + '</div>' : ''; };
   var LU = V.lineup || {}, xi = (LU.slots || []).map(function (sl) { return row(pm[sl.pid], sl.pos); }).join(''), bn = (V.benchIds || []).map(function (id) { return row(pm[id]); }).join('');
   var side = function (t, b) { return '<div class="box" style="margin:0;padding:10px"><h3 style="margin:0 0 6px">' + t + '</h3>' + (b || '<div class="xs muted">–</div>') + '</div>'; };
   h = '<div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;align-items:start">' + side('👕 Erste Elf', xi) + h + side('🪑 Ersatzbank', bn) + '</div>';
-  pop(h, { lock: true, xwide: true, top: true });
+  pop(h, { lock: true, xwide: true, top: true }); var pe = $('#pop'); if (pe) pe.classList.add('sgpop');
 }
 function langAns(i, btn) {
   if (LANGBUSY) return; LANGBUSY = true; act('langAnswer', { i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) { LANGBUSY = false; return; }

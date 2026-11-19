@@ -669,14 +669,27 @@ body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 .lgrow{padding:5px 8px!important;gap:8px!important;font-size:12px}.lgrow b{font-size:12.5px}.lgscale{grid-template-columns:repeat(6,1fr)!important;margin-top:3px!important}.lgscale i{height:5px!important}.lgrow .lgf img{height:14px!important;width:21px!important}
 .lgbtns .sm,.box .row.wr .sm[onclick^="act('langAdd'"]{font-size:10.5px;padding:3px 8px;min-height:0}
 .shopbox{margin-top:16px!important}
+
+/* v25 Block 7 */
+.ltopl4{margin-bottom:14px}.ltopl4>.c1:empty,.ltopl4>.c4:empty{min-height:1px}
+.livetop2 .scoreb{background:transparent!important;padding:6px 4px}.scoreb .tm{gap:9px!important}.scoreb .tm>span{line-height:1.25}
+#lcdw{position:relative;overflow:visible;margin-top:22px;margin-bottom:22px}#lcdm{position:absolute;left:0;right:0;top:0;height:0}
+.cdm{position:absolute;bottom:4px;transform:translateX(-50%);font-size:13px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));cursor:default}.cdm.a{bottom:auto;top:10px}
+.evpop{background:#fff!important;color:#17201a!important;border:3px solid var(--g)!important;border-top-width:6px!important;box-shadow:0 0 0 4px rgba(255,255,255,.35),0 20px 60px rgba(0,0,0,.6)!important}.evpop .s,.evpop .xs{color:#5f6b5f!important}.evpop.red{border-color:var(--r)!important}.evpop.inj{border-color:var(--o)!important}
+.hmcrest,.hmcb{transform:none!important}.hmcrest img,.hmcrest .ini,.hmcb img,.hmcb .ini{width:40px!important;height:40px!important;margin:0!important;font-size:11px}
+.ticker2,.lbox .ticker2{overflow-y:auto!important}
+.lgrid{gap:14px!important}
+#pop.sgpop{background:rgba(255,255,255,.86)!important;backdrop-filter:blur(12px)}#pop.sgpop .box{background:rgba(255,255,255,.55)!important}
+.sgr{grid-template-columns:40px minmax(0,1fr) 54px 86px 72px 40px!important;background:rgba(244,247,241,.75)!important}.sgr .stars{justify-self:start}
+.trcard{background:rgba(255,255,255,.6)!important;backdrop-filter:blur(6px)}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<script src="engine.js?v=25.2.0"></script>
-<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v25.2.0';</script>
+<script src="engine.js?v=25.3.0"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Testphase · v25.3.0';</script>
 <script>
 
 /* ===================================================================== Server-Anbindung (Supabase)
@@ -1761,13 +1774,13 @@ function examEnd() { clearInterval(EXAM.t); var a = EXAM.ans.slice(); EXAM = { t
 function sgPop() {
   var L = V.giftPop;
   var h = '<div class="evw"><div style="text-align:center"><div style="font-size:42px">🎁</div><h2 style="padding:0">Geschenk vom Hauptsponsor</h2><div class="small" style="line-height:1.6;max-width:520px;margin:0 auto">Der <b>Transfermarkt</b> ist erst ab <b>Manager-Level ' + (MGR.featLvl('transfers') || 5) + '</b> verfügbar – aber ' + (V.fin && V.fin.sponsors && V.fin.sponsors[0] ? 'dein Hauptsponsor <b>' + esc(V.fin.sponsors[0].firm) + '</b>' : 'dein Hauptsponsor') + ' übernimmt die Ablöse für deinen <b>ersten Transfer</b>. Wähle einen Spieler:</div></div>' +
-    '<div class="sgl">' + L.map(function (p, i) { return '<button class="sgr" onclick="closePop();act(\'giftPick\',{i:' + i + '})"><span class="pos">' + p.dp + '</span><b class="sgn">' + esc(p.n) + '</b><span class="small">' + p.age + ' J.</span>' + strBox(p.str) + stars(p.talLo, p.talHi) + '<span class="small muted">' + eur(p.sal) + '/M</span></button>'; }).join('') + '</div><div class="small muted" style="text-align:center;margin-top:8px">Junge Spieler: viel Talent, noch wenig Stärke · Erfahrene: stark, aber älter</div></div>';
+    '<div class="sgl">' + L.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return (PORD[a.p.dp] || 0) - (PORD[b.p.dp] || 0) || b.p.str - a.p.str; }).map(function (o) { var p = o.p, i = o.i; return '<button class="sgr" onclick="closePop();act(\'giftPick\',{i:' + i + '})"><span class="pb ' + p.dp + '">' + p.dp + '</span><b class="sgn">' + esc(p.n) + '</b><span class="wchip">' + p.age + ' J.</span>' + stars(p.talLo, p.talHi) + '<span class="small muted" style="text-align:right">' + eur(p.sal) + '/M</span>' + strBox(p.str) + '</button>'; }).join('') + '</div></div>';
   var pm = {}; V.players.forEach(function (p) { pm[p.id] = p; });
   var row = function (p, pos) { return p ? '<div class="row" style="gap:6px;padding:4px 0;border-top:1px solid #e3e8df"><span class="pb ' + (pos || p.pos) + '">' + (pos || p.pos) + '</span><span class="small" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.n) + '</span>' + strBox(p.str) + '</div>' : ''; };
   var LU = V.lineup || {}, xi = (LU.slots || []).map(function (sl) { return row(pm[sl.pid], sl.pos); }).join(''), bn = (V.benchIds || []).map(function (id) { return row(pm[id]); }).join('');
   var side = function (t, b) { return '<div class="box" style="margin:0;padding:10px"><h3 style="margin:0 0 6px">' + t + '</h3>' + (b || '<div class="xs muted">–</div>') + '</div>'; };
   h = '<div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;align-items:start">' + side('👕 Erste Elf', xi) + h + side('🪑 Ersatzbank', bn) + '</div>';
-  pop(h, { lock: true, xwide: true, top: true });
+  pop(h, { lock: true, xwide: true, top: true }); var pe = $('#pop'); if (pe) pe.classList.add('sgpop');
 }
 function langAns(i, btn) {
   if (LANGBUSY) return; LANGBUSY = true; act('langAnswer', { i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) { LANGBUSY = false; return; }
@@ -4341,7 +4354,7 @@ function oppStats(I, T) {
 function tkBadge(b) { if (!b) return ''; return ' <span class="tkb ' + (b > 0 ? 'up' : 'dn') + '" title="Wirkung der Ansprache">' + (b > 0 ? '▲ +' : '▼ ') + String(b.toFixed(1)).replace('.', ',') + '</span>'; }
 function talkBox(home) {
   var T = V.talk;
-  return '<div class="box talkb" style="margin:0"><h2 style="text-align:center">Ansprache</h2><div class="small muted" style="margin:0 0 10px;text-align:center">Die Jungs sitzen in der Kabine – was gibst du ihnen mit?</div>' +
+  return '<div class="box talkb" style="margin:0"><h2 style="text-align:center">Ansprache</h2><div class="small muted" style="margin:0 0 10px;text-align:center">Was gibst du den Jungs mit?</div>' +
     (T ? '<div class="hint" style="text-align:center;font-size:15px">' + esc((TALKS.filter(function (x) { return x[0] === T.k; })[0] || [0, ''])[1]) + '<br>' + (T.b >= 0.6 ? 'Die Mannschaft brennt! 🔥' : T.b < 0 ? 'Kam nicht so gut an 😬' : 'Die Jungs nicken konzentriert.') + '</div>' : '<div class="grid g2" style="gap:8px">' + TALKS.filter(function (t) { return (V.talkOpts || ['ruhig', 'feuer', 'taktik', 'spass']).indexOf(t[0]) >= 0; }).map(function (t) { return '<button style="padding:14px 8px;font-weight:800" title="' + esc(t[2]) + '" onclick="talkDo(\'' + t[0] + '\',event)">' + t[1] + '</button>'; }).join('') + '</div>') + '</div>';
 }
 function talkDo(k, ev) { act('talk', { k: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return; toast(r.info); if (V.talk && V.talk.b >= 0.6) rewardFx(ev.pageX, ev.pageY); preMatch(); }); }
@@ -4354,9 +4367,9 @@ function liveScreen(first) {
   ST.screen = 'live'; stopIg(); closePop(); window.scrollTo(0, 0);
   var L = V.live; var n = { d: L.d, comp: L.comp, label: L.label, opp: L.opp, home: L.home, oppLvl: V.matchToday ? V.matchToday.oppLvl : null };
   var hn = L.home === false ? L.opp : V.club, an = L.home === false ? V.club : L.opp;
-  $('#app').innerHTML = '<div class="livewrap prew">' +
-    '<div class="box livetop" style="max-width:860px;margin:0 auto"><div class="scoreb"><div class="tm">' + crest(hn) + '<span>' + esc(hn) + ' <span class="mini" id="lsh" style="background:var(--flaeche2);color:var(--t)"></span></span></div><div><div class="sc" id="lsc">0:0</div><div class="mn" id="lmn">0\'</div></div><div class="tm">' + crest(an) + '<span>' + esc(an) + ' <span class="mini" id="lsa" style="background:var(--flaeche2);color:var(--t)"></span></span></div></div><div class="cd"><i id="lcd" style="width:0"></i></div>' +
-    '<div id="lctl" class="row wr" style="margin-top:10px;justify-content:center"></div><div id="lpan"></div></div>' +
+  $('#app').innerHTML = '<div class="livewrap prew"><div class="L4 ltopl4"><div class="c1"></div><div class="cm">' +
+    '<div class="box livetop2"><div class="scoreb"><div class="tm">' + crest(hn) + '<span>' + esc(hn) + ' <span class="mini" id="lsh" style="background:var(--flaeche2);color:var(--t)"></span></span></div><div><div class="sc" id="lsc">0:0</div><div class="mn" id="lmn">0\'</div></div><div class="tm">' + crest(an) + '<span>' + esc(an) + ' <span class="mini" id="lsa" style="background:var(--flaeche2);color:var(--t)"></span></span></div></div><div class="cd" id="lcdw"><i id="lcd" style="width:0"></i><div id="lcdm"></div></div>' +
+    '<div id="lctl" class="row wr" style="margin-top:10px;justify-content:center"></div><div id="lpan"></div></div></div><div class="c4"></div></div>' +
     '<div id="lgrid" style="margin-top:14px"></div></div>';
   liveDraw(); if (first) setTimeout(function () { SND.whistle(); liveRun(); }, 600); else liveRun();
 }
@@ -4387,6 +4400,7 @@ function liveDraw() {
   $('#lmn').textContent = (L.done ? (L.penTxt ? 'Abpfiff · ' + L.penTxt : L.half >= 3 ? 'Abpfiff n.V.' : 'Abpfiff') : (L.half === 1 ? '1. HZ · ' : L.half === 2 ? '2. HZ · ' : 'Verlängerung · ') + ml + '\'');
   var tot = L.half === 1 ? 45 + L.stop1 : L.half === 2 ? 90 + L.stop2 : L.half === 3 ? 105 : 120; var start = L.half === 1 ? 0 : L.half === 2 ? 45 : L.half === 3 ? 90 : 105;
   $('#lcd').style.width = (L.done ? 100 : Math.max(0, (L.min - start) / (tot - start) * 100)) + '%';
+  var cm = $('#lcdm'); if (cm) { var s0 = L.done ? 0 : start, t0 = L.done ? Math.max(90, L.min || 90) : tot; cm.innerHTML = (L.ev || []).filter(function (e) { return /^(goal|goalA|red|redA|yellow|yellowA|inj|pen|penA)$/.test(e.k) && e.m >= s0 && e.m <= t0; }).map(function (e) { return '<span class="cdm ' + (/A$/.test(e.k) ? 'a' : 'h') + '" style="left:' + Math.max(0, Math.min(100, (e.m - s0) / Math.max(1, t0 - s0) * 100)) + '%" title="' + e.m + '\' · ' + esc(e.t) + '">' + (LIC[e.k] || '•') + '</span>'; }).join(''); }
   var G = $('#lgrid'); if (!G) return; var homeG = L.home !== false;
   if (L.done) { liveControls(); if (!G.getAttribute('data-done')) { G.setAttribute('data-done', '1'); var c1r = statBox(L), c4r = '<div class="box">' + (potmHTML(L.rep) || '<h3>⭐ Spieler des Spiels</h3><div class="muted small">–</div>') + '</div>' + scAsBox(L); G.innerHTML = L4(c1r, S2(sumBox(L) + '<div class="box"><h3>🔥 Heatmap</h3><div style="position:relative"><canvas id="lhm" width="760" height="490" style="width:100%;height:auto;border-radius:12px;display:block"></canvas><div class="hmcb l">' + crest(V.club, 'cbig') + '</div><div class="hmcb r">' + crest(L.opp, 'cbig') + '</div></div></div>', usedBox(L, 0) + usedBox(L, 1)), c4r); heatDraw0(L.heat, L.goals); } return; }
   var on = V.liveOn || []; var subsLeft = L.maxSubs - L.subs;
@@ -4582,6 +4596,7 @@ function liveFitHeat() { var bb = $('#lbb'), cv = $('#lhmv'), ov = $('#lhmo'), w
 var LANIM = { raf: 0, P: null, B: null, last: 0 };
 function liveAnimStart(L) {
   var cv = $('#lhmo'); if (!cv) return; var x = cv.getContext('2d'), W = cv.width, H = cv.height;
+  var fitCv = function (c) { var cw = Math.round(c.clientWidth), ch = Math.round(c.clientHeight); if (cw > 20 && ch > 20 && (c.width !== cw || c.height !== ch)) { c.width = cw; c.height = ch; } W = c.width; H = c.height; };
   var base = function (home) { var F = [[5, 50], [22, 15], [22, 38], [22, 62], [22, 85], [45, 18], [45, 40], [45, 60], [45, 82], [68, 38], [68, 62]]; return F.map(function (p) { return { bx: p[0], by: p[1], x: p[0], y: p[1], home: home }; }); };
   if (!LANIM.P) LANIM.P = base(true).concat(base(false).map(function (p) { p.bx = 100 - p.bx; p.by = 100 - p.by; p.x = p.bx; p.y = p.by; return p; }));
   if (!LANIM.B) LANIM.B = { x: 50, y: 50, tx: 50, ty: 50 };
@@ -4590,11 +4605,12 @@ function liveAnimStart(L) {
   if (LANIM.raf) return;
   var map = function (fx, fy) { return [fy / 100 * W, (1 - fx / 100) * H]; };
   (function frame(t) {
-    var c = $('#lhmo'); if (!c) { LANIM.raf = 0; return; } x = c.getContext('2d');
-    var B = LANIM.B, tm = t / 1000; if (Math.random() < 0.012) { B.tx = clampN(B.tx + (Math.random() - 0.5) * 30, 4, 96); B.ty = clampN(B.ty + (Math.random() - 0.5) * 40, 4, 96); }
-    B.x += (B.tx - B.x) * 0.04; B.y += (B.ty - B.y) * 0.04;
-    x.clearRect(0, 0, W, H);
-    LANIM.P.forEach(function (p, i) { var sh = (B.x - 50) * 0.45, tx = clampN(p.bx + sh + Math.sin(tm * 0.7 + i) * 2.5, 2, 98), ty = clampN(p.by + (B.y - p.by) * 0.18 + Math.cos(tm * 0.6 + i * 1.7) * 3, 3, 97); if (i % 11 === 0) { tx = p.bx + (p.home ? Math.max(0, (B.x - 70) * 0.1) : Math.min(0, (B.x - 30) * 0.1)); ty = clampN(50 + (B.y - 50) * 0.3, 30, 70); } p.x += (tx - p.x) * 0.03; p.y += (ty - p.y) * 0.03; var q = map(p.x, p.y); x.beginPath(); x.arc(q[0], q[1], 7, 0, 7); x.fillStyle = p.home ? '#111' : '#e03030'; x.fill(); x.lineWidth = 1.6; x.strokeStyle = p.home ? '#fff' : '#ffd0d0'; x.stroke(); });
+    var c = $('#lhmo'); if (!c) { LANIM.raf = 0; return; } fitCv(c); x = c.getContext('2d');
+    var frz = LIVE.paused || LIVE.hold || !!(V.live && (V.live.pause || V.live.done));
+    var B = LANIM.B; if (!frz) LANIM.tm = (LANIM.tm || 0) + 1 / 60; var tm = LANIM.tm || 0;
+    if (!frz) { if (Math.random() < 0.03) { B.tx = clampN(B.tx + (Math.random() - 0.5) * 44, 4, 96); B.ty = clampN(B.ty + (Math.random() - 0.5) * 60, 4, 96); } B.x += (B.tx - B.x) * 0.06; B.y += (B.ty - B.y) * 0.06; }
+    x.clearRect(0, 0, W, H); var pr = Math.max(5, Math.min(9, W / 34));
+    LANIM.P.forEach(function (p, i) { if (!frz) { var sh = (B.x - 50) * 0.6, tx = clampN(p.bx + sh + Math.sin(tm * 1.3 + i) * 5, 2, 98), ty = clampN(p.by + (B.y - p.by) * 0.28 + Math.cos(tm * 1.1 + i * 1.7) * 6, 3, 97); if (i % 11 === 0) { tx = p.bx + (p.home ? Math.max(0, (B.x - 70) * 0.1) : Math.min(0, (B.x - 30) * 0.1)); ty = clampN(50 + (B.y - 50) * 0.3, 30, 70); } p.x += (tx - p.x) * 0.06; p.y += (ty - p.y) * 0.06; } var q = map(p.x, p.y); x.beginPath(); x.arc(q[0], q[1], pr, 0, 7); x.fillStyle = p.home ? '#111' : '#e03030'; x.fill(); x.lineWidth = 1.6; x.strokeStyle = p.home ? '#fff' : '#ffd0d0'; x.stroke(); });
     var bq = map(B.x, B.y); try { ballIcon(x, bq[0], bq[1], 6); } catch (e) { x.beginPath(); x.arc(bq[0], bq[1], 5, 0, 7); x.fillStyle = '#fff'; x.fill(); }
     LANIM.raf = requestAnimationFrame(frame);
   })(0);

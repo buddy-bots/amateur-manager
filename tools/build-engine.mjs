@@ -11,3 +11,4 @@ const out = '// AUTOMATISCH ERZEUGT aus src/engine – nicht von Hand ändern (n
   + 'export { MGR, MGR_DATA };\n';
 writeFileSync(root + 'supabase/functions/_shared/engine.js', out);
 console.log('engine.js gebaut:', (out.length / 1024).toFixed(0), 'KB, Version', pkg.engineVersion);
+

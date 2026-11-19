@@ -498,6 +498,7 @@ function startNew() {
   if (needLogin('new')) return;
   loading(true); game('init').then(function (r) {
     loading(false); SAVES = r.saves || [];
+    if (r.profile && !r.profile.access) return keyPop('new');
     if (SAVES.length >= 3) return pop('<h2>Alle Spielstand-Plätze belegt</h2><div class="small muted">Du kannst bis zu 3 Spiele gleichzeitig haben. Lösche zuerst einen Spielstand unter „Spiel laden“.</div><button class="pri" style="width:100%;margin-top:14px" onclick="closePop();startLoad()">Spielstände anzeigen</button>', { white: true });
     modePop();
   }).catch(function (x) { loading(false); toast(x.message, true); });
@@ -664,6 +665,7 @@ function startLoad() {
   if (needLogin('load')) return;
   loading(true); game('init').then(function (r) {
     loading(false); SAVES = r.saves || []; if (r.profile) ME.xp = Number(r.profile.xp) || 0;
+    if (r.profile && !r.profile.access) return keyPop('load');
     if (!SAVES.length) return pop('<h2>Kein Spielstand</h2><div class="muted">Für ' + esc(ME.vorname) + ' ist noch kein Spiel gespeichert.</div><button class="pri" style="width:100%;margin-top:14px" onclick="closePop();startNew()">Neues Spiel starten</button>', { white: true });
     pop('<h2>Spiel laden</h2><div class="saves">' + SAVES.map(function (s) {
       return '<div class="savec"><div class="sic">⚽</div><div style="min-width:0;flex:1"><b>' + esc(s.club_name || 'Verein') + '</b><div class="xs muted">' + esc(lsh(s.league_name || '')) + (s.season ? ' · Saison ' + s.season + '/' + String(s.season + 1).slice(2) : '') + '</div>' + saveAge(s.updated_at) + '<div class="xs muted">Zuletzt gespielt ' + dtShort((s.updated_at || '').slice(0, 16).replace('T', ' ')) + '</div></div><button class="pri sm" onclick="loadSave(\'' + s.id + '\')">Laden</button><button class="sm red" title="Löschen" onclick="delPop(\'' + s.id + '\')">🗑</button></div>';
@@ -740,7 +742,7 @@ function bonusDraw(I) {
   pop('<div class="evw refp"><div class="ptitle"><span>🤝</span><h2>Freunde einladen</h2></div>' +
     '<div class="small muted" style="line-height:1.5;margin-top:8px">Für jede echte Person, die sich über deinen Link anmeldet, bekommst du <b>+' + I.xpEach + ' XP</b>. Spielen deine Freunde eine ganze Saison, warten weitere Belohnungen.</div>' +
     '<div class="reflink"><input readonly value="' + esc(link) + '" onclick="this.select()"><button class="sm" onclick="refCopy()">Kopieren</button>' + (navigator.share ? '<button class="sm" onclick="navigator.share({title:\'Amateur Manager\',text:\'Spiel mit mir den Amateur Manager!\',url:\'' + esc(link) + '\'})">Teilen</button>' : '') + '</div>' +
-    '<div class="refst"><div><b>' + I.invited + '</b><span>angemeldet</span></div><div><b>' + I.played + '</b><span>1+ Saison gespielt</span></div></div>' +
+    '<div class="crbox" style="display:block;line-height:1.45">🔑 <b>Testphase:</b> Wer sich über deinen Link anmeldet, braucht zusätzlich einen Zugangscode. Den bekommst du beim Entwickler. <button class="sm" style="margin-top:6px" onclick="keyAsk()">Code anfragen</button></div>' + '<div class="refst"><div><b>' + I.invited + '</b><span>angemeldet</span></div><div><b>' + I.played + '</b><span>1+ Saison gespielt</span></div></div>' +
     I.missions.map(function (m) { return mrow(m, 'refMis(\'' + m.k + '\')'); }).join('') +
     (hasCr ? '<div class="crbox">Guthaben: <b>' + rwTxt(cr) + '</b>' + (inGame ? '<button class="sm" onclick="bonusRedeem()">In diesen Spielstand holen</button>' : '') + '</div>' : '') +
     '</div>', { white: true });
@@ -758,3 +760,16 @@ function cpLock(eb) { var need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl(); return n
 function cpMyLvl() { return levelOf((HOME && HOME.me && HOME.me.xp) || (ME && ME.xp) || 0).lvl; }
 // Hinweis vor der automatischen Löschung (3 Monate ohne Nutzung)
 function saveAge(ts) { var t = Date.parse(ts || ''); if (!t) return ''; var left = Math.ceil((t + 91 * 864e5 - Date.now()) / 864e5); return left <= 30 ? '<div class="xs" style="color:#e07a2c">⏳ Wird in ' + Math.max(0, left) + ' Tag' + (left === 1 ? '' : 'en') + ' gelöscht, wenn du ihn nicht lädst.</div>' : ''; }
+
+// Zugangscode (Testphase): einmal eingeben, danach ist das Konto freigeschaltet
+function keyPop(next) {
+  pop('<h2>🔑 Zugangscode</h2><div class="small muted">Amateur Manager ist gerade in der Testphase. Gib den 8-stelligen Code ein, den du mit deiner Einladung bekommen hast. Du musst ihn nur einmal eingeben.</div>' +
+    '<input id="akey" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="1234 5678" style="margin-top:12px;font-size:22px;letter-spacing:.18em;text-align:center" onkeydown="if(event.key===\'Enter\')keyGo(\'' + next + '\')">' +
+    '<button class="pri" style="width:100%;margin-top:12px" onclick="keyGo(\'' + next + '\')">Freischalten</button><div class="xs muted" style="margin-top:10px">Keinen Code? Frag die Person, die dich eingeladen hat.</div>', { white: true });
+  setTimeout(function () { var i = $('#akey'); if (i) i.focus(); }, 80);
+}
+function keyGo(next) {
+  var c = String(($('#akey') || {}).value || '').replace(/\D/g, ''); if (c.length !== 8) return toast('Der Code hat 8 Ziffern.', true);
+  loading(true); game('keyRedeem', { code: c }).then(function () { loading(false); closePop(); toast('✅ Freigeschaltet – viel Spaß!'); if (next === 'load') startLoad(); else startNew(); }).catch(function (x) { loading(false); toast(x.message, true); });
+}
+function keyAsk() { closePop(); if (typeof waOpen === 'function' && TOKEN && S && V && ST.screen === 'game') { waOpen(WA_DEV); setTimeout(function () { var i = $('#watx'); if (i) { i.value = 'Hallo, ich möchte jemanden einladen und bräuchte dafür einen Zugangscode. Für: '; i.focus(); } }, 400); } else toast('Schreib dem Entwickler im Spiel über die ChatApp → Entwickler.'); }

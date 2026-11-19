@@ -195,10 +195,10 @@ async function refMission(userId: string, profile: any, k: string) {
   await admin.from('profiles').update({ bonus: b }).eq('id', userId); profile.bonus = b;
   return await refInfo(userId, profile);
 }
-async function refAdmin(add: string, label: string) {
+async function refAdmin(add: string, label: string, me = '') {
   if (add) { const code = add.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24); if (code.length < 4) throw new HttpError(400, 'Code zu kurz.'); const { error } = await admin.from('invite_codes').insert({ code, label: label.slice(0, 60) || null, seller: true }); if (error) throw new HttpError(400, 'Code existiert schon.'); }
   const { data: codes } = await admin.from('invite_codes').select('code, user_id, label, seller, created_at').limit(5000);
-  const { data: inv } = await admin.from('invites').select('invitee, code, confirmed, seasons, created_at').limit(20000);
+  const { data: inv } = await admin.from('invites').select('invitee, inviter, code, confirmed, seasons, created_at').limit(20000);
   const ss = await seasonsOf((inv || []).map((x: any) => x.invitee));
   const owners = [...new Set((codes || []).map((c: any) => c.user_id).filter(Boolean))];
   const names: Record<string, string> = {};
@@ -207,7 +207,14 @@ async function refAdmin(add: string, label: string) {
   (inv || []).forEach((x: any) => { const n = ss[x.invitee] || 0; const o = (by[x.code] = by[x.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }); o.reg++; if (x.confirmed) o.conf++; if (n >= 1) o.s1++; if (now - new Date(x.created_at).getTime() < 30 * 864e5) o.d30++; });
   const rows = (codes || []).map((c: any) => ({ code: c.code, seller: c.seller, label: c.label || '', owner: c.user_id ? names[c.user_id] || '' : '', created_at: c.created_at, ...(by[c.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }) }))
     .filter((r: any) => r.seller || r.reg > 0).sort((a: any, b: any) => (b.seller - a.seller) || (b.reg - a.reg));
-  return { rows };
+  // Entwickler-Box: wen ich eingeladen habe und wie viele die wiederum eingeladen haben
+  const mine = (inv || []).filter((x: any) => x.inviter === me);
+  const { data: inv2 } = await admin.from('invites').select('invitee, inviter').limit(20000);
+  const sub: Record<string, number> = {}; (inv2 || []).forEach((x: any) => { if (x.inviter) sub[x.inviter] = (sub[x.inviter] || 0) + 1; });
+  const ids = mine.map((x: any) => x.invitee); const nm: Record<string, string> = {};
+  for (let i = 0; i < ids.length; i += 200) { const { data } = await admin.from('profiles').select('id, display_name, access_at').in('id', ids.slice(i, i + 200)); (data || []).forEach((p: any) => { nm[p.id] = p.display_name + (p.access_at ? '' : ' (ohne Code)'); }); }
+  const dev = { n: mine.length, sub: mine.reduce((a: number, x: any) => a + (sub[x.invitee] || 0), 0), list: mine.map((x: any) => ({ name: nm[x.invitee] || '?', at: x.created_at, s: ss[x.invitee] || 0, sub: sub[x.invitee] || 0 })) };
+  return { rows, dev };
 }
 
 class HttpError extends Error { constructor(public status: number, msg: string) { super(msg); } }
@@ -302,7 +309,7 @@ function sanitize(action: string, params: any) {
 
 async function handle(req: Request, userId: string, body: any) {
   try { await refreshMedia(); } catch (_e) { /* Bilder sind optional */ }
-  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at').eq('id', userId).single();
+  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);
   const op = String(body.op || '');
@@ -310,8 +317,19 @@ async function handle(req: Request, userId: string, body: any) {
   if (op === 'init') {
     await admin.from('daily_logins').upsert({ user_id: userId, day: berlinDay() }, { onConflict: 'user_id,day', ignoreDuplicates: true });
     const { data: saves } = await admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, updated_at').eq('user_id', userId).order('updated_at', { ascending: false });
-    return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
+    return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin, access: !!(profile.access_at || profile.is_admin) }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
   }
+  if (op === 'keyRedeem') {
+    // Zugangscode einmalig einlösen
+    if (profile.access_at || profile.is_admin) return { ok: true, already: true };
+    const code = String(body.code || '').replace(/\D/g, '');
+    if (code.length !== 8) throw new HttpError(400, 'Der Zugangscode hat 8 Ziffern.');
+    const { data: k } = await admin.from('access_keys').update({ used_by: userId, used_at: new Date().toISOString() }).eq('code', code).is('used_by', null).select('code').maybeSingle();
+    if (!k) throw new HttpError(400, 'Dieser Zugangscode ist ungültig oder wurde schon benutzt.');
+    await admin.from('profiles').update({ access_at: new Date().toISOString() }).eq('id', userId);
+    return { ok: true };
+  }
+  if ((op === 'new' || op === 'load') && !profile.access_at && !profile.is_admin) throw new HttpError(403, 'Zum Spielen brauchst du einen Zugangscode.');
   if (op === 'export') {
     const [saves, tickets, msgs, purchases, favs, logins] = await Promise.all([
       admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, created_at, updated_at, state').eq('user_id', userId),
@@ -380,7 +398,7 @@ async function handle(req: Request, userId: string, body: any) {
   if (op === 'refInfo') return await refInfo(userId, profile);
   if (op === 'refClaim') return await refClaim(userId, profile, String(body.code || ''));
   if (op === 'refMission') return await refMission(userId, profile, String(body.k || ''));
-  if (op === 'refAdmin') { if (!profile.is_admin) throw new HttpError(403, 'Nur für Admins.'); return await refAdmin(String(body.add || ''), String(body.label || '')); }
+  if (op === 'refAdmin') { if (!profile.is_admin) throw new HttpError(403, 'Nur für Admins.'); return await refAdmin(String(body.add || ''), String(body.label || ''), userId); }
   const saveId = String(body.saveId || '');
   if (!/^[0-9a-f-]{36}$/.test(saveId)) throw new HttpError(400, 'Spielstand fehlt.');
 

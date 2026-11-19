@@ -27,7 +27,7 @@ function start() {
   }).catch(function (e) { gate('Fehler: ' + e.message); });
 }
 function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a></div>'; }
-function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv })[k](); }
+function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys })[k](); }
 
 /* ---------- Übersicht */
 function showOver() {
@@ -62,7 +62,8 @@ function showImg(keep) {
   var y = keep ? window.scrollY : 0;
   if (!keep) $('#main').innerHTML = '<div class="spin"></div>';
   loadMap().then(function () {
-    var grp = function (title, g, list, note) { return '<div class="card"><h3>' + title + '</h3>' + (note ? '<p class="muted">' + note + '</p>' : '') + '<div class="grid">' + list.map(function (x) { return slot(g + '.' + x[0], x[1]); }).join('') + '</div></div>'; };
+    var ab = function (L) { return L.slice().sort(function (a, b) { return String(a[1] || a[0]).localeCompare(String(b[1] || b[0]), 'de', { sensitivity: 'base' }); }); };
+    var grp = function (title, g, list, note) { list = ab(list); return fold(title, list.length, (note ? '<p class="muted">' + note + '</p>' : '') + '<div class="grid">' + list.map(function (x) { return slot(g + '.' + x[0], x[1]); }).join('') + '</div>'); };
     var items = (D0.itemList || []).map(function (it) { return [it.id, it.name + ' (' + it.cat + ')']; });
     var camps = (D0.camps || []).map(function (c) { return [c.id, c.name]; });
     var shop = (MGR.SHOP || []).map(function (s) { return [s[0], s[2] + ' (' + s[1] + ')']; });
@@ -72,11 +73,13 @@ function showImg(keep) {
       grp('Titel- & Popup-Bilder', 'bg', BG) +
       grp('Maskottchen', 'masc', MASC, 'Quadratisch sieht am besten aus.') + grp('Scouting-Tools', 'scout', SCOUT) + grp('Fan-Aktionen', 'fans', FANS) +
       grp('Ausbau & Erweiterungen', 'ausbau', items) + grp('Trainingslager', 'camp', camps) + grp('Privat-Shop', 'priv', shop) +
-      '<div class="card"><h3>Stadionbilder (Eintrittskarte)</h3><p class="muted">Vereinsname exakt wie im Spiel.</p><div class="row"><input id="stn" placeholder="Vereinsname, z. B. SV Wachtberg"><button class="btn" onclick="pickNamed()">Bild wählen</button></div><div class="grid">' + stad.map(function (x) { return slot('stad.' + x[0], x[1]); }).join('') + '</div></div>' +
-      LISTS.map(function (l) { var ks = Object.keys(MAP).filter(function (k) { return k.indexOf(l[0] + '.') === 0; }); return '<div class="card"><h3>' + l[1] + '</h3><div class="grid">' + ks.map(function (k) { return slot(k, ''); }).join('') + '<div class="slot add" data-list="' + l[0] + '" onclick="pickList(\'' + l[0] + '\')"><span>＋ Bilder hinzufügen<br><small>oder hierher ziehen</small></span></div></div></div>'; }).join('');
+      fold('Stadionbilder (Eintrittskarte)', stad.length, '<p class="muted">Vereinsname exakt wie im Spiel.</p><div class="row"><input id="stn" placeholder="Vereinsname, z. B. SV Wachtberg"><button class="btn" onclick="pickNamed()">Bild wählen</button></div><div class="grid">' + ab(stad).map(function (x) { return slot('stad.' + x[0], x[1]); }).join('') + '</div>') +
+      LISTS.slice().sort(function (a, b) { return a[1].localeCompare(b[1], 'de'); }).map(function (l) { var ks = Object.keys(MAP).filter(function (k) { return k.indexOf(l[0] + '.') === 0; }); return fold(l[1], ks.length, '<div class="grid">' + ks.map(function (k) { return slot(k, ''); }).join('') + '<div class="slot add" data-list="' + l[0] + '" onclick="pickList(\'' + l[0] + '\')"><span>＋ Bilder hinzufügen<br><small>oder hierher ziehen</small></span></div></div>'); }).join('');
     if (keep) window.scrollTo(0, y);
   });
 }
+// Kategorie zum Auf- und Zuklappen (Zustand bleibt im Browser gespeichert)
+function fold(title, n, body) { var k = 'amfold.' + title, open = false; try { open = localStorage.getItem(k) === '1'; } catch (e) {} return '<details class="card fold"' + (open ? ' open' : '') + ' ontoggle="try{localStorage.setItem(\'' + k.replace(/'/g, '') + '\', this.open ? \'1\' : \'0\')}catch(e){}"><summary><h3>' + title + ' <span class="pill">' + n + '</span></h3></summary>' + body + '</details>'; }
 function slot(key, label) {
   var m = MAP[key], u = m ? mediaUrl(m.path) : '';
   return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + '</div>';
@@ -143,7 +146,7 @@ function ligDec(s) { return String(s).replace(/&#8203;|​/g, '').replace(/&#(\d
 function showLig() {
   $('#main').innerHTML = '<div class="card"><h3>Echte Ligen (NRW und Rheinland-Pfalz)</h3><p class="muted">Quelle: fussball.de, abgerufen per GitHub Actions („Ligadaten holen“). Nach jedem Abruf werden sie automatisch übernommen; der Knopf holt den aktuellen Stand von Hand. Von Hand geänderte Namen bleiben beim nächsten Import erhalten.</p>' +
     '<div class="row"><button class="btn" onclick="ligImport()">Ligendaten importieren</button><span class="muted" id="ligst"></span></div>' +
-    '<div class="row"><select id="ligvb" onchange="LG.vb=this.value;LG.eb=0;LG.st=null;ligList()">' + ['Mittelrhein', 'Niederrhein', 'Westfalen', 'Rheinland', 'Südwest', 'RV Südwest'].map(function (v) { return '<option' + (v === LG.vb ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>' +
+    '<div class="row"><select id="ligvb" onchange="LG.vb=this.value;LG.eb=0;LG.st=null;ligList()">' + ['Mittelrhein', 'Niederrhein', 'Westfalen', 'RV West', 'Rheinland', 'Südwest', 'RV Südwest', 'Baden', 'Südbaden', 'Württemberg', 'Oberliga BW', 'Bayern', 'DFB'].map(function (v) { return '<option' + (v === LG.vb ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>' +
     '<input id="ligq" placeholder="Mannschaft suchen …" onkeydown="if(event.key===\'Enter\')ligSearch()"><button class="btn" onclick="ligSearch()">Suchen</button></div></div><div id="ligbox"><div class="spin"></div></div>';
   ligList();
 }
@@ -185,12 +188,32 @@ function ligImport() {
   }).catch(function (e) { st.textContent = ''; toast(e.message, true); });
 }
 
-/* ---------- Einladungen / Seller-Team */
+/* ---------- Zugangscodes (Testphase) */
+function keyNew() {
+  var a = new Uint32Array(1); crypto.getRandomValues(a); var code = String(10000000 + (a[0] % 90000000));
+  rest('access_keys', { method: 'POST', body: { code: code, note: ($('#keyn').value || '').trim().slice(0, 80) || null, created_by: SESSION.user.id } }).then(function () { toast('Key ' + code.slice(0, 4) + ' ' + code.slice(4) + ' erstellt ✓'); try { navigator.clipboard.writeText(code); } catch (e) {} showKeys(); }).catch(function (e) { toast(e.message, true); });
+}
+function keyDel(c) { if (!confirm('Key ' + c + ' löschen?')) return; rest('access_keys?code=eq.' + c, { method: 'DELETE' }).then(showKeys); }
+function showKeys() {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  Promise.all([rpc('admin_keys', {}), game('refAdmin', {})]).then(function (a) {
+    var K = a[0] || [], used = K.filter(function (k) { return k.used_at; }), dv = (a[1] || {}).dev || { n: 0 };
+    var fmt = function (c) { return c.slice(0, 4) + ' ' + c.slice(4); };
+    $('#main').innerHTML = '<div class="card"><h3>Zugangscodes <span class="pill">' + K.length + ' erstellt</span> <span class="pill y">' + used.length + ' eingelöst</span> <span class="pill">' + (K.length - used.length) + ' frei</span> <span class="pill">' + dv.n + ' über deinen Affiliate-Link</span></h3><p class="muted">Ohne Code kann niemand ein Spiel starten oder laden. Jeder Code gilt genau einmal und schaltet das Konto dauerhaft frei. Beim Erstellen wird er in die Zwischenablage kopiert.</p>' +
+      '<div class="row"><input id="keyn" placeholder="Für wen? (Notiz, optional)" style="max-width:300px" onkeydown="if(event.key===\'Enter\')keyNew()"><button class="btn" onclick="keyNew()">🔑 Key generieren</button></div></div>' +
+      '<div class="card"><table><tr><th>Key</th><th>Notiz</th><th>erstellt</th><th>Status</th><th>verwendet von</th><th>eingeladen von</th><th></th></tr>' +
+      (K.length ? K.map(function (k) { return '<tr' + (k.used_at ? ' style="opacity:.55"' : '') + '><td class="keyc">' + fmt(k.code) + '</td><td>' + esc(k.note || '') + '</td><td>' + new Date(k.created_at).toLocaleDateString('de-DE') + '</td><td>' + (k.used_at ? '<span class="pill">benutzt ' + new Date(k.used_at).toLocaleDateString('de-DE') + '</span>' : '<span class="pill y">frei</span>') + '</td><td>' + (k.used_name ? esc(k.used_name) + '<div class="muted" style="font-size:11px">' + esc(k.used_email || '') + '</div>' : '–') + '</td><td>' + esc(k.invited_by || '–') + '</td><td class="r">' + (k.used_at ? '' : '<button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + k.code + '\');toast(\'Kopiert\')">Kopieren</button> <button class="btn" onclick="keyDel(\'' + k.code + '\')">✕</button>') + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="muted">Noch keine Keys.</td></tr>') + '</table></div>';
+  }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+}
+/* ---------- Affiliate / Seller-Team */
 function showInv(add, label) {
   $('#main').innerHTML = '<div class="spin"></div>';
   game('refAdmin', add ? { add: add, label: label } : {}).then(function (r) {
     var rows = r.rows || [], tot = rows.reduce(function (a, x) { return a + x.reg; }, 0);
-    $('#main').innerHTML = '<div class="card"><h3>Einladungen &amp; Seller-Team</h3><p class="muted">Jeder Spieler hat einen persönlichen Link. Für dein Vermarktungsteam legst du hier eigene Codes an (Link: amateur-manager.de/?ref=CODE). Gezählt wird, wer sich über den Code anmeldet und wer mindestens eine Saison spielt.</p>' +
+    var dv = r.dev || { n: 0, sub: 0, list: [] };
+    $('#main').innerHTML = '<div class="card"><h3>Ich (Entwickler) <span class="pill">' + dv.n + ' eingeladen</span> <span class="pill y">' + dv.sub + ' von ihnen eingeladen</span></h3>' +
+      (dv.list.length ? '<table><tr><th>Wer</th><th>seit</th><th class="r">Saisons</th><th class="r">hat eingeladen</th></tr>' + dv.list.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td>' + new Date(x.at).toLocaleDateString('de-DE') + '</td><td class="r">' + x.s + '</td><td class="r">' + x.sub + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">Über deinen Link hat sich noch niemand angemeldet.</p>') + '</div>' +
+      '<div class="card"><h3>Affiliate &amp; Seller-Team</h3><p class="muted">Jeder Spieler hat einen persönlichen Link. Für dein Vermarktungsteam legst du hier eigene Codes an (Link: amateur-manager.de/?ref=CODE). Gezählt wird, wer sich über den Code anmeldet und wer mindestens eine Saison spielt.</p>' +
       '<div class="row"><input id="invc" placeholder="Code, z. B. TEAM-MAX" style="max-width:220px"><input id="invl" placeholder="Name / Notiz" style="max-width:260px"><button class="btn" onclick="showInv($(\'#invc\').value, $(\'#invl\').value)">Seller-Code anlegen</button></div></div>' +
       '<div class="card"><h3>Übersicht <span class="pill">' + tot + ' Anmeldungen gesamt</span></h3><table><tr><th>Code</th><th>Wer</th><th class="r">Anmeldungen</th><th class="r">bestätigt</th><th class="r">1+ Saison</th><th class="r">letzte 30 Tage</th><th></th></tr>' +
       (rows.length ? rows.map(function (x) { return '<tr><td><b>' + esc(x.code) + '</b>' + (x.seller ? ' <span class="pill y">Seller</span>' : '') + '</td><td>' + esc(x.label || x.owner || '–') + '</td><td class="r">' + x.reg + '</td><td class="r">' + x.conf + '</td><td class="r">' + x.s1 + '</td><td class="r">' + x.d30 + '</td><td class="r"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'https://amateur-manager.de/?ref=' + esc(x.code) + '\');toast(\'Link kopiert\')">Link</button></td></tr>'; }).join('') : '<tr><td colspan="7" class="muted">Noch keine Einladungen.</td></tr>') + '</table></div>';

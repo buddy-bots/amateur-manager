@@ -76,7 +76,7 @@ function render(keepScroll) {
   h += '<div class="kpis" id="kpis">' + kpiHTML() + '</div><div class="cal7" id="cal7">' + cal7HTML() + '</div>';
   h += '<div class="simrow" id="simrow">' + simRowHTML() + '</div>';
   var navX = ('<span class="starchip jokchip' + (V.jokers ? '' : ' zero') + '" title="Joker: Direkt nach einem Spiel (zurück in der Übersicht) kannst du damit die Zeit zurückdrehen und das Spiel wiederholen. 1 Joker = 1 Wiederholung. Du bekommst max. einen pro Saison für viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen." onclick="if(V.jokers)jokerUse()">🃏 ' + (V.jokers || 0) + '</span>') + ('<span class="starchip stchip' + (V.hsPts ? '' : ' zero') + '" title="Halbe Sterne zum Verteilen: Du bekommst sie für Meisterschaft, Aufstieg und Pokalsiege. Am Saisonende kannst du damit das Talent deiner Spieler erhöhen (½ Stern pro Spieler und Saison, ab 4 Sternen teurer)." onclick="if(V.starPop)starPop()">★ ' + String(V.hsPts || 0).replace('.', ',') + '</span>');
-  h += '<div class="navL4"><div></div>' + navHTML(navX) + '<div></div></div><div id="main"></div>';
+  h += '<div class="navL4"><div></div>' + navHTML('') + '<div class="navchips">' + navX + '</div></div><div id="main"></div>';
   $('#app').innerHTML = h;
   try { waBadge(); if (TOKEN && !WA.timer) setTimeout(function () { waSync(); }, 1500); } catch (e0) {}
   $('#tabs').onclick = function (e) { var b = e.target.closest('button[data-g]'); if (b) navClick(b.getAttribute('data-g'), b); };
@@ -115,6 +115,15 @@ function mailJump() {
 }
 function openMails() { return V && V.mails ? V.mails.filter(function (m) { return !m.answered; }).length : 0; }
 function featNew(k) { if (!k || !S || !has(k)) return false; if (!S.featSeen) { S.featSeen = {}; GROUPS.forEach(function (g) { (g[2] || []).forEach(function (x) { if (x[2] && has(x[2])) S.featSeen[x[2]] = 1; }); }); } return !S.featSeen[k]; }
+// Perl-Effekt: ein langsamer Lichtschimmer, der ab und zu quer über alle Boxen zieht
+function sheen() {
+  if (ST.screen !== 'game' || document.visibilityState !== 'visible' || document.querySelector('.sheen')) return;
+  var el = document.createElement('div'); el.className = 'sheen';
+  el.style.setProperty('--ang', (95 + Math.random() * 50).toFixed(0) + 'deg'); el.style.setProperty('--y0', (Math.random() * 50 - 25).toFixed(0) + '%');
+  if (Math.random() < 0.5) el.style.animationDirection = 'reverse';
+  document.body.appendChild(el); setTimeout(function () { el.remove(); }, 14500);
+}
+(function sheenLoop() { setTimeout(function () { try { sheen(); } catch (e) { } sheenLoop(); }, 30000 + Math.random() * 30000); })();
 function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catch(function () { }); }
 function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {

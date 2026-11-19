@@ -129,6 +129,19 @@ async function handle(req: Request, userId: string, body: any) {
     const { data: saves } = await admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, updated_at').eq('user_id', userId).order('updated_at', { ascending: false });
     return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
   }
+  if (op === 'export') {
+    const [saves, tickets, msgs, purchases, favs, logins] = await Promise.all([
+      admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, created_at, updated_at, state').eq('user_id', userId),
+      admin.from('feedback_tickets').select('ticket_no, message, answer, answered_at, created_at').eq('user_id', userId),
+      admin.from('wa_messages').select('from_user, to_user, body, read_at, created_at').or('from_user.eq.' + userId + ',to_user.eq.' + userId),
+      admin.from('purchases').select('product, mode, amount_cents, currency, status, created_at').eq('user_id', userId),
+      admin.from('wa_favorites').select('contact, created_at').eq('user_id', userId),
+      admin.from('daily_logins').select('day').eq('user_id', userId),
+    ]);
+    const { data: prof } = await admin.from('profiles').select('display_name, birth_year, lang, created_at, last_seen_at, xp, terms_accepted_at, patch_note_accepted_at').eq('id', userId).single();
+    const { data: au } = await admin.auth.admin.getUserById(userId);
+    return { exportedAt: new Date().toISOString(), account: { email: au?.user?.email, provider: au?.user?.app_metadata?.provider, created_at: au?.user?.created_at }, profile: prof, saves: saves.data, feedback: tickets.data, chat: msgs.data, purchases: purchases.data, favorites: favs.data, dailyLogins: logins.data };
+  }
   if (op === 'deleteAccount') {
     if (body.confirm !== 'LÖSCHEN') throw new HttpError(400, 'Bitte zur Bestätigung LÖSCHEN eingeben.');
     const { data: files } = await admin.storage.from('avatars').list(userId);

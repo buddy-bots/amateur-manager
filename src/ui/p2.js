@@ -54,7 +54,7 @@ function simRowHTML() {
   if (V.matchToday) { var m = V.matchToday; return '<span class="small muted">Heute: ' + esc(m.label) + ' ' + (m.home === false ? 'bei ' : 'gegen ') + esc(m.opp) + '</span><button class="md" onclick="matchDay()">⚽ MatchDay</button>'; }
   var bl = V.blockMails ? '<button class="btn-r" title="' + V.blockMails + ' Nachricht' + (V.blockMails > 1 ? 'en' : '') + ' beantworten" onclick="mailJump()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><svg width="20" height="15" viewBox="0 0 20 15"><rect x="1" y="1" width="18" height="13" rx="2" fill="#fff"/><path d="M1.5 2 L10 8.5 L18.5 2" fill="none" stroke="#e25c5c" stroke-width="2"/></svg><b>' + V.blockMails + '</b></button>' : '';
   var tr = V.trainToday ? '<button class="btn-r" onclick="trainPop()">🏃 Training festlegen</button>' : '';
-  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar"><button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">💾</button><button class="icbtn" title="Beenden" onclick="quitPop()">⏻</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">⚙️</button></span>';
+  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button><span class="icbar">' + fsBtn() + '<button class="icbtn' + (DIRTY ? ' dirty' : '') + '" id="savebtn" title="Speichern' + (DIRTY ? ' – ungespeicherte Änderungen' : '') + '" onclick="save(false)">💾</button><button class="icbtn" title="Beenden" onclick="quitPop()">⏻</button><button class="icbtn" title="Einstellungen" onclick="settingsPop()">⚙️</button></span>';
 }
 function navHTML(extra) {
   var grp = groupOf(ST.tab);
@@ -103,8 +103,9 @@ function introSet(k) {
     var u = imgOf('bg', k); bg.style.backgroundImage = u ? 'linear-gradient(rgba(0,0,0,.15),rgba(0,0,0,.35)),url("' + u + '")' : '';
     if (u && introSet.last !== u) { introSet.last = u; var im = new Image(); im.onload = function () { var nh = Math.round((document.documentElement.clientWidth || 1200) * im.naturalHeight / im.naturalWidth); if (Math.abs((window.INTROH || 0) - nh) > 4) { window.INTROH = nh; var p = $('#pop'); if (p && document.body.classList.contains('intro')) p.style.top = Math.max(10, Math.round((nh - p.offsetHeight) / 2)) + 'px'; } }; im.src = u; }
     bg.className = u ? 'img' : 'art'; b.classList.remove('build'); b.classList.add('intro');
+    if (!$('#introback')) { var ib = document.createElement('div'); ib.id = 'introback'; ib.innerHTML = fsBtn() + '<button class="icbtn wide" onclick="quit()" title="Zurück zum Hauptmenü – dein Spiel ist gespeichert">⌂ Hauptmenü</button>'; b.appendChild(ib); }
   } else if (b.classList.contains('intro')) {
-    b.classList.remove('intro'); b.classList.add('build'); if (bg) bg.classList.add('out');
+    b.classList.remove('intro'); b.classList.add('build'); if (bg) bg.classList.add('out'); var ib2 = $('#introback'); if (ib2) ib2.remove();
     setTimeout(function () { b.classList.remove('build'); var x = $('#introbg'); if (x) x.remove(); }, 2600);
   }
 }
@@ -380,7 +381,10 @@ function giveStar(pid) { act('giveStar', { pid: pid }, { quiet: true, norender: 
 /* ---------- Vorbereitung (Ausnahme auf Level 1) */
 function prepIntroPop() {
   S.prepSeen = true; uiFlag('prepSeen');
-  pop('<div style="font-size:30px">📋</div><h2>Deine erste Vorbereitung</h2><div class="small" style="line-height:1.6">Normalerweise darfst du Vorbereitungen (Testspiele, Trainingslager, Turniere) erst ab <b>Manager-Level ' + MGR.featLvl('testspiele') + '</b> selbst planen.<br><br>Zum Einstieg gibt es eine <b style="color:var(--g)">Ausnahme</b>: Plane jetzt <b>2 Testspiele</b> und ein <b>kurzes Trainingslager</b>. Im Winter folgen 1 Testspiel und ein Hallenturnier.</div><button class="pri" style="width:100%;margin-top:14px" onclick="prepPop()">Vorbereitung planen</button>', { lock: true, top: true });
+  pop('<div class="ptitle"><span>📋</span><h2>Deine erste Vorbereitung</h2></div><div class="small" style="line-height:1.6">Normalerweise darfst du Vorbereitungen (Testspiele, Trainingslager, Turniere) erst ab <b>Manager-Level ' + MGR.featLvl('testspiele') + '</b> selbst planen.<br><br>Zum Einstieg gibt es eine <b style="color:var(--g)">Ausnahme</b>: Plane jetzt <b>2 Testspiele</b> und ein <b>kurzes Trainingslager</b>. Im Winter folgen 1 Testspiel und ein Hallenturnier.</div><div class="row" style="gap:8px;margin-top:14px"><button class="pri" style="flex:1" onclick="prepPop()">Vorbereitung planen</button><button style="flex:1" onclick="prepSkip()">Ohne Vorbereitung</button></div>', { lock: true, top: true });
+}
+function prepSkip() {
+  act('prepPlan', { skip: true }, { quiet: true, norender: true }).then(function (r) { if (!r) return; closePop(); render(true); toast(r.info); setTimeout(afterUpdate, 300); });
 }
 function prepPop() {
   var P = V.prep, summer = P.phase === 'summer', nT = summer ? 2 : 1;
@@ -391,12 +395,12 @@ function prepPop() {
   var fixOpt = first ? '<option disabled data-fix="1" value="" class="optfix">🏆 ' + WTG[dObj(first.d).getUTCDay()] + ', ' + dFull(first.d) + ' · ' + esc(first.label.split(' · ')[0]) + ' (Pflichtspiel)</option>' : '';
   var dOpt = function (sel) { return (summer ? '<option value="">– Datum wählen –</option>' : '') + wk.map(function (d) { return '<option value="' + d + '" ' + (d === sel ? 'selected' : '') + '>' + WTG[dObj(d).getUTCDay()] + ', ' + dFull(d) + '</option>'; }).join('') + fixOpt; };
   var opps = (V.tests || []).slice().sort(function (a, b) { return a.l - b.l; }); var oOpt = function (k) { return opps.map(function (o, i) { return '<option value="' + esc(o.n) + '" ' + (i === k ? 'selected' : '') + '>' + esc(o.n) + ' (' + lAbk(o.l) + ')</option>'; }).join(''); };
-  var h = '<div style="font-size:30px">' + (summer ? '☀️' : '❄️') + '</div><h2>' + (summer ? 'Sommer' : 'Winter') + '-Vorbereitung planen</h2><div class="small muted">' + (summer ? '2 Testspiele + Trainingslager (3 Tage)' : '1 Testspiel + Hallenturnier (1 Tag)') + ' · Zeitraum ' + dFull(min) + ' – ' + dFull(win[1]) + '</div>';
+  var h = '<div class="ptitle"><span>' + (summer ? '☀️' : '❄️') + '</span><h2>' + (summer ? 'Sommer' : 'Winter') + '-Vorbereitung planen</h2></div><div class="small muted">' + (summer ? '2 Testspiele + Trainingslager (3 Tage)' : '1 Testspiel + Hallenturnier (1 Tag)') + ' · Zeitraum ' + dFull(min) + ' – ' + dFull(win[1]) + '</div>';
   for (var i = 0; i < nT; i++) h += '<div class="prep-row"><b class="small">⚽ Test ' + (i + 1) + '</b><select id="pd' + i + '" onchange="prepCamp()">' + dOpt(summer ? '' : wk[Math.min(wk.length - 1, i * 5 + 2)]) + '</select><select id="po' + i + '">' + oOpt(i) + '</select></div>';
   h += '<div class="prep-row"><b class="small">' + (summer ? '⛺ Trainingslager' : '🏟️ Halle') + '</b><select id="pe" style="grid-column:span 2' + (summer ? ';max-width:230px' : '') + '"' + (summer ? ' disabled' : '') + '>' + free.map(function (d) { return '<option value="' + d + '">' + WTG[dObj(d).getUTCDay()] + ', ' + dFull(d) + '</option>'; }).join('') + '</select></div>';
   if (!wk.length) h += '<div class="hint">Im Zeitraum ist kein Testspiel-Termin mehr frei. Du kannst die Vorbereitung abbrechen.</div>';
   h += '<div class="row" style="gap:8px;margin-top:14px"><button class="pri" style="flex:1" ' + (wk.length ? '' : 'disabled') + ' onclick="prepSend(' + nT + ',' + summer + ')">Vorbereitung planen</button><button onclick="act(\'prepCancel\',{})">Abbrechen</button></div>';
-  pop(h, { lock: true, top: true, nofocus: true });
+  pop(h, { lock: true, top: true, nofocus: true, xwide: true });
   PREPFREE = free; PREPFIRST = first || null; var pe = $('#pe'); if (pe && free.length) pe.value = free[Math.min(free.length - 1, 8)]; if (summer) prepCamp();
 }
 var PREPFREE = [], PREPFIRST = null;
@@ -488,8 +492,8 @@ function trialPop() {
 }
 function goalPop() {
   var p = V.pending;
-  pop('<div class="evw"><div style="font-size:30px">🎯</div><h2>' + esc(p.title) + '</h2><div class="small" style="line-height:1.55;margin:6px 0 12px">' + esc(p.text) + '</div><div class="grid g2" style="gap:8px" id="goalopts">' +
-    p.opts.map(function (o, i) { return '<button class="' + (o.label.indexOf('Vorschlag') >= 0 || i === 0 ? '' : '') + '" onclick="goalPick(\'' + o.k + '\',event)">' + esc(o.label) + '</button>'; }).join('') + '</div><div class="xs muted" style="margin-top:10px">Diese Frage musst du beantworten.</div></div>', { lock: true, top: true });
+  pop('<div class="evw"><div class="ptitle"><span>🎯</span><h2>' + esc(p.title) + '</h2></div><div class="small" style="line-height:1.55;margin:6px 0 12px">' + esc(p.text) + '</div><div class="grid g2" style="gap:8px" id="goalopts">' +
+    p.opts.map(function (o) { return '<button onclick="goalPick(\'' + o.k + '\',event)">' + esc(String(o.label).replace(/\s*\(Vorschlag\)/i, '')) + '</button>'; }).join('') + '</div></div>', { lock: true, top: true });
 }
 function goalPick(k, ev) {
   var p = V.pending; var cash0 = V.wealth, fans0 = V.fans;

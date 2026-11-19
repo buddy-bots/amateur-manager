@@ -2641,6 +2641,7 @@ var MGR = (function () {
       }
       case 'prepPlan': {
         var PP = S.prep; if (!PP || !PP.need) err('Keine Vorbereitung offen.');
+        if (p.skip) { S.prep = PP.phase === 'summer' ? { phase: 'summerDone', need: false } : { phase: 'done', need: false }; info = 'Ohne Vorbereitung in die Saison – die Mannschaft startet direkt in den Ligabetrieb.'; break; }
         var tests = p.tests || [], ok = 0;
         var win = prepWin(S, D, PP.phase);
         var games = svwGames(S, D); var opps = testOpps(S, D);

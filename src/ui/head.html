@@ -583,6 +583,24 @@ label.chk{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height
 .saves{display:flex;flex-direction:column;gap:8px;margin-top:10px}.savec{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--linie);background:rgba(127,127,127,.06)}.savec .sic{font-size:24px}
 .legal{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;opacity:.75}.legal a{color:#fff;text-decoration:none;margin:0 4px}.legal a:hover{text-decoration:underline}
 html.srvbusy body{cursor:progress}html.srvbusy:after{content:"";position:fixed;top:0;left:0;height:3px;width:30%;background:var(--g);z-index:9999;animation:srvbar 1s linear infinite}@keyframes srvbar{0%{left:-30%}100%{left:100%}}
+
+/* Startseite & Saisonstart (v25) */
+.titlewrap{background:#000}
+.titleimg{max-height:100vh;object-fit:contain;margin:0 auto}
+.tbtns{top:24px}
+.titlewrap .tboard{position:absolute!important;margin:0!important;left:50%;transform:translateX(-50%)}
+.tboard{top:94px;background:rgba(18,24,16,.82)!important;color:var(--t)!important;--t:#f2f4f0;--m:#a3aa9f;--linie:rgba(255,255,255,.08);--flaeche:rgba(255,255,255,.055);--flaeche2:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)}
+.tboard b,.tboard h3,.tboard td,.tboard th{color:var(--t)!important}.tboard .muted,.tboard th{color:var(--m)!important}
+body.spop .tboard{visibility:hidden}
+.fsstart{position:absolute;top:14px;right:16px;z-index:3}
+.pubbadge+.titleimg{}.titlewrap .pubbadge{right:64px}
+.ptitle{display:flex;align-items:center;gap:10px;margin-bottom:4px}.ptitle>span{font-size:28px;line-height:1}.ptitle h2{margin:0!important;padding:0!important}
+#simrow .icbtn,.icbar .icbtn{height:var(--simh,34px);width:var(--simh,34px);font-size:15px;border-radius:10px}
+#introback{position:fixed;top:16px;right:18px;z-index:120;display:flex;gap:8px}
+body.intro #tstack{top:70px}
+.icbtn.wide{width:auto;padding:0 14px;font-weight:800;font-size:13px}
+body.intro .pop.wt,body.intro #pop:has(.evw){background:rgba(255,255,255,.72)!important;backdrop-filter:blur(14px)}
+body.intro .pop.wt .box{background:rgba(255,255,255,.5)!important}
 </style>
 </head>
 <body>

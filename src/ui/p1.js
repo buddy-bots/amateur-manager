@@ -34,11 +34,11 @@ function barC(v) { return v >= 70 ? 'var(--g)' : v >= 45 ? 'var(--y)' : v >= 25 
 function bar(v, max, col) { var p = Math.max(0, Math.min(100, v / (max || 100) * 100)); return '<div class="bar"><i style="width:' + p + '%;background:' + (col || barC(p)) + '"></i></div>'; }
 function lvCol(l) { return l <= 5 ? 'var(--o)' : l <= 14 ? 'var(--y)' : 'var(--g)'; }
 var TOASTQUIET = /(^Getauscht|^Eingewechselt in die Elf|auf die Tribüne|auf die Bank|von der Bank|Bank gesetzt|Tribüne gesetzt|Aufstellung gespeichert|Position getauscht|eingeteilt)/i;
-function toast(t, err) {
+function toast(t, err, title) {
   t = String(t || ''); if (!t || (!err && TOASTQUIET.test(t))) return;
   var st = document.getElementById('tstack'); if (!st) { st = document.createElement('div'); st.id = 'tstack'; document.body.appendChild(st); }
   var el = document.createElement('div'); el.className = 'wat' + (err ? ' err' : ''); var d = new Date(), hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-  el.innerHTML = '<div class="watav">' + (err ? '⚠️' : '⚽') + '</div><div class="watb"><div class="watt"><b>' + (err ? 'Hinweis' : 'SV Wachtberg') + '</b><span>' + hm + '</span></div><div class="watx"></div></div>';
+  el.innerHTML = '<div class="watav">' + (err ? '⚠️' : '⚽') + '</div><div class="watb"><div class="watt"><b>' + esc(err ? 'Hinweis' : title || (V && V.club) || 'Amateur Manager') + '</b><span>' + hm + '</span></div><div class="watx"></div></div>';
   el.querySelector('.watx').textContent = t; el.onclick = function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); };
   st.insertBefore(el, st.firstChild); while (st.children.length > 5) st.lastChild.remove();
   try { if (err) beep(330, .12, 'sine', .05); else { beep(1046, .06, 'sine', .05); beep(1396, .09, 'sine', .05, .07); } } catch (e) {}
@@ -126,18 +126,27 @@ function pop(html, opts) {
   else if (recent && !opts.top) y = LASTY - 30;
   else y = sy + 16;
   if (keepTop == null) { if (y + ph > sy + vh - 10) y = sy + vh - ph - 10; if (y < sy + 10) y = sy + 10; }
-  if (document.body.classList.contains('intro')) { var ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16); y = Math.max(10, Math.min(Math.round(ih * 0.07), Math.round((ih - ph) / 2))); }
+  var introOn = document.body.classList.contains('intro');
+  if (introOn) { var ih = window.INTROH || Math.round((document.documentElement.clientWidth || 1200) * 9 / 16); y = Math.max(10, Math.round((Math.min(ih, vh) - ph) / 2)); keepLeft = null; }
+  if (ST.screen === 'start' && !opts.free) { var tb = document.querySelector('.tboard'); y = tb ? tb.offsetTop : 96; document.body.classList.add('spop'); keepLeft = null; }
   y = Math.max(10, Math.min(y, h - ph - 10)); p.style.top = y + 'px'; POPTOP = y;
-  var px = opts.x != null ? opts.x : (keepLeft == null && (opts.atx || opts.above) && recent ? LASTX : null);
+  var px = introOn || ST.screen === 'start' ? null : opts.x != null ? opts.x : (keepLeft == null && (opts.atx || opts.above) && recent ? LASTX : null);
   if (keepLeft != null) { p.style.left = keepLeft; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   else if (px != null) { var pw = p.offsetWidth; p.style.left = Math.max(8, Math.min(document.documentElement.clientWidth - pw - 8, px - pw / 2)) + 'px'; p.style.transform = 'none'; p.style.margin = '0'; p.style.right = 'auto'; }
   if (!opts.lock) $('#ov').onclick = closePop;
   var f = p.querySelector('input'); if (f && !opts.nofocus) try { f.focus({ preventScroll: true }); } catch (e) {}
   return p;
 }
-function closePop() { if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
+function closePop() { document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
 /* Wirkungs-Karte, schief an der Klickstelle */
+// Kurz-Rückmeldungen erscheinen als Nachricht oben rechts (wie WhatsApp)
 function fxCard(title, list, x, y) {
+  if (!list || !list.length) return;
+  var txt = list.map(String).join(' · '); toast(txt, false, title);
+  var pos = list.filter(function (t) { t = String(t); return /^\+|steigt|höher|neue|gewonnen|unterschreibt|wechselt/.test(t) && !/−|-\d/.test(t); }).length, neg = list.filter(function (t) { return /−|-\d|sinkt|weniger|verletzt|verloren/.test(String(t)); }).length;
+  if (pos > neg) rewardFx(x != null ? x : LASTX, y != null ? y : LASTY);
+}
+function fxCardOld(title, list, x, y) {
   if (!list || !list.length) return;
   var el = document.createElement('div'); el.className = 'fxcard';
   el.innerHTML = '<b>' + esc(title) + '</b>' + list.map(function (t) { t = String(t); var c = /^\+|steigt|höher|neue|gewonnen|unterschreibt|wechselt/.test(t) && !/−|-\d/.test(t) ? 'p' : /−|-\d|sinkt|weniger|verletzt|verloren/.test(t) ? 'n' : ''; return '<span class="ch ' + c + '">' + esc(t) + '</span>'; }).join('');
@@ -255,7 +264,7 @@ function homeInfo() {
 }
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
-  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + '<img class="titleimg" src="' + (imgOf('bg', 'titel') || TITLEIMG) + '" onerror="if(this.src!==TITLEIMG)this.src=TITLEIMG" alt="Amateur Manager"><div class="tboard"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span><div class="xs muted" id="homeinfo" style="margin-top:6px">' + homeInfo() + '</div></div>' +
+  $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '<img class="titleimg" src="' + (imgOf('bg', 'titel') || TITLEIMG) + '" onerror="if(this.src!==TITLEIMG)this.src=TITLEIMG" alt="Amateur Manager"><div class="tboard box"><div id="board"><div class="spin"></div></div><span id="bcount" style="display:none"></span><div class="xs muted" id="homeinfo" style="margin-top:6px">' + homeInfo() + '</div></div>' +
     '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button></div>' +
     '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a></div></div>';
 }
@@ -303,6 +312,17 @@ function avatarHTML(id, pic, size, name) { size = size || 40; return '<span clas
 var FEM = /^(Frau|Laura|Julia|Lena|Sarah|Anna|Lisa|Marie|Sophie|Katharina|Nina|Jana|Christina|Vanessa|Melanie|Svenja|Leonie|Carina|Elif|Aylin|Natalia|Maria|Sabine|Petra|Claudia|Monika|Andrea|Ursula|Gabi|Heike|Kerstin|Tanja|Stefanie|Nicole|Sandra|Familie Schäfer)\b/;
 function mailPortrait(from, size) { var h = 0; for (var i = 0; i < from.length; i++) h = (h * 31 + from.charCodeAt(i)) % 10007; var g = FEM.test(from) ? 'w' : /Förderverein|Stiftung|Kegelclub|Ortsbauern|Fanclub|Vorstand|Kassenwart|Personalabteilung|Prüfungsamt|Hausbank|Academy|Vermieter|Mannschaftsarzt|Scout|Sportdirektor|Berater|Unternehmer|Mäzen|Spieler|Gönner|Verband|Staffel|Presse|Zeitung/.test(from) ? (h % 4 === 0 ? 'w' : 'm') : (h % 3 === 0 ? 'w' : 'm'); return '<span class="av" style="width:' + size + 'px;height:' + size + 'px">' + portrait(h, g, size) + '</span>'; }
 function levelOf(xp) { return MGR.levelOf(xp || 0); }
+/* ---------- Vollbild */
+function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function fsBtn(cls) { return '<button class="icbtn fsb ' + (cls || '') + '" onclick="toggleFs()" title="Vollbild">' + (fsOn() ? '🗗' : '⛶') + '</button>'; }
+function toggleFs() {
+  var d = document, el = d.documentElement;
+  try {
+    if (fsOn()) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+    else { var r = (el.requestFullscreen || el.webkitRequestFullscreen); if (r) { var pr = r.call(el); if (pr && pr.catch) pr.catch(function () { toast('Vollbild wird von deinem Browser hier nicht erlaubt.', true); }); } else toast('Vollbild wird von deinem Browser nicht unterstützt.', true); }
+  } catch (e) { toast('Vollbild wird von deinem Browser hier nicht erlaubt.', true); }
+}
+document.addEventListener('fullscreenchange', function () { document.querySelectorAll('.fsb').forEach(function (b) { b.textContent = fsOn() ? '🗗' : '⛶'; }); });
 /* ---------- Anmeldung */
 var BYEARS = (function () { var y = new Date().getFullYear(), o = ''; for (var i = y - 16; i >= y - 90; i--) o += '<option value="' + i + '">' + i + '</option>'; return o; })();
 function consentHTML() {

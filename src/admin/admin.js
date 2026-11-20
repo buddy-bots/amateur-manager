@@ -61,7 +61,7 @@ function loadMap() { return fetch(SB.url + '/rest/v1/media?select=key,path,updat
 function showImg(keep) {
   var y = keep ? window.scrollY : 0;
   if (!keep) $('#main').innerHTML = '<div class="spin"></div>';
-  loadMap().then(function () {
+  Promise.all([loadMap(), rest('game_config?select=value&key=eq.bgDefault').then(function (r) { BGDEF = r && r[0] ? r[0].value : ''; }).catch(function () {})]).then(function () {
     var ab = function (L) { return L.slice().sort(function (a, b) { return String(a[1] || a[0]).localeCompare(String(b[1] || b[0]), 'de', { sensitivity: 'base' }); }); };
     var grp = function (title, g, list, note) { list = ab(list); return fold(title, list.length, (note ? '<p class="muted">' + note + '</p>' : '') + '<div class="grid">' + list.map(function (x) { return slot(g + '.' + x[0], x[1]); }).join('') + '</div>'); };
     var items = (D0.itemList || []).map(function (it) { return [it.id, it.name + ' (' + it.cat + ')']; });
@@ -80,9 +80,12 @@ function showImg(keep) {
 }
 // Kategorie zum Auf- und Zuklappen (Zustand bleibt im Browser gespeichert)
 function fold(title, n, body) { var k = 'amfold.' + title, open = false; try { open = localStorage.getItem(k) === '1'; } catch (e) {} return '<details class="card fold"' + (open ? ' open' : '') + ' ontoggle="try{localStorage.setItem(\'' + k.replace(/'/g, '') + '\', this.open ? \'1\' : \'0\')}catch(e){}"><summary><h3>' + title + ' <span class="pill">' + n + '</span></h3></summary>' + body + '</details>'; }
+var BGDEF = '';
+// Standard-Hintergrund für alle, die noch keinen eigenen gewählt haben
+function bgDef(u) { var p = u ? rest('game_config', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: 'bgDefault', value: u, updated_at: new Date().toISOString(), updated_by: SESSION.user.id } }) : rest('game_config?key=eq.bgDefault', { method: 'DELETE' }); p.then(function () { toast(u ? 'Standard-Hintergrund gesetzt ✓' : 'Kein Standard mehr'); showImg(true); }).catch(function (e) { toast(e.message, true); }); }
 function slot(key, label) {
   var m = MAP[key], u = m ? mediaUrl(m.path) : '';
-  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + '</div>';
+  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + (m && key.indexOf('hintergrund.') === 0 ? '<button class="bgstar' + (BGDEF === u ? ' on' : '') + '" onclick="bgDef(' + (BGDEF === u ? '\'\'' : '\'' + u.replace(/'/g, '') + '\'') + ')" title="' + (BGDEF === u ? 'Standard (klicken zum Aufheben)' : 'Als Standard für neue Spieler') + '">' + (BGDEF === u ? '★ Standard' : '☆ Standard') + '</button>' : '') + '</div>';
 }
 function chooser(multi, cb) { var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.multiple = !!multi; i.onchange = function () { cb(Array.prototype.slice.call(i.files)); }; i.click(); }
 function pick(key) { chooser(false, function (f) { if (f[0]) upload(key, f[0]).then(function () { showImg(true); }); }); }

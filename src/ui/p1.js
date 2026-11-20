@@ -160,7 +160,7 @@ function pop(html, opts) {
 }
 function closePop() { var mf = $('#demapf'); if (mf) mf.remove(); document.body.classList.remove('spop'); if ($('#pop')) { POPTOP = $('#pop').offsetTop; CLOSET = Date.now(); } $('#layer').innerHTML = ''; }
 /* Wirkungs-Karte, schief an der Klickstelle */
-// Kurz-Rückmeldungen erscheinen als Nachricht oben rechts (wie in der ChatApp)
+// Kurz-Rückmeldungen erscheinen als Nachricht oben rechts (wie in der Call Up)
 function fxCard(title, list, x, y) {
   if (!list || !list.length) return;
   var txt = list.map(String).join(' · '); toast(txt, false, title);
@@ -352,7 +352,7 @@ function homeInfo() {
 function startScreen() { document.body.classList.remove('gbg');
   V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
   $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '' + (function () { var ts = titleSrc(), ph = ts === 'PH'; return '<img class="titleimg' + (ph ? ' ph' : '') + '" src="' + (ph ? TITLEIMG : ts) + '" onload="if(!this.classList.contains(\'ph\'))this.style.opacity=1;titleFit()" onerror="if(this.src!==TITLEIMG){this.classList.remove(\'ph\');this.src=TITLEIMG}" style="opacity:0;transition:opacity .4s" alt="Amateur Manager">'; })() + '' +
-    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button><button onclick="langPick()" title="Sprache / Language">' + ({ de: '🇩🇪', en: '🇬🇧', es: '🇪🇸', fr: '🇫🇷' }[(userSet && userSet().lang) || 'de'] || '🌍') + '</button></div>' +
+    '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button><button onclick="langPick()" title="Sprache / Language">' + flagImg(LFLAG[(userSet && userSet().lang) || 'de'] || 'de', 16) + '</button></div>' +
     '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a></div></div>';
 }
 function refreshHome() {
@@ -558,6 +558,7 @@ function cpSearch(q) {
 function cpPick(i) {
   var t = (CP.hits || [])[i]; if (!t) return;
   var eb = (t.ligen_staffeln || {}).ebene, need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl();
+  if (need >= 999) { toast('🔒 Vereine ab der Regionalliga sind im Amateur Manager nicht wählbar.', true); return; }
   if (need && my < need) { toast('🔒 Vereine aus der ' + ((t.ligen_staffeln || {}).name || 'Liga') + ' kannst du ab Manager-Level ' + need + ' wählen (du bist Level ' + my + '). Aufsteigen darfst du natürlich jederzeit.'); return; }
   CP.team = { id: t.id, name: t.name, liga: (t.ligen_staffeln || {}).name || '', kl: t.ligen_staffeln ? ligaKl(t.ligen_staffeln) : '', lat: t.lat, lon: t.lon }; if (t.kreis) CP.kreis = t.kreis;
   CP.info = { vb: (t.ligen_staffeln || {}).verband || '', eb: eb };
@@ -666,7 +667,7 @@ function deMapLand(land) {
 }
 function createGame() {
   if (!CP.team) return toast('Bitte zuerst deinen Verein suchen.', true);
-  var nd = MGR.LIGA_LVL[(CP.info || {}).eb] || 0; if (nd && cpMyLvl() < nd) return toast('🔒 Diese Liga kannst du erst ab Manager-Level ' + nd + ' wählen.', true);
+  var nd = MGR.LIGA_LVL[(CP.info || {}).eb] || 0; if (nd >= 999) return toast('🔒 Vereine ab der Regionalliga sind im Amateur Manager nicht wählbar.', true); if (nd && cpMyLvl() < nd) return toast('🔒 Diese Liga kannst du erst ab Manager-Level ' + nd + ' wählen.', true);
   var sp = $('#selfpos') ? $('#selfpos').value : '';
   loading(true); game('new', { self: sp ? { pos: sp } : null, team: CP.team.id }).then(function (r) {
     SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state; NOTE = { levelUp: null };
@@ -764,13 +765,14 @@ function bonusDraw(I) {
 var BONUSI = null;
 function refCopy() { var l = location.origin + '/?ref=' + BONUSI.code; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () { toast('Link kopiert ✓'); }, function () { toast('Bitte den Link markieren und kopieren.'); }); }
 function refMis(k) { loading(true); game('refMission', { k: k }).then(function (I) { loading(false); toast('Belohnung gutgeschrieben – im Spiel einlösen.', false, '🎁 Mission geschafft'); bonusDraw(I); }).catch(function (x) { loading(false); toast(x.message, true); }); }
-function misClaim(k) { act('misClaim', { k: k }, { quiet: true }).then(function (r) { if (!r) return; var t = String(r.info || ''), i = t.indexOf(': '); toast(i > 0 ? t.slice(i + 2) : t, false, '🎯 ' + (i > 0 ? t.slice(2, i) : 'Mission')); if ($('#pop')) closePop(); render(true); }); }
+function misClaim(k) { var inPop = !!$('#mispop'); act('misClaim', { k: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return; var t = String(r.info || ''), i = t.indexOf(': '); toast(i > 0 ? t.slice(i + 2) : t, false, '🎯 ' + (i > 0 ? t.slice(2, i) : 'Mission')); var more = V.missions && V.missions.daily.some(function (m) { return m.st === 'done'; }); if (inPop && more) { $('#mispop').innerHTML = V.missions.daily.map(misRow).join(''); renderTab(); return; } if ($('#pop')) closePop(); render(true); }); }
 function bonusRedeem() { act('bonusRedeem', {}, { quiet: true }).then(function (r) { if (!r) return; toast(String(r.info || '').replace(/^🎁\s*/, ''), false, '🎁 Bonus'); BONUSI.credit = { j: 0, h: 0 }; render(true); bonusDraw(BONUSI); }); }
 
-function langPick() { pop('<h2 style="padding:0">🌍 Sprache · Language</h2><div class="grid g2" style="gap:8px;margin-top:10px">' + [['de', '🇩🇪 Deutsch'], ['en', '🇬🇧 English'], ['es', '🇪🇸 Español'], ['fr', '🇫🇷 Français']].map(function (x) { return '<button class="' + (((userSet().lang) || 'de') === x[0] ? 'pri' : '') + '" onclick="setLang(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>', { white: true }); }
+var LFLAG = { de: 'de', en: 'gb', es: 'es', fr: 'fr' };
+function langPick() { pop('<h2 style="padding:0">🌍 Sprache · Language</h2><div class="grid g2" style="gap:8px;margin-top:10px">' + [['de', 'Deutsch'], ['en', 'English'], ['es', 'Español'], ['fr', 'Français']].map(function (x) { return '<button class="' + (((userSet().lang) || 'de') === x[0] ? 'pri' : '') + '" onclick="setLang(\'' + x[0] + '\')">' + flagImg(LFLAG[x[0]], 14) + ' ' + x[1] + '</button>'; }).join('') + '</div>', { white: true }); }
 function cpQx() { var q = $('#cpq'); if (!q) return; q.value = ''; q.parentNode.classList.remove('has'); cpSearch(''); }
 
-function cpLock(eb) { var need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl(); return need && my < need ? '<span class="pill" style="margin-left:auto;flex:none" title="ab Manager-Level ' + need + '">🔒 Lv ' + need + '</span>' : ''; }
+function cpLock(eb) { var need = MGR.LIGA_LVL[eb] || 0, my = cpMyLvl(); return need >= 999 ? '<span class="pill" style="margin-left:auto;flex:none" title="Ab Regionalliga nicht wählbar">🔒</span>' : need && my < need ? '<span class="pill" style="margin-left:auto;flex:none" title="ab Manager-Level ' + need + '">🔒 Lv ' + need + '</span>' : ''; }
 function cpMyLvl() { return levelOf((HOME && HOME.me && HOME.me.xp) || (ME && ME.xp) || 0).lvl; }
 // Hinweis vor der automatischen Löschung (3 Monate ohne Nutzung)
 function saveAge(ts) { var t = Date.parse(ts || ''); if (!t) return ''; var left = Math.ceil((t + 91 * 864e5 - Date.now()) / 864e5); return left <= 30 ? '<div class="xs" style="color:#e07a2c">⏳ Wird in ' + Math.max(0, left) + ' Tag' + (left === 1 ? '' : 'en') + ' gelöscht, wenn du ihn nicht lädst.</div>' : ''; }
@@ -786,4 +788,4 @@ function keyGo(next) {
   var c = String(($('#akey') || {}).value || '').replace(/\D/g, ''); if (c.length !== 8) return toast('Der Code hat 8 Ziffern.', true);
   loading(true); game('keyRedeem', { code: c }).then(function () { loading(false); closePop(); toast('✅ Freigeschaltet – viel Spaß!'); if (next === 'load') startLoad(); else startNew(); }).catch(function (x) { loading(false); toast(x.message, true); });
 }
-function keyAsk() { closePop(); if (typeof waOpen === 'function' && TOKEN && S && V && ST.screen === 'game') { waOpen(WA_DEV); setTimeout(function () { var i = $('#watx'); if (i) { i.value = 'Hallo, ich möchte jemanden einladen und bräuchte dafür einen Zugangscode. Für: '; i.focus(); } }, 400); } else toast('Schreib dem Entwickler im Spiel über die ChatApp → Entwickler.'); }
+function keyAsk() { closePop(); if (typeof waOpen === 'function' && TOKEN && S && V && ST.screen === 'game') { waOpen(WA_DEV); setTimeout(function () { var i = $('#watx'); if (i) { i.value = 'Hallo, ich möchte jemanden einladen und bräuchte dafür einen Zugangscode. Für: '; i.focus(); } }, 400); } else toast('Schreib dem Entwickler im Spiel über die Call Up → Entwickler.'); }

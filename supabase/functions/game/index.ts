@@ -400,6 +400,7 @@ async function handle(req: Request, userId: string, body: any) {
     const xp = Number(profile.xp) || 0;
     const reg = body.team ? await regFor(String(body.team)) : null;
     const needL = reg ? MGR.LIGA_LVL[reg.lvl] || 0 : 0;
+    if (needL >= 999) throw new HttpError(403, 'Vereine ab der Regionalliga sind im Amateur Manager nicht wählbar.');
     if (needL && MGR.levelOf(xp).lvl < needL) throw new HttpError(403, 'Vereine aus der ' + ((reg as any).lv[reg.lvl] || {}).name + ' kannst du ab Manager-Level ' + needL + ' wählen.');
     let S: any;
     // Spielertrainer bekommt dein echtes Alter (Geburtsjahr aus dem Profil)

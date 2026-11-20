@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Admin · Amateur Manager</title>
-<style>.cfi{padding:4px 6px;border:1px solid #d5dccf;border-radius:6px;font:inherit;font-size:13px}.cfi.chg{border-color:#e0a800;background:#fff8e1}.licg{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 12px;font-size:13px}.licg label.dis{opacity:.45}details.fold.sub{margin:6px 0;padding:6px 10px;border:1px solid #e3e8df;border-radius:8px}details.fold.sub summary{cursor:pointer}details.fold summary{cursor:pointer;list-style:none}details.fold summary::-webkit-details-marker{display:none}details.fold summary h3{margin:0}details.fold summary h3:before{content:'▸ ';color:#8fc852}details.fold[open] summary h3:before{content:'▾ '}details.fold[open] summary{margin-bottom:10px}.keyc{font:700 18px/1 ui-monospace,monospace;letter-spacing:.12em}
+<style>.slot{position:relative}.bgstar{position:absolute;left:6px;top:6px;border:0;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}.bgstar.on{background:#f0c24b;color:#111}.cfi{padding:4px 6px;border:1px solid #d5dccf;border-radius:6px;font:inherit;font-size:13px}.cfi.chg{border-color:#e0a800;background:#fff8e1}.licg{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 12px;font-size:13px}.licg label.dis{opacity:.45}details.fold.sub{margin:6px 0;padding:6px 10px;border:1px solid #e3e8df;border-radius:8px}details.fold.sub summary{cursor:pointer}details.fold summary{cursor:pointer;list-style:none}details.fold summary::-webkit-details-marker{display:none}details.fold summary h3{margin:0}details.fold summary h3:before{content:'▸ ';color:#8fc852}details.fold[open] summary h3:before{content:'▾ '}details.fold[open] summary{margin-bottom:10px}.keyc{font:700 18px/1 ui-monospace,monospace;letter-spacing:.12em}
 body{margin:0;background:#0d110c;color:#e9ede6;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 header{display:flex;align-items:center;gap:14px;padding:14px 22px;background:#141b12;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:5}
 header h1{font-size:16px;margin:0;color:#8fc852;letter-spacing:.08em}header .sp{flex:1}header a{color:#a3aa9f;text-decoration:none}
@@ -24,7 +24,7 @@ textarea,input{width:100%;box-sizing:border-box;background:#0b0f0a;color:#e9ede6
 </style></head><body>
 <header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button><button data-k="inv" onclick="nav('inv')">Affiliate</button><button data-k="key" onclick="nav('key')">Keys</button><button data-k="cfg" onclick="nav('cfg')">Vorgaben</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a></header>
 <div id="main"><div class="spin"></div></div>
-<script src="engine.js?v=26.11.0"></script>
+<script src="engine.js?v=26.12.0"></script>
 <script>
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
 /* ===================================================================== Server-Anbindung (Supabase)
@@ -264,8 +264,8 @@ var API = {
   apiSalary: function () {
     return managers().then(function (rows) {
       var me = SESSION.user.id;
-      var list = rows.filter(function (m) { return m.summary && m.summary.sal > 0; }).map(function (m) { var s = m.summary; return { name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '', club: m.club_name || '' }; });
-      list.sort(function (a, b) { return b.sal - a.sal; }); list.forEach(function (x, i) { x.rank = i + 1; });
+      var list = rows.filter(function (m) { return m.summary; }).map(function (m) { var s = m.summary; return { xp: +m.xp || 0, lvl: levelOf(+m.xp || 0).lvl, w: s.w || 0, d: s.d || 0, mg: s.mg || s.games || 0, gf: s.gf || 0, ga: s.ga || 0, cm: s.cm || 0, cmN: s.cmN || 100, name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '', club: m.club_name || '' }; });
+      list.sort(function (a, b) { return b.xp - a.xp || b.avg - a.avg; }); list.forEach(function (x, i) { x.rank = i + 1; });
       var mine = list.filter(function (x) { return x.me; })[0] || null; list.forEach(function (x) { if (!x.me) delete x.me; });
       return { ok: true, top: list.slice(0, 3), all: list, mine: mine && mine.rank > 3 ? mine : null, myRank: mine ? mine.rank : null, total: list.length };
     });
@@ -291,7 +291,7 @@ var CFGROWS = [];
 function loadCfg() {
   return fetch(SB.url + '/rest/v1/game_config?select=key,value&limit=200', { headers: { apikey: SB.key } })
     .then(function (r) { return r.ok ? r.json() : []; })
-    .then(function (rows) { CFGROWS = rows || []; if (D) MGR.applyCfg(D, CFGROWS); return CFGROWS; })
+    .then(function (rows) { CFGROWS = rows || []; if (D) MGR.applyCfg(D, CFGROWS); try { applyBg(); } catch (e) {} return CFGROWS; })
     .catch(function () { return []; });
 }
 function loadMedia() {
@@ -378,7 +378,7 @@ function loadMap() { return fetch(SB.url + '/rest/v1/media?select=key,path,updat
 function showImg(keep) {
   var y = keep ? window.scrollY : 0;
   if (!keep) $('#main').innerHTML = '<div class="spin"></div>';
-  loadMap().then(function () {
+  Promise.all([loadMap(), rest('game_config?select=value&key=eq.bgDefault').then(function (r) { BGDEF = r && r[0] ? r[0].value : ''; }).catch(function () {})]).then(function () {
     var ab = function (L) { return L.slice().sort(function (a, b) { return String(a[1] || a[0]).localeCompare(String(b[1] || b[0]), 'de', { sensitivity: 'base' }); }); };
     var grp = function (title, g, list, note) { list = ab(list); return fold(title, list.length, (note ? '<p class="muted">' + note + '</p>' : '') + '<div class="grid">' + list.map(function (x) { return slot(g + '.' + x[0], x[1]); }).join('') + '</div>'); };
     var items = (D0.itemList || []).map(function (it) { return [it.id, it.name + ' (' + it.cat + ')']; });
@@ -397,9 +397,12 @@ function showImg(keep) {
 }
 // Kategorie zum Auf- und Zuklappen (Zustand bleibt im Browser gespeichert)
 function fold(title, n, body) { var k = 'amfold.' + title, open = false; try { open = localStorage.getItem(k) === '1'; } catch (e) {} return '<details class="card fold"' + (open ? ' open' : '') + ' ontoggle="try{localStorage.setItem(\'' + k.replace(/'/g, '') + '\', this.open ? \'1\' : \'0\')}catch(e){}"><summary><h3>' + title + ' <span class="pill">' + n + '</span></h3></summary>' + body + '</details>'; }
+var BGDEF = '';
+// Standard-Hintergrund für alle, die noch keinen eigenen gewählt haben
+function bgDef(u) { var p = u ? rest('game_config', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: 'bgDefault', value: u, updated_at: new Date().toISOString(), updated_by: SESSION.user.id } }) : rest('game_config?key=eq.bgDefault', { method: 'DELETE' }); p.then(function () { toast(u ? 'Standard-Hintergrund gesetzt ✓' : 'Kein Standard mehr'); showImg(true); }).catch(function (e) { toast(e.message, true); }); }
 function slot(key, label) {
   var m = MAP[key], u = m ? mediaUrl(m.path) : '';
-  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + '</div>';
+  return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + (m && key.indexOf('hintergrund.') === 0 ? '<button class="bgstar' + (BGDEF === u ? ' on' : '') + '" onclick="bgDef(' + (BGDEF === u ? '\'\'' : '\'' + u.replace(/'/g, '') + '\'') + ')" title="' + (BGDEF === u ? 'Standard (klicken zum Aufheben)' : 'Als Standard für neue Spieler') + '">' + (BGDEF === u ? '★ Standard' : '☆ Standard') + '</button>' : '') + '</div>';
 }
 function chooser(multi, cb) { var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.multiple = !!multi; i.onchange = function () { cb(Array.prototype.slice.call(i.files)); }; i.click(); }
 function pick(key) { chooser(false, function (f) { if (f[0]) upload(key, f[0]).then(function () { showImg(true); }); }); }

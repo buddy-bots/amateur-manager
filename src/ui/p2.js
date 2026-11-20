@@ -324,7 +324,7 @@ function kitPop(kind, msg0) {
       var head = '<div style="background:#fff;border-radius:10px;height:64px;display:grid;place-items:center"><img src="' + (BRANDLOGO[o.brand] || '') + '" alt="' + esc(o.name) + '" style="max-height:42px;max-width:85%"></div><b>' + esc(o.name) + '</b>';
       var cf = amtCols(O)(o.amt); return negoCard(kind, o, i, head, '<div class="big" style="font-size:19px;color:' + cf + '">' + eur(o.amt) + '<span class="xs muted"> / Saison</span></div>', 'kitDo(\'' + kind + '\',\'kitAccept\',' + i + ')', cf);
     }).join('') + '</div>' + (kind === 'ball' ? '<button class="sm" style="margin-top:10px" onclick="closePop()">Später</button>' : '');
-  pop(h, { lock: kind !== 'ball', wide: true, top: true });
+  pop(h, { lock: kind !== 'ball', wide: true, top: true, cls: 'tilt glass' });
 }
 function kitDo(kind, a, i) {
   var p = { kind: kind, i: i }; if (a === 'kitAccept') p.yrs = negoOffers(kind)[i].yrs;
@@ -440,7 +440,7 @@ function prepPop() {
   h += '<div class="prep-row"><b class="small">' + (summer ? '⛺ Trainingslager' : '🏟️ Halle') + '</b><select id="pe"' + (summer ? ' disabled' : '') + '>' + free.map(function (d) { return '<option value="' + d + '">' + WTG[dObj(d).getUTCDay()] + ', ' + dFull(d) + '</option>'; }).join('') + '</select></div>';
   if (!wk.length) h += '<div class="hint">Im Zeitraum ist kein Testspiel-Termin mehr frei. Du kannst die Vorbereitung abbrechen.</div>';
   h += '<div class="prep-row prep-btns" style="margin-top:14px"><span></span><button class="pri" ' + (wk.length ? '' : 'disabled') + ' onclick="prepSend(' + nT + ',' + summer + ')">Vorbereitung planen</button><button onclick="act(\'prepCancel\',{})">Abbrechen</button></div>';
-  pop(h, { lock: true, top: true, nofocus: true, xwide: true });
+  pop(h, { lock: true, top: true, nofocus: true, fit: true });
   PREPFREE = free; PREPFIRST = first || null; var pe = $('#pe'); if (pe && free.length) pe.value = free[Math.min(free.length - 1, 8)]; if (summer) prepCamp();
 }
 var PREPFREE = [], PREPFIRST = null;

@@ -324,7 +324,7 @@ function sanitize(action: string, params: any) {
 async function handle(req: Request, userId: string, body: any) {
   try { await refreshMedia(); } catch (_e) { /* Bilder sind optional */ }
   try { await refreshCfg(body && body.op === 'cfgReload'); } catch (_e) { /* Vorgaben sind optional */ }
-  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at').eq('id', userId).single();
+  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at, birth_year').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);
   const op = String(body.op || '');
@@ -402,6 +402,8 @@ async function handle(req: Request, userId: string, body: any) {
     const needL = reg ? MGR.LIGA_LVL[reg.lvl] || 0 : 0;
     if (needL && MGR.levelOf(xp).lvl < needL) throw new HttpError(403, 'Vereine aus der ' + ((reg as any).lv[reg.lvl] || {}).name + ' kannst du ab Manager-Level ' + needL + ' wählen.');
     let S: any;
+    // Spielertrainer bekommt dein echtes Alter (Geburtsjahr aus dem Profil)
+    if (self && profile.birth_year) (self as any).age = Math.max(16, Math.min(45, 2026 - Number(profile.birth_year)));
     try { S = MGR.newGame(D, { mgr: profile.display_name.split(' ')[0], full: profile.display_name, xp, mlvl: MGR.levelOf(xp).lvl, self, reg }); }
     catch (e) { throw new HttpError(400, (e as Error).message || String(e)); }
     const m = meta(S);

@@ -1784,6 +1784,32 @@ var MGR = (function () {
     liveEv(L, 'kick', cm('kick', {}), 50, 50, 1);
     return L;
   }
+  // ---------- Spielfeld-Engine: Ballwege pro Minute (für Heatmap, Momentum, Drittel und die Animation)
+  // Koordinaten: x 0 = eigenes Tor … 100 = gegnerisches Tor, y 0–100 quer. Gespeichert in L.pz als flache Liste [x, y, Team(1 wir / 0 Gegner), …]
+  var PZ_STEPS = 6;
+  function pitchMinute(L, dd, men, evs) {
+    if (!L.pz) L.pz = []; if (!L.mom) L.mom = []; var B = L.pzB || (L.pzB = { x: 50, y: 50, t: R() < 0.5 ? 1 : 0 });
+    var redD = (11 - men) - (L.oppRed || 0), diff = L.gf - L.ga;
+    var pF = clamp(0.5 + dd * 0.012 + (L.home === true ? 0.03 : L.home === false ? -0.03 : 0) + (diff < 0 ? 0.04 : diff > 0 ? -0.03 : 0) - redD * 0.05, 0.22, 0.78);
+    var push = function (x, y, t) { L.pz.push(Math.round(clamp(x, 2, 98)), Math.round(clamp(y, 3, 97)), t); };
+    var thr = 0, n = 0, track = function (x, t) { thr += t ? Math.max(0, x - 45) / 55 : -Math.max(0, 55 - x) / 55; n++; };
+    // Ereignisse dieser Minute bestimmen das Ziel des Ballwegs
+    var key = null; evs.forEach(function (e) { if (e.x == null) return; var pr = { goal: 5, goalA: 5, pen: 4, penA: 4, chance: 3, chanceA: 3, save: 3, play: 2 }[e.k] || 1; if (!key || pr > key.pr) key = { e: e, pr: pr }; });
+    var steps = key ? PZ_STEPS - 2 : PZ_STEPS;
+    for (var i = 0; i < steps; i++) {
+      var att = B.t === 1, prog = att ? B.x / 100 : (100 - B.x) / 100, pOwn = att ? pF : 1 - pF;
+      var lose = 0.07 + prog * 0.16 + (0.5 - pOwn) * 0.22;
+      if (R() < lose) { B.t = 1 - B.t; B.x += (att ? -1 : 1) * rnd(2, 8); }
+      else { var adv = gauss() * 9 + 5 + pOwn * 9; B.x += att ? adv : -adv; B.y += gauss() * 15 + (50 - B.y) * 0.12; }
+      if (B.x > 92 && B.t === 1) { B.t = 0; B.x = rnd(86, 94); B.y = rnd(35, 65); } else if (B.x < 8 && B.t === 0) { B.t = 1; B.x = rnd(6, 14); B.y = rnd(35, 65); } // Abschluss vorbei → Abstoß des Verteidigers
+      B.x = clamp(B.x, 3, 97); B.y = clamp(B.y, 4, 96); push(B.x, B.y, B.t); track(B.x, B.t);
+    }
+    if (key) { var e = key.e, us = { goal: 1, chance: 1, pen: 1, play: 1, foulA: 1, yellowA: 1, redA: 1, goalA: 0, chanceA: 0, penA: 0, save: 0, foul: 0 }[e.k]; if (us == null) us = B.t; // wer hatte bei dem Ereignis den Ball
+      var mx = (B.x + e.x) / 2 + gauss() * 4, my = (B.y + e.y) / 2 + gauss() * 8; push(mx, my, us); track(mx, us); push(e.x, e.y, us); track(e.x, us); B.x = e.x; B.y = e.y; B.t = us;
+      if (e.k === 'goal') { B.x = 50; B.y = 50; B.t = 0; thr += 2; } else if (e.k === 'goalA') { B.x = 50; B.y = 50; B.t = 1; thr -= 2; }
+      else if (e.k === 'chance') { B.t = 0; B.x = rnd(88, 95); thr += 1; } else if (e.k === 'chanceA') { B.t = 1; B.x = rnd(5, 12); thr -= 1; } else if (e.k === 'save') { B.t = 1; B.x = rnd(6, 12); thr -= 0.8; } }
+    L.mom.push(Math.round(clamp(thr / Math.max(1, n) * 140, -100, 100)));
+  }
   function liveScorer(S, on, w) { var c = on.filter(Boolean); return c.length ? wpick(c, function (p) { return w[p.dp] * p.str; }) : null; }
   function liveMinute(S, D) {
     var L = S.live; L.min++;
@@ -1795,7 +1821,6 @@ var MGR = (function () {
     lf *= 1 + bon(S, 'att') + (L.home === false ? bon(S, 'attAway') : 0); la *= Math.max(0.6, 1 - bon(S, 'def') - bon(S, 'gk') - (L.home === true ? bon(S, 'defHome') : 0) - (L.min >= 80 ? bon(S, 'defLate') : 0)); if (L.min >= 88 && L.half === 2) lf += bon(S, 'late') / 3; if (L.min <= 10 && L.half === 1) lf += bon(S, 'early') / 10;
     var tw = on.filter(function (p) { return p && p.dp === 'TW'; })[0] || null;
     var pr = function (p) { return p ? p.n : 'unser Mann'; };
-    L.heat.push([Math.round(clamp(50 + (ms - os) * 1.5 + gauss() * 22, 2, 98)), Math.round(clamp(50 + gauss() * 26, 2, 98))]);
     var SS = L.ss; SS.pos += clamp(50 + (ms - os) * 1.3 + gauss() * 8, 15, 85); SS.n++;
     if (R() < lf * 2.4) { SS.shF++; if (R() < 0.33) SS.onF++; } if (R() < la * 2.4) { SS.shA++; if (R() < 0.33) SS.onA++; }
     if (R() < lf * 3.5) SS.corF++; if (R() < la * 3.5) SS.corA++; if (R() < 0.022) SS.offF++; if (R() < 0.022) SS.offA++; if (R() < 0.06) SS.foulF++; if (R() < 0.06) SS.foulA++;
@@ -1823,6 +1848,7 @@ var MGR = (function () {
     else if (R() < 6 / 90) { var fp = pick(on.filter(Boolean)); if (fp) liveEv(L, 'foul', cm('foul', { p: fp.n }), rnd(25, 75), rnd(10, 90), 1); }
     else if (R() < 5 / 90) liveEv(L, 'foulA', cm('foulA', { o: L.opp }), rnd(25, 75), rnd(10, 90), 1);
     else if (R() < 4 / 90) { var a1 = pick(on.filter(Boolean)), a2 = pick(on.filter(Boolean)); if (a1) liveEv(L, 'play', cm('play', { p: a1.n, q: a2 ? a2.n : a1.n, o: L.opp }), rnd(45, 85), rnd(10, 90), 2); }
+    pitchMinute(L, dd, men, L.ev.slice(evN));
     L.ev.slice(evN).forEach(function (x) { if (x.k === 'goal') { SS.shF++; SS.onF++; } else if (x.k === 'chance') { SS.shF++; if (R() < 0.35) SS.onF++; } else if (x.k === 'goalA') { SS.shA++; SS.onA++; } else if (x.k === 'save') { SS.shA++; SS.onA++; } else if (x.k === 'chanceA') SS.shA++; else if (x.k === 'foul') SS.foulF++; else if (x.k === 'foulA') SS.foulA++; });
     on.forEach(function (p) { if (!p || R() > 0.07) return; var bias = clamp((rateIn(p, p.dp) - os) * 0.012, -0.12, 0.12); var dlt = gauss() * 0.22 - bias; if (Math.abs(dlt) < 0.05) return; L.st[p.id].gr = clamp(L.st[p.id].gr + dlt, 1, 6); if (Math.abs(dlt) > 0.35 && R() < 0.5) liveEv(L, dlt < 0 ? 'play' : 'foul', dlt < 0 ? pick([p.n + ' mit einer starken Aktion – gewinnt den Zweikampf und leitet weiter.', 'Klasse Ballgewinn von ' + p.n + '!', p.n + ' mit einem feinen Pass in die Tiefe.']) : pick([p.n + ' mit einem leichten Ballverlust im Aufbau.', 'Fehlpass von ' + p.n + ' – das war unnötig.', p.n + ' verliert das Laufduell.']), rnd(25, 75), rnd(10, 90), 1); });
     var e = eff(S, D);

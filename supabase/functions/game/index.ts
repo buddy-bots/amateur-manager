@@ -110,10 +110,14 @@ async function ligenImport(ref: string) {
   try { const ro = await fetch(LIG_RAW + r + '/data/orte-de.json'); if (ro.ok) orte = await ro.json(); } catch (_) { /* ohne Marker */ }
   const part = MGR.geoIndex(orte);
   const now = new Date().toISOString(), S: any[] = [], T: any[] = [], seen: Record<string, 1> = {}, drop: string[] = [];
-  for (const v of d.verbaende || []) {
+  // Fest eingetragene Überregionale zuerst; doppelte Staffel-IDs (gleiche Liga in zwei Verbänden) nur einmal
+  const seenS: Record<string, 1> = {};
+  const VV = (d.verbaende || []).slice().sort((a: any, b: any) => (b.name === 'RV Südwest' ? 1 : 0) - (a.name === 'RV Südwest' ? 1 : 0));
+  for (const v of VV) {
     const order: string[] = [];
     for (const s of v.staffeln) if (!order.includes(s.skn)) order.push(s.skn);
     for (const s of v.staffeln) {
+      if (seenS[s.id]) continue; seenS[s.id] = 1;
       s.gn = MGR.gebietNorm(v.name, s.gn);
       // Eine Mannschaft steht manchmal in zwei Runden (Findungs-/Meisterrunde): nur die erste zählt, leere Staffeln entfallen
       // Ohne Team-ID (z. B. Bayern) eine feste ID aus Staffel und Name bilden; zurückgezogene Mannschaften (zg.) entfallen

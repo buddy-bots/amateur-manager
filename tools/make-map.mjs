@@ -26,7 +26,7 @@ const { MGR } = await import('../supabase/functions/_shared/engine.js');
 const LIG = JSON.parse(readFileSync(new URL('../data/ligen-2627.json', import.meta.url)));
 const ORTE = JSON.parse(readFileSync(new URL('../data/orte-de.json', import.meta.url)));
 const KR = JSON.parse(readFileSync(new URL('../data/de-kreise.geo.json', import.meta.url)));
-const LANDV = { 'Nordrhein-Westfalen': ['Mittelrhein', 'Niederrhein', 'Westfalen'], 'Rheinland-Pfalz': ['Rheinland', 'Südwest'], 'Baden-Württemberg': ['Baden', 'Südbaden', 'Württemberg'], Bayern: ['Bayern'] };
+const LANDV = { 'Nordrhein-Westfalen': ['Mittelrhein', 'Niederrhein', 'Westfalen'], 'Rheinland-Pfalz': ['Rheinland', 'Südwest'], 'Baden-Württemberg': ['Baden', 'Südbaden', 'Württemberg'], Bayern: ['Bayern'], Hessen: ['Hessen'], 'Thüringen': ['Thüringen'] };
 for (const v of LIG.verbaende) for (const st of v.staffeln) st.gn = MGR.gebietNorm(v.name, st.gn);
 const part = MGR.geoIndex(ORTE);
 const inPoly = (x, y, ring) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if (((yi > y) !== (yj > y)) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };

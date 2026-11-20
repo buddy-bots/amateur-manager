@@ -529,7 +529,9 @@ var BLAND = {
   'Nordrhein-Westfalen': { vb: ['Mittelrhein', 'Niederrhein', 'Westfalen'], k: 'NRW', ab: 'WDFV', c: ['#2a8a3e', '#ffffff', '#d52b1e'] },
   'Rheinland-Pfalz': { vb: ['Rheinland', 'Südwest', 'RV Südwest'], k: 'RLP', ab: 'FVR · SWFV', c: ['#1a1a1a', '#d4202a', '#f2c200'] },
   'Baden-Württemberg': { vb: ['Baden', 'Südbaden', 'Württemberg', 'Oberliga BW'], k: 'BW', ab: 'bfv · SBFV · wfv', c: ['#111111', '#f6c400', '#111111'] },
-  'Bayern': { vb: ['Bayern'], k: 'BY', ab: 'BFV', c: ['#0a7fd0', '#ffffff', '#0a7fd0'] }
+  'Bayern': { vb: ['Bayern'], k: 'BY', ab: 'BFV', c: ['#0a7fd0', '#ffffff', '#0a7fd0'] },
+  'Hessen': { vb: ['Hessen'], k: 'HE', ab: 'HFV', c: ['#d4202a', '#ffffff', '#d4202a'] },
+  'Thüringen': { vb: ['Thüringen', 'RV Nordost'], k: 'TH', ab: 'TFV', c: ['#ffffff', '#d4202a', '#ffffff'] }
 };
 function cpLands() { return (CP.land ? [CP.land] : Object.keys(BLAND)).map(encodeURIComponent).join(','); }
 function cpVbs() { var L = BLAND[CP.land]; if (L) return L.vb; var a = []; Object.keys(BLAND).forEach(function (k) { a = a.concat(BLAND[k].vb); }); return a; }

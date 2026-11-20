@@ -20,6 +20,8 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE
 
 // Vorgaben aus der Admin-Seite (game_config) – jede Minute neu geladen und in die Spielregeln übernommen
 let cfgAt = 0;
+// Zugang: Admin immer; sonst eingelöster Code, solange sein Ablaufdatum nicht überschritten ist
+function hasAccess(p: any): boolean { if (!p) return false; if (p.is_admin) return true; if (!p.access_at) return false; return !p.access_until || String(p.access_until) >= new Date().toISOString().slice(0, 10); }
 async function refreshCfg(force = false) {
   if (!force && Date.now() - cfgAt < 60_000) return;
   cfgAt = Date.now();
@@ -324,7 +326,7 @@ function sanitize(action: string, params: any) {
 async function handle(req: Request, userId: string, body: any) {
   try { await refreshMedia(); } catch (_e) { /* Bilder sind optional */ }
   try { await refreshCfg(body && body.op === 'cfgReload'); } catch (_e) { /* Vorgaben sind optional */ }
-  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at, birth_year').eq('id', userId).single();
+  const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at, access_until, birth_year').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);
   const op = String(body.op || '');
@@ -332,19 +334,19 @@ async function handle(req: Request, userId: string, body: any) {
   if (op === 'init') {
     await admin.from('daily_logins').upsert({ user_id: userId, day: berlinDay() }, { onConflict: 'user_id,day', ignoreDuplicates: true });
     const { data: saves } = await admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, updated_at').eq('user_id', userId).order('updated_at', { ascending: false });
-    return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin, access: !!(profile.access_at || profile.is_admin) }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
+    return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin, access: hasAccess(profile), accessExpired: !!(profile.access_at && !hasAccess(profile)), accessUntil: profile.access_until || null }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
   }
   if (op === 'keyRedeem') {
     // Zugangscode einmalig einlösen
-    if (profile.access_at || profile.is_admin) return { ok: true, already: true };
+    if (hasAccess(profile)) return { ok: true, already: true };
     const code = String(body.code || '').replace(/\D/g, '');
     if (code.length !== 8) throw new HttpError(400, 'Der Zugangscode hat 8 Ziffern.');
-    const { data: k } = await admin.from('access_keys').update({ used_by: userId, used_at: new Date().toISOString() }).eq('code', code).is('used_by', null).select('code').maybeSingle();
-    if (!k) throw new HttpError(400, 'Dieser Zugangscode ist ungültig oder wurde schon benutzt.');
-    await admin.from('profiles').update({ access_at: new Date().toISOString() }).eq('id', userId);
+    const { data: k } = await admin.from('access_keys').update({ used_by: userId, used_at: new Date().toISOString() }).eq('code', code).is('used_by', null).gte('valid_until', new Date().toISOString().slice(0, 10)).select('code, valid_until').maybeSingle();
+    if (!k) throw new HttpError(400, 'Dieser Zugangscode ist ungültig, abgelaufen oder wurde schon benutzt.');
+    await admin.from('profiles').update({ access_at: new Date().toISOString(), access_until: k.valid_until }).eq('id', userId);
     return { ok: true };
   }
-  if ((op === 'new' || op === 'load') && !profile.access_at && !profile.is_admin) throw new HttpError(403, 'Zum Spielen brauchst du einen Zugangscode.');
+  if ((op === 'new' || op === 'load' || op === 'act') && !hasAccess(profile)) throw new HttpError(403, profile.access_at ? 'Dein Testzugang ist abgelaufen. Für weiteres Spielen brauchst du einen neuen Zugangscode.' : 'Zum Spielen brauchst du einen Zugangscode.');
   if (op === 'export') {
     const [saves, tickets, msgs, purchases, favs, logins] = await Promise.all([
       admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, created_at, updated_at, state').eq('user_id', userId),

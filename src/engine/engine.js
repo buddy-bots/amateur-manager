@@ -500,6 +500,10 @@ var MGR = (function () {
       adj: [['ii', 'yokatta'], ['takai', 'takakatta'], ['samui', 'samukatta'], ['atsui', 'atsukatta'], ['oishii', 'oishikatta'], ['hayai', 'hayakatta'], ['tanoshii', 'tanoshikatta'], ['muzukashii', 'muzukashikatta']],
       kei: [['iku (Respekt)', 'irassharu'], ['taberu (Respekt)', 'meshiagaru'], ['iu (Respekt)', 'ossharu'], ['suru (Respekt)', 'nasaru'], ['miru (Respekt)', 'goran ni naru'], ['iku (Bescheiden)', 'mairu'], ['taberu (Bescheiden)', 'itadaku'], ['iu (Bescheiden)', 'mōsu'], ['suru (Bescheiden)', 'itasu'], ['miru (Bescheiden)', 'haiken suru'], ['iru (Bescheiden)', 'oru']] }
   };
+  // Englisch: kurze Sätze statt Einzelwörter (A1 bzw. A2 mit gemischten Zeiten)
+  var EN_S1 = [['Der Spieler ist sehr schnell.', 'The player is very fast.'], ['Wir spielen heute im Stadion.', 'We are playing in the stadium today.'], ['Der Trainer ist zufrieden.', 'The coach is happy.'], ['Ich trinke gern Wasser.', 'I like drinking water.'], ['Das Spiel beginnt um drei Uhr.', 'The match starts at three o’clock.'], ['Mein Freund ist ein großer Fan.', 'My friend is a big fan.'], ['Die Mannschaft hat zwei Torhüter.', 'The team has two goalkeepers.'], ['Das Auto steht vor dem Haus.', 'The car is in front of the house.'], ['Der Schiedsrichter pfeift ab.', 'The referee blows the final whistle.'], ['Morgen haben wir Training.', 'We have training tomorrow.'], ['Der Ball ist im Tor.', 'The ball is in the goal.'], ['Das war ein gutes Spiel.', 'That was a good game.'], ['Wie heißt du?', 'What is your name?'], ['Ich wohne in einem kleinen Dorf.', 'I live in a small village.'], ['Wir haben heute gewonnen.', 'We won today.'], ['Kannst du mir helfen?', 'Can you help me?'], ['Das Stadion ist voll.', 'The stadium is full.'], ['Er spielt jeden Samstag Fußball.', 'He plays football every Saturday.'], ['Die Fans singen laut.', 'The fans are singing loudly.'], ['Ich habe Hunger.', 'I am hungry.']];
+  var EN_S2 = [['Gestern haben wir zwei Tore geschossen.', 'Yesterday we scored two goals.'], ['Nächste Woche spielen wir auswärts.', 'Next week we will play away.'], ['Der Stürmer läuft gerade zum Tor.', 'The striker is running towards the goal right now.'], ['Ich habe den Trainer noch nie so wütend gesehen.', 'I have never seen the coach so angry.'], ['Wir haben das Spiel leider verloren.', 'Unfortunately, we lost the match.'], ['Sie wird morgen einen neuen Vertrag unterschreiben.', 'She is going to sign a new contract tomorrow.'], ['Als ich ankam, regnete es.', 'When I arrived, it was raining.'], ['Der Verein sucht seit Wochen einen Torwart.', 'The club has been looking for a goalkeeper for weeks.'], ['Er war letzte Saison verletzt.', 'He was injured last season.'], ['Wir trainieren gerade im Regen.', 'We are training in the rain at the moment.'], ['Hast du schon das Ergebnis gehört?', 'Have you heard the result yet?'], ['Das Stadion wurde 1995 gebaut.', 'The stadium was built in 1995.'], ['Ich werde dich nach dem Spiel anrufen.', 'I will call you after the match.'], ['Die Spieler waren nach dem Spiel müde.', 'The players were tired after the game.'], ['Was hast du am Wochenende gemacht?', 'What did you do at the weekend?'], ['Der Bus kommt in zehn Minuten.', 'The bus is coming in ten minutes.']];
+  var EN_PDE = { go: 'Ich wäre gegangen', win: 'Ich hätte gewonnen', lose: 'Ich hätte verloren', run: 'Ich wäre gelaufen', see: 'Ich hätte es gesehen', take: 'Ich hätte es genommen', give: 'Ich hätte es gegeben', eat: 'Ich hätte gegessen', drink: 'Ich hätte getrunken', write: 'Ich hätte geschrieben', speak: 'Ich hätte gesprochen', begin: 'Ich hätte angefangen', choose: 'Ich hätte gewählt', bring: 'Ich hätte es mitgebracht', teach: 'Ich hätte es beigebracht', fall: 'Ich wäre gefallen', forget: 'Ich hätte es vergessen', break: 'Ich hätte es kaputt gemacht' };
   function mcq(q, a, pool, R2) { var o = [a], p = pool.filter(function (x) { return x !== a; }), t = 0; while (o.length < 4 && p.length && t++ < 40) { var c = p[Math.floor(R2() * p.length)]; if (o.indexOf(c) < 0) o.push(c); } for (var i = o.length - 1; i > 0; i--) { var j = Math.floor(R2() * (i + 1)); var tt = o[i]; o[i] = o[j]; o[j] = tt; } return { q: q, a: a, o: o }; }
   function langQs(L, lvl) {
     var lvl0 = Math.min(6, Math.max(1, lvl)); lvl = [0, 1, 2, 3, 3, 4, 4][lvl0];
@@ -508,14 +512,14 @@ var MGR = (function () {
     var si = Math.min(3, Math.max(1, lvl)) - 1, sd = SENT.de[si], sf = (SENT[L] || SENT.en)[si];
     sd.forEach(function (de, i) { var q = R2() < 0.5 ? mcq('Übersetze: „' + de + '“', sf[i], sf, R2) : mcq('Was bedeutet: „' + sf[i] + '“?', de, sd, R2); q.s = 1; tail.push(q); });
     if (lvl <= 1) {
-      LV_DE.slice(0, 22).forEach(function (w, i) { Q.push(mcq('Was heißt „' + w + '“ auf ' + nm + '?', d.voc[i], d.voc, R2)); });
+      if (L !== 'en') { LV_DE.slice(0, 22).forEach(function (w, i) { Q.push(mcq('Was heißt „' + w + '“ auf ' + nm + '?', d.voc[i], d.voc, R2)); }); d.num.forEach(function (w, i) { if (i % 3 === 1) Q.push(mcq('Welche Zahl ist „' + w + '“?', String(i + 1), ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], R2)); }); LV_DE.slice(0, 22).forEach(function (w, i) { if (i % 2 === 0) Q.push(mcq('Was bedeutet „' + d.voc[i] + '“?', w, LV_DE.slice(0, 22), R2)); }); }
+      if (L === 'en') EN_S1.forEach(function (x, i) { Q.push(i % 2 ? mcq('Übersetze: „' + x[0] + '“', x[1], EN_S1.map(function (y) { return y[1]; }), R2) : mcq('Was bedeutet: „' + x[1] + '“?', x[0], EN_S1.map(function (y) { return y[0]; }), R2)); });
       GR_DE.forEach(function (w, i) { Q.push(mcq('Wie sagt man „' + w + '“ auf ' + nm + '?', d.gr[i], d.gr, R2)); });
-      d.num.forEach(function (w, i) { if (i % 3 === 1) Q.push(mcq('Welche Zahl ist „' + w + '“?', String(i + 1), ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], R2)); });
-      LV_DE.slice(0, 22).forEach(function (w, i) { if (i % 2 === 0) Q.push(mcq('Was bedeutet „' + d.voc[i] + '“?', w, LV_DE.slice(0, 22), R2)); });
       if (d.be) d.be.forEach(function (f, i) { Q.push(mcq('„' + PERS[i] + ' ' + (['bin', 'bist', 'ist', 'sind', 'seid', 'sind'][i]) + '“ auf ' + nm + ' (' + d.pro[i] + ' …):', f, d.be, R2)); });
       if (L === 'ja') d.part.slice(0, 5).forEach(function (x) { Q.push(mcq('Welche Partikel passt? ' + x[0], x[1], d.partO, R2)); });
     } else if (lvl === 2) {
       if (L === 'ja') { Object.keys(d.verbs).forEach(function (v) { [0, 1, 2].forEach(function (f) { var all = Object.keys(d.verbs).map(function (k) { return d.verbs[k][f]; }).concat(d.verbs[v]); Q.push(mcq(d.vf[f] + ' von „' + v + '“?', d.verbs[v][f], all, R2)); }); }); d.part.forEach(function (x) { Q.push(mcq('Welche Partikel passt? ' + x[0], x[1], d.partO, R2)); }); }
+      else if (L === 'en') { EN_S2.forEach(function (x, i) { Q.push(i % 2 ? mcq('Übersetze: „' + x[0] + '“', x[1], EN_S2.map(function (y) { return y[1]; }), R2) : mcq('Was bedeutet: „' + x[1] + '“?', x[0], EN_S2.map(function (y) { return y[0]; }), R2)); }); Object.keys(d.conj).forEach(function (v) { d.conj[v].forEach(function (f, i) { if (i === 2) Q.push(mcq('Präsens von „' + v + '“: ' + d.pro[i] + ' ___', f, d.conj[v].concat([v + 'ed', v + 'ing']), R2)); }); }); d.past.slice(0, 10).forEach(function (x) { Q.push(mcq('Ergänze im Simple Past: „Yesterday I ___ …“ (gestern … ich)', x[1], d.past.map(function (y) { return y[1]; }).concat([x[0] + 'ed']), R2)); }); }
       else { Object.keys(d.conj).forEach(function (v) { d.conj[v].forEach(function (f, i) { if (i % 2 === 0 || L !== 'en') Q.push(mcq('Präsens von „' + v + '“: ' + d.pro[i] + ' ___', f, d.conj[v].concat(L === 'en' ? [v + 'ed', v + 'ing'] : []), R2)); }); }); d.art.forEach(function (x) { Q.push(mcq((d.artQ || 'Welcher Artikel passt?') + ' ___ ' + x[0], x[1], d.artO, R2)); }); if (L === 'en') EN2.forEach(function (x) { Q.push(mcq(x[0], x[1], x[2], R2)); }); LV_DE.slice(22).forEach(function (w, i) { if (d.voc[22 + i]) Q.push(mcq('Was heißt „' + w + '“ auf ' + nm + '?', d.voc[22 + i], d.voc.slice(22), R2)); }); }
     } else if (lvl === 3) {
       if (L === 'ja') { Object.keys(d.verbs).forEach(function (v) { [3, 4, 5].forEach(function (f) { Q.push(mcq(d.vf[f] + ' von „' + v + '“?', d.verbs[v][f], d.verbs[v].concat(Object.keys(d.verbs).map(function (k) { return d.verbs[k][f]; })), R2)); }); }); d.adj.forEach(function (x) { Q.push(mcq('Vergangenheit des Adjektivs „' + x[0] + '“?', x[1], d.adj.map(function (y) { return y[1]; }).concat([x[0] + 'katta', x[0] + 'deshita']), R2)); }); }
@@ -523,7 +527,7 @@ var MGR = (function () {
       else { Object.keys(d.past).forEach(function (v) { d.past[v].forEach(function (f, i) { var pool = Object.keys(d.past).map(function (k) { return d.past[k][i]; }).concat(d.past[v]); Q.push(mcq('Vergangenheit von „' + v + '“ (' + d.pastP[i] + '):', f, pool, R2)); }); }); d.prep.forEach(function (x) { Q.push(mcq('Welche Präposition passt? ' + x[0], x[1], d.prepO, R2)); }); }
     } else {
       if (L === 'ja') { Object.keys(d.verbs).forEach(function (v) { [6, 7, 8].forEach(function (f) { Q.push(mcq(d.vf[f] + ' von „' + v + '“?', d.verbs[v][f], d.verbs[v].concat(Object.keys(d.verbs).map(function (k) { return d.verbs[k][f]; })), R2)); }); }); d.kei.forEach(function (x) { Q.push(mcq('Keigo-Form von „' + x[0] + '“?', x[1], d.kei.map(function (y) { return y[1]; }), R2)); }); }
-      else if (L === 'en') { d.cond.forEach(function (x) { Q.push(mcq('Ergänze: ' + x[0], x[1], d.condO, R2)); }); d.part.forEach(function (x) { Q.push(mcq('If I had known, I would have ___ (' + x[0] + ').', x[1], d.part.map(function (y) { return y[1]; }).concat([x[0] + 'ed']), R2)); }); d.idi.forEach(function (x) { Q.push(mcq('Was bedeutet „' + x[0] + '“?', x[1], d.idi.map(function (y) { return y[1]; }), R2)); }); }
+      else if (L === 'en') { d.cond.forEach(function (x) { Q.push(mcq('Ergänze: ' + x[0], x[1], d.condO, R2)); }); d.part.forEach(function (x) { Q.push(mcq('Ergänze: „If I had known, I would have ___.“ – Deutsch: „Hätte ich es gewusst … ' + (EN_PDE[x[0]] || '') + '.“', x[1], d.part.map(function (y) { return y[1]; }).concat([x[0] + 'ed']), R2)); }); d.idi.forEach(function (x) { Q.push(mcq('Was bedeutet „' + x[0] + '“?', x[1], d.idi.map(function (y) { return y[1]; }), R2)); }); }
       else { Object.keys(d.cond).forEach(function (v) { d.cond[v].forEach(function (f, i) { var pool = Object.keys(d.cond).map(function (k) { return d.cond[k][i]; }).concat(d.cond[v]); Q.push(mcq('Konditional von „' + v + '“ (' + d.pastP[i] + '):', f, pool, R2)); }); }); d.subj.forEach(function (x) { Q.push(mcq(d.subjL + ' von „' + x[0] + '“?', x[1], d.subj.map(function (y) { return y[1]; }), R2)); }); d.idi.forEach(function (x) { Q.push(mcq('Was bedeutet „' + x[0] + '“?', x[1], d.idi.map(function (y) { return y[1]; }), R2)); }); }
     }
     return Q.slice(0, 50 - tail.length).concat(tail);
@@ -1299,6 +1303,8 @@ var MGR = (function () {
       if (aWins) { up[l].push(A); down[l - 1].push(B); }
       if (A.svw || B.svw) msg(S, 'liga', 'Relegation: ' + (aWins ? A.n + ' setzt sich gegen ' + B.n + ' durch.' : B.n + ' behauptet sich gegen ' + A.n + '.'));
     }
+    // Saisonbilanz aller Ligen für das Ligen-Fenster (vor der Bewegung festhalten)
+    var ligRep = []; for (l = D.maxLvl; l >= 1; l--) { var tl = T[l] || []; ligRep.push({ l: l, n: D.lv[l].short || D.lv[l].name, champ: tl[0] ? tl[0].n : '', up: up[l].map(function (t) { return t.n; }), down: down[l].map(function (t) { return t.n; }), own: l === oldLvl }); }
     // Bewegung
     var nw = {};
     for (l = 1; l <= D.maxLvl; l++) {
@@ -1364,6 +1370,10 @@ var MGR = (function () {
     var scorer = S.players.slice().sort(function (a, b) { return b.g - a.g; })[0];
     var games = (n - 1) * 2, kingGoals = Math.round(rnd(0.55, 0.85) * games);
     if (scorer && scorer.g >= kingGoals) ach(S, 'torjaeger', scorer.n + ' mit ' + scorer.g + ' Toren', false, oldLvl);
+    // Torwandschießen im TV mit dem Torschützenkönig – Ausgang zufällig, Follower gibt es immer
+    if (scorer && scorer.g >= kingGoals) { var tw = rint(0, 2), tf = [rint(900, 2200), rint(500, 1400), rint(250, 700)][tw]; S.follow = (S.follow != null ? S.follow : followStart(S)) + tf;
+      var tt = [scorer.n + ' räumt im TV-Studio beim Torwandschießen richtig ab – 5 von 6 Treffern! Das Netz feiert ihn.', scorer.n + ' tritt im TV beim Torwandschießen an … und trifft kein einziges Mal. Peinlich – aber das Video geht viral.', scorer.n + ' sollte im TV zum Torwandschießen antreten, musste aber mit Bauchweh absagen. Die Fans schicken Genesungswünsche.'][tw];
+      infoMail(S, 'TV-Redaktion', ['🎯 Torwand-Held!', '😬 Torwand-Blamage', '🤒 Torwand fällt aus'][tw], tt + ' (+' + tf.toLocaleString('de-DE') + ' Follower)', 'info'); ownPost(S, ['🎯 Was für eine Show an der Torwand! ' + scorer.n + ' hat abgeräumt 🔥', '😂 Torwand 0/6 – ' + scorer.n + ' nimmt es mit Humor. Tore schießt er lieber auf dem Platz!', '🤒 Gute Besserung, ' + scorer.n + '! Die Torwand muss warten.'][tw], 'stadion'); }
     var best = S.players.filter(function (p) { return p.gp >= Math.min(15, games / 2); }).sort(function (a, b) { return a.gr / a.gp - b.gr / b.gp; })[0];
     if (best) ach(S, 'spieler_jahr', best.n + ' (Ø Note ' + g10t(best.gr / best.gp) + ')', false, oldLvl);
     if (goalOk) ach(S, 'saisonziel', GOALS[S.goal], false, oldLvl);
@@ -1371,6 +1381,14 @@ var MGR = (function () {
     S.seasonRep = { season: S.season, liga: L.name, newLiga: D.lv[S.lvl].name, rank: me.rank, n: n, pts: me.pts, tore: me.tf + ':' + me.ta, s: me.s, u: me.u, nl: me.nl, result: result, goal: GOALS[S.goal], goalOk: goalOk, table: tab.map(function (r) { return { rank: r.rank, n: r.n, pts: r.pts, diff: r.diff, svw: !!r.svw, zone: r.zone }; }), scorer: scorer ? { n: scorer.n, g: scorer.g } : null, best: best ? { n: best.n, avg: Math.round(best.gr / best.gp * 10) / 10 } : null, cups: cupBest, inn: Math.round(sIn), out: Math.round(sOut), wealth: Math.round(wealth(S)), pots: { cash: Math.round(S.cash), tb: Math.round(S.tb), sav: Math.round(S.sav) }, ack: false };
     if (goalOk) { S.board += 15; msg(S, 'verein', 'Saisonziel „' + GOALS[S.goal] + '“ erreicht (Platz ' + me.rank + '). Der Vorstand ist zufrieden.'); }
     else { S.board -= S.goal === 'aufstieg' ? 12 : 20; msg(S, 'verein', 'Saisonziel „' + GOALS[S.goal] + '“ verfehlt (Platz ' + me.rank + '). Der Vorstand ist unzufrieden.'); }
+    // Zusatzseiten für den Saisonabschluss: Wahl, Ligen, Bestenlisten, Vorstand, neue Saison
+    try { var SR = S.seasonRep, mapT = function (T0) { return T0 ? { top: (T0.top5 || []).map(function (x) { return { n: x.n, team: x.team, pos: x.pos, own: x.own, v: x.v, rank: x.rank }; }), mine: T0.mineAny && T0.mineAny.rank > 3 ? { n: T0.mineAny.n, v: T0.mineAny.v, rank: T0.mineAny.rank } : null } : null; };
+      SR.vote = lvS ? { gr: mapT(lvS.top.gr), g: mapT(lvS.top.g), a: mapT(lvS.top.a) } : null; SR.ligen = ligRep;
+      var resM = SR.inn - SR.out, gFin = resM >= 0 ? (resM > SR.inn * 0.1 ? 1 : 2) : (resM > -SR.inn * 0.1 ? 3 : 5), gSport = goalOk ? (me.rank === 1 ? 1 : 2) : (result === 'Abstieg' ? 6 : me.rank <= Math.ceil(n / 2) ? 3 : 4), gFans = S.fans >= 80 ? 1 : S.fans >= 65 ? 2 : S.fans >= 50 ? 3 : S.fans >= 35 ? 4 : 5, gAll = Math.round((gFin + gSport * 2 + gFans) / 4);
+      var bX = [0, 120, 80, 50, 25, 10, 0][gAll], bF = [0, 900, 600, 350, 150, 50, 0][gAll]; if (bX) xp(S, bX); if (bF) S.follow = (S.follow != null ? S.follow : followStart(S)) + bF;
+      SR.board = { fin: gFin, sport: gSport, fans: gFans, all: gAll, xp: bX, fol: bF, res: resM, follow: Math.round(S.follow || 0) };
+      SR.xpSeason = Math.max(0, Math.floor((S.xpGame || 0) - (S.xpS0 || 0))); S.xpS0 = S.xpGame || 0; SR.mc = S.mc ? { sal: S.mc.sal, until: S.mc.until } : null; SR.mlvl = S.mlvl || 1;
+    } catch (eSR) {}
     S.peak = Math.min(S.peak || S.lvl, S.lvl);
     S.board = clamp(S.board, 0, 100); S.fans = clamp(S.fans, 0, 100); checkBars(S);
     // Verträge, Leihen, Karriereende
@@ -1449,15 +1467,20 @@ var MGR = (function () {
   function misView(S, D) {
     var lv = S.mlvl || 1, mc = S.mcnt || {}, out = { dailyOn: lv >= featLvl('tagesmissionen'), careerOn: lv >= featLvl('missionen'), daily: [], career: [] };
     if (S.dm) out.daily = S.dm.ids.map(function (id) { var m = DMISS.filter(function (x) { return x.id === id; })[0]; if (!m) return null; var have = Math.min(m.n, (mc[m.k] || 0) + (mc['t_' + m.k] || 0) - (S.dm.base[m.k] || 0) - (S.dm.base['t_' + m.k] || 0)); return { id: 'd:' + id, t: m.t, n: m.n, have: Math.max(0, have), st: S.dm.got[id] ? 'claimed' : have >= m.n ? 'done' : 'open', rw: dmRw(S, D, m) }; }).filter(Boolean);
-    var ci = S.cmi || 0; if (S.cmb == null) cmOpen(S, ci);
-    out.cmi = ci; out.dmTotal = (S.mcnt || {}).dmdone || 0;
-    out.career = CMISS.map(function (m, i) { var rw = cmRw(i), st = i < ci ? 'claimed' : i > ci ? 'locked' : 'open', have = 0, n = m[0] === 'peak' ? 1 : m[1];
-      if (i === ci) { if (m[0] === 'peak') have = (S.peak || S.lvl) <= m[1] ? 1 : 0; else if (m[0] === 'streak') have = Math.min(n, S.cmStr || 0); else have = Math.max(0, Math.min(n, cmHave(S, m[0]) - (S.cmb || 0))); if (have >= n) st = 'done'; }
-      return { id: 'c:' + i, t: i <= ci ? m[2] : '', n: n, have: i < ci ? n : have, st: st, rw: { x: rw.x, m: nice((D.lv[S.lvl].budget || 20000) * rw.c), j: rw.j || 0, h: rw.h || 0 }, tier: Math.floor(i / 15) + 1 }; });
+    cmInit(S); var ci = S.cmi || 0, stg = S.cms;
+    out.cmi = ci; out.dmTotal = (S.mcnt || {}).dmdone || 0; out.stage = stg + 1; out.stages = Math.ceil(CMISS.length / 10);
+    out.career = CMISS.map(function (m, i) { var rw = cmRw(i), ms = Math.floor(i / 10), n = m[0] === 'peak' ? 1 : m[1], have = 0, st;
+      if (ms < stg || (ms === stg && S.cmc[i])) { st = 'claimed'; have = n; }
+      else if (ms > stg) st = 'locked';
+      else { if (m[0] === 'peak') have = (S.peak || S.lvl) <= m[1] ? 1 : 0; else if (m[0] === 'streak') have = Math.min(n, S.cmStr || 0); else have = Math.max(0, Math.min(n, cmHave(S, m[0]) - (S.cmb2[i] || 0))); st = have >= n ? 'done' : 'open'; }
+      return { id: 'c:' + i, t: ms <= stg ? m[2] : '', n: n, have: have, st: st, rw: { x: rw.x, m: nice((D.lv[S.lvl].budget || 20000) * rw.c), j: rw.j || 0, h: rw.h || 0 }, tier: ms + 1 }; });
     return out;
   }
   // Neue Karriere-Mission öffnen: Startwert merken, damit nur zählt, was ab jetzt passiert
-  function cmOpen(S, i) { var m = CMISS[i]; S.cmb = m && m[0] !== 'peak' && m[0] !== 'streak' ? cmHave(S, m[0]) : 0; S.cmStr = 0; }
+  function cmOpen(S, i) { cmInit(S); }
+  // 10 Stufen à 10 Missionen: eine Stufe ist komplett offen, gezählt wird ab dem Öffnen der Stufe
+  function cmStageOpen(S, stg) { S.cms = stg; S.cmc = {}; S.cmb2 = {}; S.cmStr = 0; for (var i = stg * 10; i < Math.min(CMISS.length, stg * 10 + 10); i++) { var m = CMISS[i]; S.cmb2[i] = m[0] !== 'peak' && m[0] !== 'streak' ? cmHave(S, m[0]) : 0; } }
+  function cmInit(S) { if (S.cms != null && S.cmc && S.cmb2) return; var ci = S.cmi || 0, stg = Math.floor(ci / 10); cmStageOpen(S, stg); for (var k = stg * 10; k < ci; k++) S.cmc[k] = 1; }
   function misPay(S, rw, why) { var t = []; if (rw.x) { xp(S, rw.x); t.push('+' + rw.x + ' XP'); } if (rw.m) { book(S, 'Missionsprämie', rw.m); t.push('+' + euro(rw.m)); } if (rw.f) { S.fans = clamp((S.fans || 50) + rw.f, 0, 100); t.push('Fans +' + rw.f); } if (rw.j) { S.jokers = (S.jokers || 0) + rw.j; t.push(rw.j + ' Joker'); } if (rw.h) { S.hsPts = (S.hsPts || 0) + rw.h * 0.5; t.push(String(rw.h * 0.5).replace('.', ',') + ' Sterne'); } return '🎯 ' + why + ': ' + t.join(' · '); }
   function giveBonus(S, rw, why) { var t = []; if (rw.j) { S.jokers = (S.jokers || 0) + rw.j; t.push(rw.j + ' Joker'); } if (rw.h) { S.hsPts = (S.hsPts || 0) + rw.h * 0.5; t.push(String(rw.h * 0.5).replace('.', ',') + ' Sterne'); } return '🎁 ' + why + ': ' + t.join(' + '); }
   function misTrack(S, r) { mcAdd(S, 'game'); if (r.win) mcAdd(S, 'win'); else if (r.gf === r.ga) mcAdd(S, 'draw'); mcAdd(S, 'goal', r.gf); mcAdd(S, 'ga', r.ga || 0); if (r.ga === 0) mcAdd(S, 'csheet'); if (r.win && r.home) mcAdd(S, 'homewin'); if (r.win && !r.home) mcAdd(S, 'awaywin'); if (r.win && r.gf - r.ga >= 3) mcAdd(S, 'bigwin'); if (r.gf >= 3) mcAdd(S, 'scored3'); if (r.hat) mcAdd(S, 'hat'); S.bestStreak = Math.max(S.bestStreak || 0, S.streak || 0); if (r.win) S.cmStr = Math.max(S.cmStr || 0, S.streak || 0); }
@@ -1634,7 +1657,7 @@ var MGR = (function () {
     if (!res) res = fastResult(S, D, o); S.trainBoost = 0;
     var e = eff(S, D); var gf = res.gf, ga = res.ga, pen = res.pen, scorers = res.scorers;
     var win = gf > ga || pen === 'n.E. gewonnen', draw = gf === ga && !pen;
-    var injuries = [], cards = [], grades = [], devMsgs = [];
+    var injuries = [], cards = [], grades = [], devMsgs = [], rf = S._rf != null ? S._rf : 1; S._rf = null; // rf: Belohnungsfaktor (Power/Sofortergebnis)
     S.talk = null;
     var test = o.comp === 'test';
     if (o.benefiz) { var BT = o.benefiz.tier, binc = nice(BT === 3 ? rint(5000, 8000) : BT === 2 ? rint(8000, 15000) : rint(15000, 30000)), bfg = (4 - BT) * rint(250, 600) + rint(150, 400) + (win ? 400 : 0); book(S, 'Benefizspiel', binc); S.fans = clamp(S.fans + 4 + (4 - BT) * 2 + (win ? 3 : 0), 0, 100); S.spons = clamp(S.spons + 2 + (4 - BT), 0, 100); S.fanbase = Math.round(S.fanbase * (1.02 + (4 - BT) * 0.015)); S.follow = (S.follow || 0) + bfg; S.board = clamp(S.board + 2, 0, 100); xp(S, win ? 25 : 10); S.benefizRes = { opp: o.opp.n, tier: BT, inc: binc, fg: bfg, gf: gf, ga: ga, win: win }; ownPost(S, '⚽ Benefizspiel gegen ' + o.opp.n + '! Volle Hütte im Ländchen – ' + gf + ':' + ga + '. Danke an alle! 💚❤️', 'stadion'); msg(S, 'verein', '🌟 Benefizspiel gegen ' + o.opp.n + ': ' + gf + ':' + ga + ' · Einnahmen ' + euro(binc) + ' · +' + bfg + ' Follower'); }
@@ -1652,7 +1675,7 @@ var MGR = (function () {
       if (x.min >= 30 && !test) { if (p.dp2 && spos === p.dp2) { if (p.f2 == null) p.f2 = rnd(0.73, 0.82); if (p.f2 < 1) { p.f2 = Math.min(1, p.f2 + rnd(0.008, 0.018)); if (p.f2 >= 1 && (p.posG[p.dp2] || 0) >= 12 && !p.posAsked && !S.posPop) S.posPop = { pid: p.id, w: 2 }; } } if (p.dp3 && spos === p.dp3 && p.f3 < 1) { p.f3 = Math.min(1, p.f3 + rnd(0.008, 0.018)); if (p.f3 >= 1 && (p.posG[p.dp3] || 0) >= 12 && !p.posAsked3 && !S.posPop) S.posPop = { pid: p.id, w: 3 }; } }
       var cs = ga === 0 && (p.dp === 'TW' || p.dp === 'IV' || p.dp === 'RV' || p.dp === 'LV') ? 0.05 : 0;
       var dev = (3.5 - grade) * 0.06 + x.g * 0.05 + x.a * 0.03 + (x.sv || 0) * 0.015 + cs;
-      if (dev > 0) dev *= 0.6 + 0.14 * (p.tal || 3);
+      if (dev > 0) dev *= (0.6 + 0.14 * (p.tal || 3)) * rf;
       dev *= 0.4 * (p.age <= 23 ? 1.3 : p.age <= 28 ? 1 : p.age <= 31 ? 0.6 : 0.4) * (x.sub ? 1.25 : 1) * (test ? 0.5 : 1) * (x.min / 90);
       var bef = p.str; if (dev > 0) p.str = Math.min(p.pot + 1, p.str + dev); else p.str = Math.max(1, p.str + dev * 0.6); p.dStr = Math.round(p.str) - Math.round(bef); grades[grades.length - 1].dStr = p.dStr; grades[grades.length - 1].tal = p.tal;
       if (!test && p.gp >= 8) {
@@ -1676,13 +1699,13 @@ var MGR = (function () {
     var ms = res.ms || teamStr(S, D, o.home === true), os = res.os || o.opp.s;
     if (!test) {
       var mprot = e.moralschutz ? 0.5 : 1;
-      S.moral = clamp(S.moral + (win ? 5 : draw ? 0 : -5 * mprot), 10, 100);
-      S.fans = clamp(S.fans + (win ? 1.2 : draw ? 0.2 : (S.fans > 80 ? -2.2 : -1.6)), 0, 100);
+      S.moral = clamp(S.moral + (win ? 5 * rf : draw ? 0 : -5 * mprot), 10, 100);
+      S.fans = clamp(S.fans + (win ? 1.2 * rf : draw ? 0.2 * rf : (S.fans > 80 ? -2.2 : -1.6)), 0, 100);
       S.spons = clamp((S.spons || 60) + (win ? 0.8 : draw ? 0.1 : -0.7), 0, 100);
       var exp = ms - os;
       S.board = clamp(S.board + (win ? 0.5 : draw ? (exp > 4 ? -0.3 : 0.1) : (exp > 4 ? -1.1 : -0.5)), 0, 100);
       try { S.strHist = (S.strHist || []).concat([Math.round(xiAvg(S, D) * 10) / 10]).slice(-20); if (S.masc) { S.mascBond = S.mascBond || {}; S.mascBond[S.masc] = Math.min(100, (S.mascBond[S.masc] || 0) + (win ? 0.4 : draw ? 0.15 : 0)); } } catch (e) {}
-      xp(S, win ? 10 : draw ? 5 : 2); if (win) { S.wins = (S.wins || 0) + 1; S.fwWins = (S.fwWins || 0) + 1; milestones(S); } else if (draw) S.draws = (S.draws || 0) + 1; else S.losses = (S.losses || 0) + 1; S.streak = win ? (S.streak || 0) + 1 : 0; if (S.streak >= 5) ach(S, 'serie5', '', true);
+      xp(S, Math.round((win ? 10 : draw ? 5 : 2) * rf)); if (win) { S.wins = (S.wins || 0) + 1; S.fwWins = (S.fwWins || 0) + 1; milestones(S); } else if (draw) S.draws = (S.draws || 0) + 1; else S.losses = (S.losses || 0) + 1; S.streak = win ? (S.streak || 0) + 1 : 0; if (S.streak >= 5) ach(S, 'serie5', '', true);
       if (!test) misTrack(S, { win: win, gf: gf, ga: ga, home: o.home !== false, hat: grades.some(function (g) { return g.g >= 3; }) });
       else { if (win) mcAdd(S, 't_win'); else if (gf === ga) mcAdd(S, 't_draw'); mcAdd(S, 't_goal', gf); if (ga === 0) mcAdd(S, 't_csheet'); if (win && o.home !== false) mcAdd(S, 't_homewin'); if (win && o.home === false) mcAdd(S, 't_awaywin'); if (win && gf - ga >= 3) mcAdd(S, 't_bigwin'); if (gf >= 3) mcAdd(S, 't_scored3'); } // Testspiele zählen für Tagesmissionen mit
       grades.forEach(function (g) { if (g.g >= 3) { ach(S, 'hattrick', g.n + ' gegen ' + o.opp.n); ownPost(S, '⚽⚽⚽ HATTRICK! ' + g.n + ' schnürt gegen ' + o.opp.n + ' den Dreierpack. Was für ein Tag! 🎩🔥', 'tor'); } });
@@ -1704,7 +1727,7 @@ var MGR = (function () {
         var cf = concF(S), food = att * foodBase(S.lvl) * (1 + e.food / 100) * attract * 0.6 * cf, drinks = att * foodBase(S.lvl) * (1 + e.food / 100) * attract * 0.55 * cf;
         if (o.comp === 'mrp' && o.home !== false && /Achtelfinale|Viertelfinale|Halbfinale|Finale/.test(o.label || '')) { var mb = /Halbfinale|Finale/.test(o.label) ? 3.2 : 2.4; t *= mb; food *= mb * 0.8; drinks *= mb * 0.8; }
         if (o.home === null) { t *= 0.5; food = 0; drinks = 0; }
-        book(S, 'Zuschauereinnahmen', Math.round(t)); book(S, 'Speisen', Math.round(food)); book(S, 'Getränke', Math.round(drinks)); S.lastGate = { d: S.date, amt: Math.round(t + food + drinks), t: Math.round(t), f: Math.round(food + drinks), opp: o.opp.n, fx: true };
+        t *= rf; food *= rf; drinks *= rf; book(S, 'Zuschauereinnahmen', Math.round(t)); book(S, 'Speisen', Math.round(food)); book(S, 'Getränke', Math.round(drinks)); S.lastGate = { d: S.date, amt: Math.round(t + food + drinks), t: Math.round(t), f: Math.round(food + drinks), opp: o.opp.n, fx: true };
       }
     }
     if (!test) book(S, 'Schiri & Fahrtkosten', -nice(D.lv[S.lvl].admin * 0.3 + 60));
@@ -1738,7 +1761,14 @@ var MGR = (function () {
   function liveStr(S, D) {
     var L = S.live; var slots = FORMS[S.lineup.form]; var on = liveOn(S); var sum = 0;
     on.forEach(function (p, i) { if (p) { var tired = clamp(1 - Math.max(0, L.min - (L.st[p.id].from || 0) - 60) * 0.002, 0.9, 1); sum += rateIn(p, slots[i]) * tired * (L.st[p.id].inj ? 0.5 : 1); } });
-    return sum / 11 + L.base + (L.inst ? 0 : 0.8);
+    return sum / 11 + L.base + (L.inst ? 0 : 0.8) - (L.gkEm ? 1.6 : 0); // Notfall-Torwart: Abwehr deutlich schwächer
+  }
+  function gkPick(S, D, pid) {
+    var L = S.live; if (!L || !L.pause || L.pause.type !== 'gk') err('Gerade ist keine Torwart-Entscheidung offen.'); var slot = L.pause.slot, on = liveOn(S);
+    var cands = on.map(function (p, i) { return p ? { p: p, i: i } : null; }).filter(function (x) { return x && x.i !== slot; });
+    var c = pid != null ? cands.filter(function (x) { return x.p.id === +pid; })[0] : cands.slice().sort(function (a, b) { return rateIn(b.p, 'TW') - rateIn(a.p, 'TW'); })[0]; if (!c) err('Spieler nicht auf dem Platz.');
+    L.on[slot] = c.p.id; L.on[c.i] = null; (L.injOut = L.injOut || []).push(c.i); L.st[c.p.id].slot = 'TW'; L.gkEm = c.p.id; L.pause = null;
+    liveEv(L, 'sub', '🧤 ' + c.p.n + ' geht ins Tor – wir spielen mit zehn Mann und einem Notfall-Keeper.');
   }
   function liveMinLabel(L) { if (L.half >= 3) return String(L.min); return L.half === 1 ? (L.min > 45 ? '45+' + (L.min - 45) : String(L.min)) : (L.min > 90 ? '90+' + (L.min - 90) : String(L.min)); }
   function liveEv(L, k, t, x, y, w) { L.ev.push(x != null ? { m: liveMinLabel(L), k: k, t: t, x: Math.round(x), y: Math.round(clamp(y, 3, 97)) } : { m: liveMinLabel(L), k: k, t: t }); if ((k === 'goal' || k === 'goalA') && x != null) (L.goals = L.goals || []).push([Math.round(x), Math.round(clamp(y, 5, 95)), k === 'goal' ? 1 : 0]); if (x != null) for (var i = 0; i < (w || 3); i++) L.heat.push([Math.round(clamp(x + gauss() * 4, 1, 99)), Math.round(clamp(y + gauss() * 6, 1, 99))]); }
@@ -1798,7 +1828,7 @@ var MGR = (function () {
     on.forEach(function (p, i) {
       if (!p || L.st[p.id].inj) return;
       var ip = 0.018 / 90 * (p.fit < 60 ? 1.6 : 1) * (1 + e.inj / 100) * (S.train.int === 'hart' ? 1.15 : 1) * (S.pitch.type === 'kunst' && pitchCond(S) < 0.2 ? 1.4 : 1);
-      if (R() < ip) { var days = injDays(e); L.st[p.id].inj = days; L.inj.push({ id: p.id, days: days }); liveEv(L, 'inj', cm('inj', { p: p.n + ' (' + p.dp + ')' }), rnd(20, 80), rnd(10, 90), 1); if (L.subs < L.maxSubs && avail(S).some(function (q) { return !L.st[q.id]; })) L.pause = { type: 'inj', slot: i, pid: p.id, n: p.n, pos: p.dp }; else { L.st[p.id].to = L.min; L.on[i] = null; (L.injOut = L.injOut || []).push(i); liveEv(L, 'inj', 'Kein Wechsel mehr möglich – wir spielen mit einem Mann weniger.'); } }
+      if (R() < ip) { var days = injDays(e); L.st[p.id].inj = days; L.inj.push({ id: p.id, days: days }); liveEv(L, 'inj', cm('inj', { p: p.n + ' (' + p.dp + ')' }), rnd(20, 80), rnd(10, 90), 1); if (L.subs < L.maxSubs && avail(S).some(function (q) { return !L.st[q.id]; })) L.pause = { type: 'inj', slot: i, pid: p.id, n: p.n, pos: p.dp }; else if (FORMS[S.lineup.form][i] === 'TW') { L.st[p.id].to = L.min; L.on[i] = null; L.pause = { type: 'gk', slot: i, pid: p.id, n: p.n }; liveEv(L, 'inj', 'Kein Wechsel mehr – ein Feldspieler muss ins Tor!'); } else { L.st[p.id].to = L.min; L.on[i] = null; (L.injOut = L.injOut || []).push(i); liveEv(L, 'inj', 'Kein Wechsel mehr möglich – wir spielen mit einem Mann weniger.'); } }
     });
   }
   function liveRed(S, p, second) {
@@ -1808,7 +1838,7 @@ var MGR = (function () {
   }
   function liveStep(S, D, to) {
     var L = S.live; if (!L) err('Kein laufendes Spiel.'); if (L.done) return L;
-    if (L.pause) { if (L.pause.type === 'penF' || L.pause.type === 'penA') err('Erst den Elfmeter entscheiden.'); L.pause = null; }
+    if (L.pause) { if (L.pause.type === 'penF' || L.pause.type === 'penA') err('Erst den Elfmeter entscheiden.'); if (L.pause.type === 'gk') gkPick(S, D, null); L.pause = null; }
     var lim = Math.max(L.min + 1, Math.min(+to || 999, 200));
     while (L.min < lim && !L.pause && !L.done) {
       if (L.half === 1 && L.min >= 45 + L.stop1) { L.ht1 = [L.gf, L.ga]; L.half = 2; L.min = 45; L.stop2 = Math.max(2, Math.round(rnd(1, 3) + L.subs * 0.5 + (L.gf + L.ga) * 0.4 + L.inj.length * 0.7)); liveEv(L, 'ht', 'Halbzeit! Es steht ' + L.gf + ':' + L.ga + '.'); L.pause = { type: 'ht' }; break; }
@@ -1861,8 +1891,33 @@ var MGR = (function () {
     delete L.st[U.nid]; if (U.oid != null && U.oldSt) { L.st[U.oid] = U.oldSt; L.st[U.oid].to = null; } L.on[U.slot] = U.oid; L.subs = Math.max(0, L.subs - 1); S.lineup.xi = L.on.slice();
     var nn = (S.players.filter(function (p) { return p.id === U.nid; })[0] || {}).n || ''; liveEv(L, 'sub', 'Wechsel zurückgenommen – ' + nn + ' bleibt auf der Bank.', 50, 50, 1); L.undo = null; return L;
   }
+  // Power-System für Sofortergebnisse: Belohnungsfaktor & Strafen
+  function instMode(S, L) { if (L.instMode) return; if (L.half === 1 || L.min < 46) L.instMode = 'full'; else if (L.min < 75 && L.half <= 2) { S.instMidN = (S.instMidN || 0) + 1; if (S.instMidN >= 3) L.instMode = 'full'; else { L.instMode = 'mid'; L.instPct = rint(8, 23); if (S.instMidN === 2) { L.instCut = true; S.salCut = 1; } } } else L.instMode = 'late'; }
+  function liveAutoRun(S, D) {
+    if (!S.live) { autoMatches(S, D); return; } if (S.live.done) return;
+    var LA = S.live; if (!LA.inst && S.mcnt && S.mcnt.live > 0) S.mcnt.live--; LA.inst = true; instMode(S, LA); var g = 0;
+    var benchFor = function (pos, gk) { return avail(S).filter(function (q) { return !LA.st[q.id] && (!LA.bench || LA.bench.indexOf(q.id) >= 0) && (gk ? true : q.pos !== 'TW'); }).sort(function (a, b) { return rateIn(b, pos) - rateIn(a, pos); }); };
+    var autoSub = function (slot) { var on = liveOn(S); var op = on[slot]; var pos = op ? op.dp : FORMS[S.lineup.form][slot]; var bench = benchFor(pos, pos === 'TW'); if (bench.length && LA.subs < LA.maxSubs && LA.red.indexOf(slot) < 0) { try { liveSub(S, D, slot, bench[0].id); } catch (e) {} } };
+    // zufällig 1–5 Wechsel, meist ab ca. Minute 53, selten schon in der 1. Halbzeit; Torwart nur bei Verletzung
+    if (!LA.plan) { var nS = Math.max(0, Math.min(rint(1, 5), LA.maxSubs - LA.subs)), pl = []; for (var si = 0; si < nS; si++) { var mm = R() < 0.12 ? rint(25, 44) : rint(53, 88); if (mm > LA.min) pl.push(mm); } LA.plan = pl.sort(function (a, b) { return a - b; }); }
+    var subOne = function () { var on = liveOn(S), cand = []; on.forEach(function (p, i) { if (!p || p.dp === 'TW' || FORMS[S.lineup.form][i] === 'TW') return; var st = LA.st[p.id]; if (!st || LA.red.indexOf(i) >= 0) return; var yel = LA.cards.some(function (c) { return c.id === p.id && c.t === 'y'; }); var tired = (LA.min - (st.from || 0)) > 55 && p.fit < 80; cand.push({ i: i, w: (st.gr || 3.5) + (yel ? 1.2 : 0) + (tired ? 0.8 : 0) + R() * 0.6 - (st.sub ? 3 : 0) }); }); cand.sort(function (a, b) { return b.w - a.w; }); if (cand[0] && LA.subs < LA.maxSubs) autoSub(cand[0].i); };
+    while (!LA.done && g++ < 500) {
+      if (LA.pause && (LA.pause.type === 'penF' || LA.pause.type === 'penA')) { livePen(S, D, pick(['l', 'm', 'r'])); continue; }
+      if (LA.pause && LA.pause.type === 'inj') { autoSub(LA.pause.slot); if (LA.pause && LA.pause.type === 'inj') LA.pause = null; continue; }
+      if (LA.pause && LA.pause.type === 'gk') { gkPick(S, D, null); continue; }
+      while (LA.plan.length && LA.plan[0] <= LA.min) { LA.plan.shift(); subOne(); }
+      var nx = LA.plan.length ? LA.plan[0] : 999;
+      liveStep(S, D, LA.half === 1 ? Math.min(nx, 999) : nx);
+    }
+  }
   function liveEnd(S, D) {
     var L = S.live; L.done = true;
+    // Belohnungsfaktor aus dem Power-Balken
+    if (S.power == null) S.power = 100;
+    if (L.inst && L.instMode === 'full') { S._rf = S.power / 100; L.powB = S.power; S.power = Math.max(10, S.power - 10); L.powA = S.power; S.instMidN = 0; }
+    else if (L.inst && L.instMode === 'mid') { S._rf = 1 - (L.instPct || 10) / 100; }
+    else if (L.inst) { S._rf = 1; }
+    else { S._rf = 1; S.instMidN = 0; L.powB = S.power; S.power = Math.min(100, S.power + 5); L.powA = S.power; }
     var pen = null;
     if (L.ko && L.gf === L.ga && L.half >= 3) {
       var ms = liveStr(S, D); var a = 0, b = 0, sh = [];
@@ -2079,6 +2134,8 @@ var MGR = (function () {
     if (R() < sc) sponsorOffer(S, D);
   }
   function monthly(S, D) {
+    // Erinnerung: Weihnachtsfeier (Dezember) bzw. Saisonabschlussfeier (ab Mai) noch nicht geplant
+    try { var mo0 = mon(S.date), yr0 = S.date.slice(0, 4); [['weihnacht', 12], ['abschluss', 5]].forEach(function (x) { if (mo0 !== x[1]) return; var plan = (S.dayEv || []).some(function (e) { return e.k === x[0] && e.d.slice(0, 4) === yr0; }); if (!plan) infoMail(S, 'Vereinsvorstand', 'Erinnerung: ' + DAYEV[x[0]][0], 'Der Zeitraum für die ' + DAYEV[x[0]][0] + ' hat begonnen – geplant ist aber noch nichts. Leg im Kalender einen Termin fest, das Team und die Helfer freuen sich darauf!', 'info', { go: 'kal' }); }); } catch (e) {}
     if (S.mainSp && S.mainSp.to === S.season && mon(S.date) === 4 && !S.spNeed) { spOffers(S, D, false, S.mainSp.firm); infoMail(S, S.mainSp.firm, 'Vertragsverlängerung Hauptsponsor', 'Unser Vertrag läuft zum 30.06. aus. Wir würden gerne verlängern – auch andere Firmen haben Interesse angemeldet.'); }
     if (S.cash < 0) { var need0 = -S.cash; var fs = Math.min(need0, Math.max(0, S.sav)); S.sav -= fs; S.cash += fs; need0 -= fs; var ft = Math.min(need0, Math.max(0, S.tb)); S.tb -= ft; S.cash += ft; if (fs + ft > 0) infoMail(S, 'Kassenwart', 'Bargeld aufgefüllt', 'Die Kasse war im Minus. Ich habe ' + euro(fs + ft) + ' vom ' + (fs ? 'Tagesgeld' : '') + (fs && ft ? ' und ' : '') + (ft ? 'Transferbudget' : '') + ' umgebucht.', 'info'); }
     mgrMonthly(S, D);
@@ -2504,7 +2561,7 @@ var MGR = (function () {
     switch (a) {
       case 'noop': break;
       case 'misClaim': { var MV = misView(S, D), mk = String(p.k || ''), mm = MV.daily.concat(MV.career).filter(function (x) { return x.id === mk; })[0]; if (!mm || mm.st !== 'done') err('Diese Mission ist noch nicht geschafft.');
-        if (mk.indexOf('d:') === 0) { if (!MV.dailyOn) err('Tagesmissionen gibt es ab Level ' + featLvl('tagesmissionen') + '.'); S.dm.got[mk.slice(2)] = 1; mcAdd(S, 'dmdone'); } else { if (!MV.careerOn) err('Karriere-Missionen gibt es ab Level ' + featLvl('missionen') + '.'); S.cmi = (S.cmi || 0) + 1; cmOpen(S, S.cmi); }
+        if (mk.indexOf('d:') === 0) { if (!MV.dailyOn) err('Tagesmissionen gibt es ab Level ' + featLvl('tagesmissionen') + '.'); S.dm.got[mk.slice(2)] = 1; mcAdd(S, 'dmdone'); } else { if (!MV.careerOn) err('Karriere-Missionen gibt es ab Level ' + featLvl('missionen') + '.'); cmInit(S); var cix = +mk.slice(2); if (Math.floor(cix / 10) !== S.cms || S.cmc[cix]) err('Diese Mission ist nicht offen.'); S.cmc[cix] = 1; S.cmi = (S.cmi || 0) + 1; if (Object.keys(S.cmc).length >= Math.min(10, CMISS.length - S.cms * 10) && S.cms * 10 + 10 < CMISS.length) { cmStageOpen(S, S.cms + 1); msg(S, 'erfolg', '🏆 Karriere-Stufe ' + S.cms + ' abgeschlossen – Stufe ' + (S.cms + 1) + ' ist jetzt offen!'); } }
         info = misPay(S, mm.rw, mm.t);
         // Tagesmission: kleiner Nebeneffekt auf Follower, Fans und Moral
         if (mk.indexOf('d:') === 0) { var fo = rint(4, 12) + Math.round(Math.sqrt(S.follow || 0) * 0.15); followAdd(S, fo); S.fans = clamp((S.fans || 50) + 0.3, 0, 100); S.moral = clamp((S.moral || 60) + 0.5, 0, 100); info += ' · +' + fo + ' Follower'; }
@@ -2738,7 +2795,7 @@ var MGR = (function () {
       case 'pvExtend': { need(S, 'partner'); var PE = S.pv; if (!PE || PE.army) err('Kein Partnerverein.'); if (S.pvExt === S.season) err('Diese Saison hast du schon angefragt.'); S.pvExt = S.season; var pch = clamp(0.3 + (11 - S.lvl) * 0.03 + mgrRep(S, D) / 250, 0.2, 0.8); if (R() < pch) { var py = rint(1, 2); PE.to += py; xp(S, 5); info = '🤝 ' + PE.club + ' verlängert die Partnerschaft um ' + py + ' Jahr' + (py > 1 ? 'e' : '') + ' (bis 06/' + (PE.to + 1) + ').'; msg(S, 'verein', info); } else info = '😕 ' + PE.club + ' möchte (noch) nicht verlängern. Nächste Saison kannst du es erneut versuchen.'; break; }
       case 'langExam': { var lgE = (S.lang || {})[p.k]; if (!lgE) err('?'); var curL = langLvl(lgE), nl = curL + 1; if (nl > 6 || slpOf(lgE.xp || 0) < nl) err('Für die Prüfung fehlen dir noch Sprach-Punkte.'); if (lgE.block && S.date < lgE.block) err('Wiederholung erst ab ' + fmtD(lgE.block) + '.'); var QE = langQs(p.k, nl), idx = QE.map(function (q, i) { return i; }).sort(function () { return R() - 0.5; }).slice(0, 20); S.langExam = { k: p.k, lv: nl, q: idx }; break; }
       case 'langExamDone': { var LE = S.langExam; if (!LE) err('?'); var lgD = S.lang[LE.k], QD = langQs(LE.k, LE.lv), ans = p.a || [], ok2 = 0; LE.q.forEach(function (qi, i) { var q = QD[qi]; if (q && ans[i] != null && q.o[ans[i]] === q.a) ok2++; }); var need2 = Math.ceil(LE.q.length * 0.55); S.langExam = null;
-        if (ok2 >= need2) { lgD.passed = LE.lv; lgD.block = null; xp(S, 30); info = '🎓 Bestanden! ' + ok2 + ' von ' + LE.q.length + ' richtig – ' + LANGS[LE.k][0] + ': ' + SLPN[LE.lv] + ' (+30 XP).'; msg(S, 'privat', '🎓 ' + LANGS[LE.k][0] + ': ' + SLPN[LE.lv] + ' – Prüfung bestanden'); } else { lgD.block = addDays(S.date, 14); xp(S, 3); info = '❌ Nicht bestanden – ' + ok2 + ' von ' + LE.q.length + ' richtig (nötig: ' + need2 + '). Wiederholung ab ' + fmtD(lgD.block) + '.'; } break; }
+        var exX = 20 + Math.round(40 * ok2 / Math.max(1, LE.q.length)); S.langExamRes = { ok: ok2, n: LE.q.length, need: need2, pass: ok2 >= need2, xp: ok2 >= need2 ? exX : 3, lang: LANGS[LE.k][0], lvl: SLPN[LE.lv] }; if (ok2 >= need2) { lgD.passed = LE.lv; lgD.block = null; xp(S, exX); info = '🎓 Bestanden! ' + ok2 + ' von ' + LE.q.length + ' richtig – ' + LANGS[LE.k][0] + ': ' + SLPN[LE.lv] + ' (+' + exX + ' XP).'; msg(S, 'privat', '🎓 ' + LANGS[LE.k][0] + ': ' + SLPN[LE.lv] + ' – Prüfung bestanden'); } else { lgD.block = addDays(S.date, 14); xp(S, 3); info = '❌ Nicht bestanden – ' + ok2 + ' von ' + LE.q.length + ' richtig (nötig: ' + need2 + '). Wiederholung ab ' + fmtD(lgD.block) + '.'; } break; }
       case 'capAdd': {
         var co = capOpts(S, D).filter(function (o) { return o.n === +p.n; })[0]; if (!co) err('Diese Erweiterung ist gerade nicht möglich.');
         if (S.cash < co.cost) err('Dafür fehlt das Geld (' + euro(co.cost) + ').');
@@ -2767,24 +2824,10 @@ var MGR = (function () {
       case 'liveStep': liveStep(S, D, p.to); break;
       case 'livePen': livePen(S, D, p.dir); break;
       case 'liveSub': liveSub(S, D, p.slot, p.pid); break;
+      case 'liveGk': gkPick(S, D, p.pid); break;
       case 'liveUndo': liveUndo(S); break;
-      case 'liveAuto': {
-        if (S.live && !S.live.done) {
-          var LA = S.live; if (!LA.inst && S.mcnt && S.mcnt.live > 0) S.mcnt.live--; LA.inst = true; var g = 0;
-          var autoSub = function (slot) { var on = liveOn(S); var op = on[slot]; var pos = op ? op.dp : FORMS[S.lineup.form][slot]; var bench = avail(S).filter(function (q) { return !LA.st[q.id] && (!LA.bench || LA.bench.indexOf(q.id) >= 0); }).sort(function (a, b) { return rateIn(b, pos) - rateIn(a, pos); }); if (bench.length && LA.subs < LA.maxSubs && LA.red.indexOf(slot) < 0) { try { liveSub(S, D, slot, bench[0].id); } catch (e) {} } };
-          var subRound = function () { var on = liveOn(S); var cand = []; on.forEach(function (p, i) { if (!p) return; var st = LA.st[p.id]; var yel = LA.cards.some(function (c) { return c.id === p.id && c.t === 'y'; }); var tired = (LA.min - (st.from || 0)) > 60 && p.fit < 75; cand.push({ i: i, w: (st.gr || 3.5) + (yel ? (R() < 0.5 ? 2 : 0) : 0) + (tired ? 0.8 : 0) }); }); cand.sort(function (a, b) { return b.w - a.w; }); var n = Math.min(LA.maxSubs - LA.subs, LA.min < 50 ? (cand[0] && cand[0].w > 4.2 ? 1 : 0) : rint(1, 2)); for (var k2 = 0; k2 < n; k2++) if (cand[k2] && cand[k2].w > (LA.min >= 70 ? 2.6 : 3.2)) autoSub(cand[k2].i); };
-          var marks = [46, 62, 75]; var done = {};
-          while (!LA.done && g++ < 400) {
-            if (LA.pause && (LA.pause.type === 'penF' || LA.pause.type === 'penA')) { livePen(S, D, pick(['l', 'm', 'r'])); continue; }
-            if (LA.pause && LA.pause.type === 'inj') { autoSub(LA.pause.slot); if (LA.pause && LA.pause.type === 'inj') LA.pause = null; continue; }
-            var nx = marks.filter(function (m) { return !done[m] && LA.half <= 2; })[0];
-            if (nx && LA.min >= nx - 1 && LA.half === 2) { done[nx] = 1; subRound(); }
-            liveStep(S, D, nx && LA.half === 2 && LA.min < nx ? nx : (LA.half === 1 ? 999 : (nx || 999)));
-          }
-        }
-        else if (!S.live) autoMatches(S, D);
-        break;
-      }
+      case 'instantMatch': { if (S.live && !S.live.done) err('Das Spiel läuft schon.'); liveStart(S, D); liveAutoRun(S, D); break; }
+      case 'liveAuto': { liveAutoRun(S, D); break; }
       case 'liveClose': { if (S.live && !S.live.done) err('Das Spiel läuft noch.'); S.live = null; break; }
       case 'like': {
         var po = S.feed.filter(function (x) { return x.id === +p.id; })[0]; if (!po) err('Beitrag nicht gefunden.');
@@ -3005,6 +3048,8 @@ var MGR = (function () {
         var damp = S.fans > 85 ? 0.5 : 1, fx = fa[4], outF = [];
         Object.keys(fx).forEach(function (kk) { var v = Math.max(1, Math.round(fx[kk] * damp)); if (kk === 'fans') { S.fans = clamp(S.fans + v, 0, 100); outF.push('Fans +' + v); } if (kk === 'moral') { S.moral = clamp(S.moral + v, 0, 100); outF.push('Moral +' + v); } if (kk === 'spons') { S.spons = clamp(S.spons + v, 0, 100); outF.push('Sponsoren +' + v); } if (kk === 'fanbase') { S.fanbase = Math.round(S.fanbase * (1 + v / 100)); outF.push('Fanbasis +' + v + ' %'); } });
         { var sfol = p.k === 'social' ? rint(17, 83) : Math.max(3, Math.round(((fx.fans || 0) * 2.5 + (fx.fanbase || 0) * 3 + (fx.moral || 0) + 4) * rnd(0.7, 1.3) * damp)); S.follow = (S.follow != null ? S.follow : followStart(S)) + sfol; outF.push('+' + sfol + ' Follower'); }
+        // Fan-Stammtisch: als Single kann man dort jemanden kennenlernen (wie beim Dating)
+        if (p.k === 'stammtisch' || p.k === 'fanclub') { var FS = privInit(S).fam; if (!FS.partner && R() < 0.25) { FS.partner = { img: relImg(S, D), n: pick(VN_W) + ' ' + pick(D.nn), age: rint(21, 55), job: pick(JOB_W), look: rint(30, 100), char: rint(30, 100), intl: rint(30, 100), rel: rint(40, 60), since: S.date, engaged: null, married: null, tries: 0 }; FS.res = { ok: true, p: FS.partner, via: fa[0] }; S.fans = clamp(S.fans + 1, 0, 100); outF.push('💘 Match! Du hast ' + FS.partner.n.split(' ')[0] + ' kennengelernt (Fans +1)'); } else if (!FS.partner && R() < 0.5) outF.push(pick(['Eine Frau hat dir zugezwinkert – aber dann kam ihr Mann mit zwei Bier.', 'Du hast nett mit einer Fanbeauftragten geplaudert, mehr war nicht.', 'Kein Match heute – dafür viele Fragen zur Aufstellung.'])); }
         if (p.k === 'camp') { var cy = newYouth(S, D, R() < 0.3); cy.age = rint(14, 15); outF.push(youthAdd(S, cy) ? '1 neues Talent für die Academy (' + cy.n + ')' : 'ein Talent war dabei, aber die Academy ist voll'); }
         S.fanCd[p.k] = addDays(S.date, fa[3]); xp(S, 1); info = fa[0] + ': ' + outF.join(', ') + '.'; msg(S, 'verein', '🎉 ' + info); break;
       }
@@ -3235,7 +3280,7 @@ var MGR = (function () {
       var list = all.filter(function (p) { return key === 'gr' ? p.gp >= minGp : key === 'tw' ? p.pos === 'TW' && p.kg >= minGp : p[key] > 0; }).map(function (p) { return { n: p.n, team: p.team, pos: p.pos, own: !!p.own, v: fn(p) }; });
       list.sort(function (a, b) { return asc ? a.v - b.v : b.v - a.v; }); list.forEach(function (x, i) { x.rank = i + 1; });
       var top = list.slice(0, 4); var mine = list.filter(function (x) { return x.own; })[0];
-      return { top: top, mine: mine && mine.rank > 4 ? mine : null, all3: list.slice(0, 3), mine3: mine && mine.rank > 3 ? mine : null };
+      return { top: top, mine: mine && mine.rank > 4 ? mine : null, all3: list.slice(0, 3), top5: list.slice(0, 5), mine3: mine && mine.rank > 3 ? mine : null, mineAny: mine || null };
     };
     var byMd = {}; fix.forEach(function (f) { (byMd[f.md] = byMd[f.md] || []).push(f); });
     return { lvl: lvl, name: L.name, short: L.short, rows: rows, byMd: byMd, md: { cur: cur || 1, max: maxMd }, own: lvl === S.lvl,
@@ -3435,14 +3480,16 @@ var MGR = (function () {
     ausb: { study: ['Ausbildung (Industriekaufmann)', 36, 950], ladder: [['Sachbearbeiter', 2500], ['Fachkraft', 3000], ['Teamleiter', 3700], ['Abteilungsleiter', 4600], ['Betriebsleiter', 5800]] },
     arbeit: { study: null, ladder: [['Lagerhelfer', 1900], ['Fahrer', 2200], ['Schichtleiter', 2700], ['Lagerleiter', 3300], ['Logistikleiter', 4000]] }
   };
-  var STOCKS = [['AAPL', 'Apple', 230, 0.018, '#a2aaad'], ['MSFT', 'Microsoft', 420, 0.016, '#00a4ef'], ['NVDA', 'Nvidia', 140, 0.03, '#76b900'], ['AMZN', 'Amazon', 190, 0.02, '#ff9900'], ['TSLA', 'Tesla', 250, 0.035, '#e31937'], ['SAP', 'SAP', 210, 0.015, '#0faaff'], ['ADS', 'Adidas', 220, 0.018, '#111111'], ['PUM', 'Puma', 45, 0.022, '#c8102e'], ['BMW', 'BMW', 85, 0.015, '#1c69d4'], ['DTE', 'Dt. Telekom', 30, 0.01, '#e20074'], ['MBG', 'Mercedes-Benz', 62, 0.016, '#3c3c3c'], ['ALV', 'Allianz', 290, 0.012, '#003781'], ['SIE', 'Siemens', 190, 0.015, '#009999'], ['BAYN', 'Bayer', 26, 0.025, '#10384f'], ['GOOGL', 'Alphabet', 175, 0.018, '#4285f4'], ['META', 'Meta', 560, 0.024, '#0866ff'], ['NFLX', 'Netflix', 700, 0.026, '#e50914'], ['NKE', 'Nike', 75, 0.02, '#111111'], ['DHL', 'DHL Group', 38, 0.014, '#ffcc00'], ['LHA', 'Lufthansa', 7, 0.025, '#05164d']];
-  var CRYPTO = [['BTC', 'Bitcoin', 85000, 0.045, '#f7931a', 0.0006], ['ETH', 'Ethereum', 3200, 0.055, '#627eea', 0.0005], ['SOL', 'Solana', 150, 0.07, '#9945ff', 0.0006], ['XRP', 'XRP', 2.2, 0.065, '#23292f', 0.0003], ['DOGE', 'Dogecoin', 0.18, 0.09, '#c2a633', 0.0002], ['ADA', 'Cardano', 0.7, 0.07, '#0033ad', 0.0002], ['WBC', 'Wachtberg-Coin', 0.5, 0.12, '#8fc852', 0.0025], ['LAEND', 'Ländchen-Token', 0.08, 0.15, '#2f9e5b', 0.0015], ['KICK', 'KickCoin', 1.2, 0.11, '#e8944f', 0.0008], ['DRCH', 'Drachenfels-Coin', 3, 0.1, '#b45fd9', -0.0004]];
+  // 100 fiktive Aktien (keine echten Firmennamen)
+var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega Sport AG', 154.45, 0.009, '#3c3c3c'], ['LISP', 'Licht Sport AG', 8.95, 0.032, '#76b900'], ['SOCH', 'Sonnen Chemie AG', 10.5, 0.011, '#c8102e'], ['SIBA', 'Silber Bau AG', 313.51, 0.012, '#0faaff'], ['WESO', 'West Solar AG', 82.86, 0.026, '#009999'], ['SUGA', 'Süd Gaming SE', 9.15, 0.036, '#0faaff'], ['KRFO', 'Kristall Foods AG', 20.16, 0.029, '#009999'], ['OROP', 'Orion Optik AG', 92.91, 0.017, '#003781'], ['ADRE', 'Adler Reisen AG', 42.9, 0.021, '#009999'], ['WEAI', 'Weser Airlines AG', 51.47, 0.036, '#d0569f'], ['RUTE', 'Ruhr Telekom AG', 252.47, 0.027, '#0faaff'], ['GOVE', 'Gold Versicherung SE', 29.93, 0.036, '#ff9900'], ['EIGA', 'Eifel Gaming SE', 26.35, 0.025, '#1c69d4'], ['MAGA', 'Main Gaming SE', 95.09, 0.012, '#a07a1a'], ['EIFO', 'Eifel Foods AG', 310.3, 0.032, '#c8102e'], ['FAOP', 'Falken Optik AG', 16.71, 0.025, '#1c69d4'], ['ORCH', 'Orion Chemie AG', 31.19, 0.016, '#003781'], ['NOEN', 'Nova Energie SE', 102.15, 0.033, '#ff9900'], ['BESO', 'Berg Solar AG', 7.46, 0.038, '#3c3c3c'], ['FAME', 'Falken Medien AG', 220.19, 0.022, '#003781'], ['MOEN', 'Mosel Energie SE', 12.13, 0.008, '#e20074'], ['SUCH', 'Süd Chemie AG', 4.91, 0.025, '#4b8bc4'], ['HABR', 'Hansa Brauerei AG', 39.04, 0.019, '#a07a1a'], ['WEHA', 'Wellen Halbleiter AG', 4.46, 0.021, '#e8944f'], ['ELVE', 'Elb Versicherung SE', 8.17, 0.017, '#003781'], ['OSFO', 'Ost Foods AG', 111.33, 0.04, '#1c69d4'], ['WERE', 'West Reisen AG', 25.91, 0.036, '#e20074'], ['EIME', 'Eifel Medien AG', 59.04, 0.017, '#4b8bc4'], ['RUBA', 'Ruhr Bank AG', 265.34, 0.01, '#e8944f'], ['ALWE', 'Alpenwerk AG', 18.77, 0.01, '#009999'], ['TAEN', 'Taunus Energie SE', 19.07, 0.038, '#003781'], ['VETE', 'Vega Textil AG', 290.36, 0.025, '#9945ff'], ['WEGA', 'Weser Gaming SE', 206.65, 0.029, '#d0569f'], ['OSST', 'Oststahl AG', 15.37, 0.025, '#9945ff'], ['DOBA', 'Donau Bau AG', 26.78, 0.022, '#2f9e5b'], ['ATOP', 'Atlas Optik AG', 257.47, 0.011, '#ff9900'], ['SILO', 'Sieben Logistik AG', 94.24, 0.027, '#e8944f'], ['SIRO', 'Sieben Robotics SE', 16.19, 0.028, '#9945ff'], ['SUST', 'Südstahl AG', 12.01, 0.032, '#a07a1a'], ['QUST', 'Quantenstahl AG', 6.02, 0.025, '#b45fd9'], ['VESO', 'Vega Solar AG', 7.0, 0.037, '#3c3c3c'], ['HAGA', 'Hansa Gaming SE', 98.01, 0.039, '#ff9900'], ['HAMO', 'Hansa Motoren AG', 29.36, 0.014, '#e8944f'], ['POGA', 'Polar Gaming SE', 165.38, 0.011, '#e20074'], ['BEVE', 'Berg Versicherung SE', 8.39, 0.015, '#3c3c3c'], ['KUCH', 'Kupfer Chemie AG', 26.94, 0.029, '#0faaff'], ['LICH', 'Licht Chemie AG', 28.36, 0.027, '#9945ff'], ['SULO', 'Süd Logistik AG', 54.57, 0.027, '#c8102e'], ['EIAI', 'Eisen Airlines AG', 219.54, 0.038, '#3c3c3c'], ['GOSP', 'Gold Sport AG', 86.42, 0.029, '#c8102e'], ['FARO', 'Falken Robotics SE', 60.84, 0.026, '#3c3c3c'], ['TATE', 'Taunus Textil AG', 60.61, 0.017, '#a07a1a'], ['ADFO', 'Adler Foods AG', 243.58, 0.013, '#009999'], ['STRO', 'Stern Robotics SE', 20.92, 0.03, '#003781'], ['HAPH', 'Harz Pharma AG', 3.66, 0.023, '#3c3c3c'], ['EIBR', 'Eisen Brauerei AG', 13.79, 0.033, '#003781'], ['TAMO', 'Taunus Mobility AG', 16.98, 0.023, '#d0569f'], ['FESO', 'Feld Solar AG', 365.26, 0.034, '#a07a1a'], ['QUFO', 'Quanten Foods AG', 94.37, 0.032, '#9945ff'], ['FEBR', 'Feld Brauerei AG', 47.46, 0.016, '#e8944f'], ['ADSO', 'Adler Solar AG', 5.18, 0.031, '#009999'], ['POSP', 'Polar Sport AG', 66.59, 0.02, '#1c69d4'], ['NOME', 'Nova Medien AG', 114.27, 0.035, '#a07a1a'], ['LIHA', 'Licht Halbleiter AG', 99.99, 0.015, '#a07a1a'], ['TAST', 'Talstahl AG', 335.41, 0.013, '#d0569f'], ['DOTE', 'Donau Textil AG', 269.41, 0.009, '#a07a1a'], ['DOFO', 'Donau Foods AG', 46.02, 0.018, '#0faaff'], ['KRRE', 'Kristall Reisen AG', 62.16, 0.009, '#e20074'], ['SIVE', 'Silber Versicherung SE', 20.55, 0.038, '#3c3c3c'], ['NOTE', 'Nord Textil AG', 294.23, 0.038, '#d0569f'], ['SIRE', 'Sieben Reisen AG', 388.4, 0.012, '#76b900'], ['FALO', 'Falken Logistik AG', 112.89, 0.021, '#3c3c3c'], ['OSAI', 'Ost Airlines AG', 82.72, 0.035, '#c8102e'], ['NOWE', 'Novawerk AG', 198.58, 0.029, '#1c69d4'], ['POBR', 'Polar Brauerei AG', 116.08, 0.031, '#a07a1a'], ['TAHA', 'Taunus Halbleiter AG', 277.09, 0.033, '#d0569f'], ['SOHA', 'Sonnen Halbleiter AG', 19.0, 0.017, '#d0569f'], ['HARE', 'Hansa Reisen AG', 15.55, 0.024, '#e8944f'], ['TABR', 'Taunus Brauerei AG', 188.91, 0.03, '#9945ff'], ['FEBA', 'Feld Bank AG', 5.31, 0.03, '#4b8bc4'], ['WIST', 'Windstahl AG', 42.16, 0.029, '#b45fd9'], ['FEBE', 'Feld Bau AG', 185.85, 0.023, '#2f9e5b'], ['SIVF', 'Sieben Versicherung SE', 118.26, 0.038, '#76b900'], ['HABA', 'Harz Bank AG', 268.67, 0.027, '#c8102e'], ['HASO', 'Harz Software SE', 84.53, 0.012, '#e20074'], ['ALSO', 'Alpen Solar AG', 114.41, 0.011, '#1c69d4'], ['NOSO', 'Nova Software SE', 15.67, 0.016, '#4b8bc4'], ['MAEN', 'Main Energie SE', 13.82, 0.013, '#2f9e5b'], ['WEVE', 'West Versicherung SE', 274.02, 0.015, '#0faaff'], ['WIFO', 'Wind Foods AG', 217.23, 0.028, '#c8102e'], ['WEOP', 'Weser Optik AG', 8.7, 0.026, '#76b900'], ['RHSP', 'Rhein Sport AG', 15.16, 0.017, '#2f9e5b'], ['WEEN', 'Wellen Energie SE', 332.1, 0.027, '#3c3c3c'], ['SOLO', 'Sonnen Logistik AG', 17.7, 0.01, '#76b900'], ['FATE', 'Falken Textil AG', 23.22, 0.023, '#2f9e5b'], ['KUTE', 'Kupfer Telekom AG', 16.51, 0.036, '#e8944f'], ['ORTE', 'Orion Telekom AG', 295.78, 0.027, '#1c69d4'], ['KRAI', 'Kristall Airlines AG', 230.56, 0.022, '#9945ff'], ['TAAI', 'Taunus Airlines AG', 101.42, 0.019, '#e8944f']];
+  var STOCK_OLD = {'AAPL': 'MAST', 'MSFT': 'VESP', 'NVDA': 'LISP', 'AMZN': 'SOCH', 'TSLA': 'SIBA', 'SAP': 'WESO', 'ADS': 'SUGA', 'PUM': 'KRFO', 'BMW': 'OROP', 'DTE': 'ADRE', 'MBG': 'WEAI', 'ALV': 'RUTE', 'SIE': 'GOVE', 'BAYN': 'EIGA', 'GOOGL': 'MAGA', 'META': 'EIFO', 'NFLX': 'FAOP', 'NKE': 'ORCH', 'DHL': 'NOEN', 'LHA': 'BESO'}; // alte Ticker → neue (Spielstände umziehen)
+  var CRYPTO = [['BTC', 'Bitcoin', 85000, 0.045, '#f7931a', 0.0006], ['ETH', 'Ethereum', 3200, 0.055, '#627eea', 0.0005], ['SOL', 'Solana', 150, 0.07, '#9945ff', 0.0006], ['XRP', 'XRP', 2.2, 0.065, '#23292f', 0.0003], ['DOGE', 'Dogecoin', 0.18, 0.09, '#c2a633', 0.0002], ['ADA', 'Cardano', 0.7, 0.07, '#0033ad', 0.0002], ['WBC', 'Wachtberg-Coin', 0.5, 0.12, '#8fc852', 0.0025], ['LAEND', 'Ländchen-Token', 0.08, 0.15, '#2f9e5b', 0.0015], ['KICK', 'KickCoin', 1.2, 0.11, '#e8944f', 0.0008], ['DRCH', 'Drachenfels-Coin', 3, 0.1, '#b45fd9', -0.0004], ['STRX', 'Strafraum-Coin', 0.2982, 0.126, '#627eea', 0.0002], ['ABSX', 'Abseits-Coin', 4.8132, 0.093, '#2f9e5b', -0.0003], ['FLAX', 'Flanke-Coin', 0.3878, 0.11, '#4b8bc4', 0.0011], ['LIBX', 'Libero-Coin', 0.5236, 0.105, '#9945ff', 0.0001], ['KONX', 'Konter-Coin', 40.4754, 0.074, '#4b8bc4', 0.0005], ['PREX', 'Pressing-Coin', 86.8927, 0.065, '#2f9e5b', 0.0004], ['ELFX', 'Elfer-Coin', 7.1064, 0.089, '#2f9e5b', 0.0009], ['FALX', 'Fallrückzieher-Coin', 71.0587, 0.1, '#b45fd9', 0.0008], ['NACX', 'Nachspielzeit-Coin', 8.8315, 0.073, '#b45fd9', -0.0002], ['VIEX', 'Viererkette-Coin', 81.8448, 0.106, '#b45fd9', 0.0001], ['DOPX', 'Doppelpass-Coin', 0.3217, 0.127, '#e8944f', 0.0004], ['TORX', 'Torjäger-Coin', 85.6716, 0.106, '#c2a633', 0.0001], ['RASX', 'Rasen-Coin', 6.1835, 0.088, '#4b8bc4', -0.0002], ['FLUX', 'Flutlicht-Coin', 0.0625, 0.092, '#c2a633', -0.0003], ['ANSX', 'Anstoß-Coin', 5.1702, 0.129, '#e8944f', 0.0007], ['ECKX', 'Ecke-Coin', 0.888, 0.072, '#9945ff', -0.0002], ['GRAX', 'Grätsche-Coin', 0.5961, 0.081, '#f7931a', -0.0002], ['KOPX', 'Kopfball-Coin', 0.4858, 0.115, '#d0569f', 0.0011], ['ZEHX', 'Zehner-Coin', 57.514, 0.124, '#0faaff', 0.0002], ['SECX', 'Sechser-Coin', 0.3608, 0.065, '#2f9e5b', 0.0003]];
   var ALLSTK = STOCKS.concat(CRYPTO);
-  function stockVis(S) { var P = S.priv || {}, own = (P.inv && P.inv.stocks) || {}, m = parseInt(String(S.date).slice(0, 7).replace('-', ''), 10), sd = m * 7919 % 233280, L = STOCKS.slice(), out = []; while (out.length < 8 && L.length) { sd = (sd * 9301 + 49297) % 233280; out.push(L.splice(Math.floor(sd / 233280 * L.length), 1)[0]); } STOCKS.forEach(function (x) { if (own[x[0]] && out.indexOf(x) < 0) out.push(x); }); return out; }
+  function stockVis(S) { return STOCKS; }
   var DEPOS = { tagesgeld: ['Tagesgeld', 0, 0.02, 0], fest1: ['Festgeld 1 Jahr', 12, 0.03, 0], fest3: ['Festgeld 3 Jahre', 36, 0.037, 0], etf: ['ETF-Sparplan (Welt)', 12, 0.07, 0.15], fonds: ['Aktienfonds (Risiko)', 24, 0.1, 0.28] };
   var DATE_TXT = {
     tinder: ['Kein einziges Match diese Woche. Vielleicht doch ein anderes Profilbild?', 'Ihr Profilbild war mindestens zehn Jahre alt.', 'Nach drei Nachrichten wurdest du geghostet.', 'Sie hat nur gefragt, ob du Freikarten besorgen kannst.', 'Match! Sie hat aber nach „Fußballtrainer“ sofort aufgehört zu schreiben.', 'Das Date kam 40 Minuten zu spät und ging nach 20.', 'Sie wollte eigentlich nur ein Selfie mit dem Trainer.'],
-    ausgehen: ['Die Bar war voll, aber keine hat sich für dich interessiert.', 'Du hast den ganzen Abend über Viererkette geredet. Sie ist gegangen.', 'Sie hat den ganzen Abend nur von ihrem Ex erzählt.', 'Kein Funke. Freundlich verabschiedet.', 'Ihr Freund kam vom Klo zurück. Autsch.', 'Sie ist Fan vom Lokalrivalen. Das wird nichts.', 'Du hattest deinen Spaß – mehr aber auch nicht.'],
+    ausgehen: ['Die Bar war voll, aber keine hat sich für dich interessiert.', 'Du hast den ganzen Abend über Viererkette geredet. Sie ist gegangen.', 'Sie hat den ganzen Abend nur von ihrem Ex erzählt.', 'Kein Funke. Freundlich verabschiedet.', 'Ihr Freund kam vom Klo zurück. Autsch.', 'Sie ist Fan vom Lokalrivalen. Das wird nichts.', 'Du hattest deinen Spaß – mehr aber auch nicht.', 'Match beim Fan-Stammtisch? Leider nicht – sie wollte nur ein Autogramm für ihren Sohn.', 'Ihr habt euch beim Stammtisch super verstanden – bis sie erfahren hat, dass du die Startelf machst und ihr Bruder auf der Bank sitzt.'],
     freunde: ['Die Freundin deiner Kumpels hatte schon einen anderen im Blick.', 'Nett, aber eher wie eine Cousine. Kein Funke.', 'Sie hat sich nach dem Essen nicht mehr gemeldet.', 'Eure Freunde waren begeisterter als ihr beiden.', 'Sie zieht nächsten Monat nach München.', 'Ihr habt euch nur über die Gastgeber unterhalten.', 'Gut gemeint von deinen Freunden – aber leider nicht dein Typ.']
   };
   var JOB_W = ['Lehrerin', 'Ärztin', 'Krankenpflegerin', 'Architektin', 'Polizistin', 'Bankkauffrau', 'Grafikdesignerin', 'Rechtsanwältin', 'Erzieherin', 'Physiotherapeutin', 'Ingenieurin', 'Friseurin', 'Unternehmerin', 'Journalistin', 'Steuerberaterin'];
@@ -3452,7 +3499,7 @@ var MGR = (function () {
     var P = S.priv = S.priv || { cash: 2500, owned: {}, rent: null, log: [] };
     if (!P.fam) P.fam = { partner: null, kids: [], lastDate: null, lastTime: null, pend: null };
     if (!P.job) P.job = { stage: 'abi', path: null, title: null, sal: 0, since: null, step: 0, months: 0 };
-    if (!P.inv) P.inv = { stocks: {}, dep: [], prices: {}, hist: {} }; ALLSTK.forEach(function (x) { if (P.inv.prices[x[0]] == null) { P.inv.prices[x[0]] = x[2]; P.inv.hist[x[0]] = [x[2]]; } });
+    if (!P.inv) P.inv = { stocks: {}, dep: [], prices: {}, hist: {} }; if (!P.inv.v2) { P.inv.v2 = 1; Object.keys(STOCK_OLD).forEach(function (o) { var nw = STOCK_OLD[o]; if (P.inv.stocks[o]) { var oldPx = P.inv.prices[o] || 1, nb = STOCKS.filter(function (x) { return x[0] === nw; })[0]; var val = P.inv.stocks[o] * oldPx, np = nb ? nb[2] : 1; P.inv.stocks[nw] = Math.max(1, Math.round(val / np)); P.inv.cost = P.inv.cost || {}; P.inv.cost[nw] = P.inv.cost[o] || val; delete P.inv.cost[o]; } delete P.inv.stocks[o]; delete P.inv.prices[o]; delete P.inv.hist[o]; }); } ALLSTK.forEach(function (x) { if (P.inv.prices[x[0]] == null) { P.inv.prices[x[0]] = x[2]; P.inv.hist[x[0]] = [x[2]]; } });
     if (!P.don) P.don = { season: null, n: 0, club: false };
     return P;
   }
@@ -3555,7 +3602,7 @@ var MGR = (function () {
   ];
   function shopItem(id, S) { var r = SHOP.filter(function (x) { return x[0] === id; })[0]; return r ? { id: r[0], cat: r[1], n: rxL(S, r[2]), price: r[3], rent: r[4], ic: r[5] } : null; }
   function mgrMonthly(S, D) {
-    mgrInit(S, D); var sal = S.mc.sal; book(S, 'Trainergehalt', -sal); S.priv.cash += sal; S.priv.log.unshift([S.date, 'Gehalt', sal]);
+    mgrInit(S, D); var sal = S.mc.sal; if (S.salCut) { sal = Math.round(sal * 0.75); S.salCut = 0; msg(S, 'finanzen', '✂️ Dein Gehalt wurde diesen Monat um 25 % gekürzt (zweimal hintereinander Sofortergebnis in der 2. Halbzeit).'); } book(S, 'Trainergehalt', -sal); S.priv.cash += sal; S.priv.log.unshift([S.date, 'Gehalt', sal]);
     if (S.priv.rent) { var it = shopItem(S.priv.rent, S); if (S.priv.cash >= it.rent) { S.priv.cash -= it.rent; S.priv.log.unshift([S.date, 'Miete ' + it.n, -it.rent]); } else { infoMail(S, 'Vermieter', 'Kündigung: ' + it.n, 'Die Miete konnte nicht bezahlt werden. Der Mietvertrag für „' + it.n + '“ ist beendet.', 'info'); S.priv.rent = null; } }
     if (S.priv.log.length > 30) S.priv.log.length = 30;
     if (!S.mc.offer && mgrMonthsLeft(S) <= 12 && S.board >= 70 && R() < 0.35 && mgrCan(S, D).ok) {
@@ -3679,7 +3726,7 @@ var MGR = (function () {
       tplans: TPLANS, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
 
       club: D.club, mgr: S.mgr, date: S.date, dateF: fmtD(S.date), season: S.season + '/' + String(S.season + 1).slice(2), lvl: S.lvl, liga: L.name, ligaShort: L.short,
-      cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, jokNew: !!S.jokNew,
+      cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, power: S.power == null ? 100 : S.power, jokNew: !!S.jokNew,
       teamStr: Math.round(teamStr(S, D, true) * 10) / 10, xiAvg: Math.round(xiAvg(S, D) * 10) / 10, value: clubValue(S, D), days: diffDays(S.start, S.date), window: inWindow(S.date),
       rank: me ? me.rank : null, pts: me ? me.pts : 0, next: next, games: games, table: tabV, md: { cur: mdShow, max: S.fix.length ? S.fix[S.fix.length - 1].md : 0, list: matchday(mdShow), next: matchday(Math.min(mdShow + 1, S.fix.length ? S.fix[S.fix.length - 1].md : 1)) },
       allMd: (function () { var o = {}; S.fix.forEach(function (f) { (o[f.md] = o[f.md] || []).push({ h: teams[f.h].n, a: teams[f.a].n, hg: f.hg, ag: f.ag, d: f.d, svw: !!(teams[f.h].svw || teams[f.a].svw) }); }); return o; })(),

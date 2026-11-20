@@ -237,7 +237,7 @@ var API = {
   apiSalary: function () {
     return managers().then(function (rows) {
       var me = SESSION.user.id;
-      var list = rows.filter(function (m) { return m.summary; }).map(function (m) { var s = m.summary; return { xp: +m.xp || 0, lvl: levelOf(+m.xp || 0).lvl, w: s.w || 0, d: s.d || 0, mg: s.mg || s.games || 0, gf: s.gf || 0, ga: s.ga || 0, cm: s.cm || 0, cmN: s.cmN || 100, name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '', club: m.club_name || '' }; });
+      var list = rows.filter(function (m) { return m.summary; }).map(function (m) { var s = m.summary; var LV0 = levelOf(+m.xp || 0); return { xp: +m.xp || 0, lvl: LV0.lvl, lpct: LV0.pct, w: s.w || 0, d: s.d || 0, mg: s.mg || s.games || 0, gf: s.gf || 0, ga: s.ga || 0, cm: s.cm || 0, cmN: s.cmN || 100, name: m.display_name, liga: String(m.league_name || s.liga || '').replace(/,.*$/, ''), seasons: s.seasons || 0, saison: String(s.season || ''), avg: s.avg || 0, sal: s.sal || 0, me: m.id === me, avatar: seedOf(m.id), pic: m.avatar_path || '', club: m.club_name || '' }; });
       list.sort(function (a, b) { return b.xp - a.xp || b.avg - a.avg; }); list.forEach(function (x, i) { x.rank = i + 1; });
       var mine = list.filter(function (x) { return x.me; })[0] || null; list.forEach(function (x) { if (!x.me) delete x.me; });
       return { ok: true, top: list.slice(0, 3), all: list, mine: mine && mine.rank > 3 ? mine : null, myRank: mine ? mine.rank : null, total: list.length };

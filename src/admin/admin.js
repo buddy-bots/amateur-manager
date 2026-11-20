@@ -1,7 +1,7 @@
 /* Amateur Manager – Admin-Seite: Übersicht, Feedback, Bilder */
 var BG = [['titel', 'Titelbild Startseite (ganze Breite)'], ['publisher', 'Publisher-Logo oben rechts'], ['entwickler', 'Profilbild „Entwickler“ im Chat'],
   ['saisonziel', 'Popup Saisonziel'], ['hauptsponsor', 'Popup Hauptsponsor'], ['ausstatter', 'Popup Ausstatter'], ['budget', 'Popup Saisonbudget'], ['presse', 'Popup Pressekonferenz'], ['vorbereitung', 'Popup Saisonvorbereitung'],
-  ['aufstieg', 'Saisonabschluss Aufstieg'], ['klassenerhalt', 'Saisonabschluss Klassenerhalt'], ['abstieg', 'Saisonabschluss Abstieg'], ['entlassung', 'Entlassung'], ['talent', 'Popup Neues Talent / Sterne'],
+  ['aufstieg', 'Saisonabschluss Aufstieg'], ['klassenerhalt', 'Saisonabschluss Klassenerhalt'], ['abstieg', 'Saisonabschluss Abstieg'], ['wahl', 'Saisonende: Wahl & Auszählung'], ['ligen', 'Saisonende: Ligenübersicht'], ['bestenliste', 'Saisonende: Bestenlisten'], ['vorstand', 'Saisonende: Vorstandsbewertung'], ['neue_saison', 'Saisonstart: Ladebildschirm'], ['entlassung', 'Entlassung'], ['talent', 'Popup Neues Talent / Sterne'],
   ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'],
   ['krypto_gewinn', 'Fazit Krypto mit Gewinn'], ['krypto_verlust', 'Fazit Krypto mit Verlust'], ['aktie_gewinn', 'Fazit Aktie mit Gewinn'], ['aktie_verlust', 'Fazit Aktie mit Verlust'],
   ['karte_academy', 'Hintergrund Karte Academy-Campus'], ['karte_verein', 'Hintergrund Karte Vereinsgelände'], ['karte_med', 'Hintergrund Karte Med-Abteilung']];

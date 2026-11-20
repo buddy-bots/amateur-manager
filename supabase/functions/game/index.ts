@@ -440,7 +440,7 @@ async function handle(req: Request, userId: string, body: any) {
     const S = prepare(sv.state, profile);
     const xpBefore = S.xpGame || 0;
     const extra: Record<string, unknown> = {};
-    if (action === 'liveStart' && (S.jokers || 0) > 0) { extra.joker_snap = JSON.parse(JSON.stringify(S)); extra.joker_date = S.date; }
+    if ((action === 'liveStart' || action === 'instantMatch') && (S.jokers || 0) > 0) { extra.joker_snap = JSON.parse(JSON.stringify(S)); extra.joker_date = S.date; }
     const params = sanitize(action, body.params);
     let credit: any = null;
     if (action === 'bonusRedeem') { credit = (profile.bonus || {}).cr || {}; if (!(credit.j > 0 || credit.h > 0)) throw new HttpError(422, 'Kein Bonus-Guthaben vorhanden.'); params._srv = { j: credit.j | 0, h: credit.h | 0 }; }

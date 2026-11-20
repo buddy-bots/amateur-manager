@@ -1841,7 +1841,7 @@ var MGR = (function () {
     var ord = { AB: 0, MF: 1, ST: 2 }; return Math.abs(ord[gs] - ord[gp]) === 1 ? 0.65 : 0.5;
   }
   var SOCIAL = [['ytshort', 'TubeClip Short', '#ff0000', 1.1], ['tiktok', 'Klipster-Video', '#7b2ff7', 1.3], ['igstory', 'Exchangegram Story', '#d62976', 1.0], ['wakanal', 'Call Up Kanal', '#25d366', 0.8], ['fbpost', 'FaceSpace-Post', '#1877f2', 0.7], ['xpost', 'Chirp-Post', '#000000', 0.6], ['twitch', 'Streamly-Livestream', '#9146ff', 1.2], ['podcast', 'Vereins-Podcast', '#8e44ad', 0.9], ['snap', 'Snapflash-Story', '#e8d800', 0.8], ['threads', 'Strands-Post', '#222222', 0.6], ['igreel', 'Exchangegram Reel', '#962fbf', 1.25], ['ytvlog', 'TubeClip Vlog', '#cc0000', 1.15], ['callup', 'Call Up Gruppe', '#2bb673', 0.85]];
-  function socialPick(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = parseInt(wk.replace(/-/g, ''), 10); var ids = SOCIAL.map(function (x) { return x[0]; }); var out = []; for (var i = 0; out.length < 3 && i < 40; i++) { sd = (sd * 9301 + 49297) % 233280; var k = ids[Math.floor(sd / 233280 * ids.length)]; if (out.indexOf(k) < 0) out.push(k); } return out; }
+  function socialPick(S) { return SOCIAL.map(function (x) { return x[0]; }).filter(function (k) { return k !== 'twitch'; }); } // alle Plattformen jede Woche wählbar
   function adCost(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = (parseInt(wk.replace(/-/g, ''), 10) * 7919) % 233280; return Math.round((50 + sd / 233280 * 950) / 10) * 10; }
   function followStart(S) { var lo = 253 + Math.max(0, 11 - S.lvl) / 10 * 3650; return Math.round(Math.min(4315, lo + rnd(0, 415))); }
   function followAdd(S, n) { if (S.hollyStar && n > 0) n = n * (1 + S.hollyStar.eff * 1.5); if ((S.mlvl || 1) >= 26 && n > 0) n *= 1.1; n = Math.round(n); S.follow = Math.max(0, (S.follow || 0) + n); S.fwGain = (S.fwGain || 0) + n; }
@@ -2494,7 +2494,7 @@ var MGR = (function () {
     if ([1, 4, 7, 10].indexOf(+m.slice(5, 7)) >= 0) infoMail(S, 'Kassenwart', 'Monatsbericht Finanzen ' + mn + ' ' + m.slice(0, 4), 'Einnahmen ' + euro(ti) + ', Ausgaben ' + euro(to) + ', Ergebnis ' + euro(ti - to) + '.', 'report', { m: m, mn: mn, inn: prevM.inn, out: prevM.out, ti: Math.round(ti), to: Math.round(to) });
   }
   function maybeEvent(S, D) {
-    if (R() > 0.11) return;
+    if (R() > 0.08) return; // etwas seltener (vorher 11 %)
     var m = mon(S.date);
     var el = D.events.filter(function (ev) { return S.lvl >= ev.top && S.lvl <= ev.bot && (!ev.months.length || ev.months.indexOf(m) >= 0) && !(S.evCd[ev.i] && diffDays(S.evCd[ev.i], S.date) < 150) && !(/veteran/.test(ev.yesFx) && (S.vetSeason === S.season || R() < 0.5)) && !(ev.title === 'Granulat-Debatte' && (pitchCond(S) >= 0.4 || S.pitch.type === 'natur' || R() < 0.6)); });
     if (!el.length) return;
@@ -3295,11 +3295,11 @@ var MGR = (function () {
       case 'waFav': { S.waFav = (S.waFav || []).filter(function (x) { return x !== p.n; }); if (p.on) S.waFav.push(String(p.n).slice(0, 60)); break; }
       case 'waHide': { S.waHide = S.waHide || {}; S.waHide[String(p.n).slice(0, 60)] = +p.ts || 0; break; }
       case 'socialAd': { jokPt(S, 1);
-        var awk = addDays(S.date, -((dow(S.date) + 6) % 7)); if (socUsed(S)) err(SOCMSG); var ac = adCost(S); if (S.cash < ac) err('Nicht genug Bargeld (' + euro(ac) + ').');
-        book(S, 'Social-Media-Werbung', -ac); S.adWeek = awk; var lvA = 1 + (11 - S.lvl) * 0.2, ag = R() < Math.max(0.03, 0.15 - ac / 8000) ? 0 : Math.round(Math.pow(ac / 1000, 1.15) * rnd(50, 170) * lvA * (1 + (S.hypeUntil >= S.date ? S.hype || 0 : 0) * 0.5)); followAdd(S, ag); S.adLast = { g: ag, c: ac, d: S.date };
-        info = ag ? 'Werbung geschaltet (' + euro(ac) + '): +' + num(ag) + ' Follower.' : 'Werbung geschaltet (' + euro(ac) + ') – leider ohne Wirkung. 😕'; break;
+        var awk = addDays(S.date, -((dow(S.date) + 6) % 7)); if (socUsed(S)) err(SOCMSG); var ac = adCost(S); // keine Gebühr mehr – die Summe steuert nur die Wirkung
+        S.adWeek = awk; var lvA = 1 + (11 - S.lvl) * 0.2, ag = R() < Math.max(0.03, 0.15 - ac / 8000) ? 0 : Math.round(Math.pow(ac / 1000, 1.15) * rnd(50, 170) * lvA * (1 + (S.hypeUntil >= S.date ? S.hype || 0 : 0) * 0.5)); followAdd(S, ag); S.adLast = { g: ag, c: ac, d: S.date };
+        info = ag ? 'Werbung geschaltet: +' + num(ag) + ' Follower.' : 'Werbung geschaltet – leider ohne Wirkung. 😕'; break;
       }
-      case 'flyer': { var fwk = wkStart(S); if (socUsed(S)) err(SOCMSG); var fc = 40; if (S.cash < fc) err('Nicht genug Bargeld.'); book(S, 'Flyer', -fc); S.flyW = fwk; var fg = rint(2, 12); followAdd(S, fg); if (R() < 0.3) S.fans = clamp(S.fans + 1, 0, 100); S.flyLast = fg; info = 'Flyer im Ort verteilt (' + euro(fc) + '): +' + fg + ' Follower.'; break; }
+      case 'flyer': { var fwk = wkStart(S); if (socUsed(S)) err(SOCMSG);  S.flyW = fwk; var fg = rint(2, 12); followAdd(S, fg); if (R() < 0.3) S.fans = clamp(S.fans + 1, 0, 100); S.flyLast = fg; info = 'Flyer im Ort verteilt: +' + fg + ' Follower.'; break; }
       case 'likeFxSeen': { S.likeFx = 0; break; }
       case 'cupAck': { S.cupPop = null; break; }
       case 'gateSeen': { if (S.lastGate) S.lastGate.fx = false; break; }
@@ -3965,7 +3965,7 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
       c.games.forEach(function (x) { g.push({ d: x.d, comp: c.k, label: c.name + ' · ' + RNAMES[x.rn], opp: x.opp, home: x.home, gf: x.gf, ga: x.ga, pen: x.pen }); });
       if (c.next) g.push({ d: c.next.d, comp: c.k, label: c.name + ' · ' + RNAMES[c.next.rn], opp: c.next.opp.n, oppLiga: c.next.opp.l && D.lv[c.next.opp.l] ? D.lv[c.next.opp.l].short : '', home: c.next.home, gf: null, ga: null });
     });
-    S.tests.forEach(function (t) { g.push({ d: t.d, comp: 'test', label: 'Testspiel', opp: t.opp.n, home: t.home, gf: t.done ? t.gf : null, ga: t.done ? t.ga : null }); });
+    S.tests.forEach(function (t) { g.push({ d: t.d, comp: 'test', label: t.benefiz ? 'Benefizspiel' : 'Testspiel', benefiz: !!t.benefiz, opp: t.opp.n, home: t.home, gf: t.done ? t.gf : null, ga: t.done ? t.ga : null }); });
     if (S.rel && S.rel.games) S.rel.games.forEach(function (x) { g.push({ d: x.d, comp: 'rel', label: 'Relegation', opp: S.rel.opp.n, home: x.home, gf: x.done ? x.gf : null, ga: x.done ? x.ga : null }); });
     return g.sort(function (a, b) { return a.d < b.d ? -1 : 1; });
   }

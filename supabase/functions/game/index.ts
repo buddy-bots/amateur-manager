@@ -228,8 +228,9 @@ async function refAdmin(add: string, label: string, me = '') {
   const { data: inv2 } = await admin.from('invites').select('invitee, inviter').limit(20000);
   const sub: Record<string, number> = {}; (inv2 || []).forEach((x: any) => { if (x.inviter) sub[x.inviter] = (sub[x.inviter] || 0) + 1; });
   const ids = mine.map((x: any) => x.invitee); const nm: Record<string, string> = {};
+  const tf: Record<string, any> = {}; { const { data: tfl } = await admin.from('team_flags').select('user_id, dev, seller, tester').limit(5000); (tfl || []).forEach((t: any) => { tf[t.user_id] = { dev: t.dev, seller: t.seller, tester: t.tester }; }); }
   for (let i = 0; i < ids.length; i += 200) { const { data } = await admin.from('profiles').select('id, display_name, access_at').in('id', ids.slice(i, i + 200)); (data || []).forEach((p: any) => { nm[p.id] = p.display_name + (p.access_at ? '' : ' (ohne Code)'); }); }
-  const dev = { n: mine.length, sub: mine.reduce((a: number, x: any) => a + (sub[x.invitee] || 0), 0), list: mine.map((x: any) => ({ name: nm[x.invitee] || '?', at: x.created_at, s: ss[x.invitee] || 0, sub: sub[x.invitee] || 0 })) };
+  const dev = { n: mine.length, sub: mine.reduce((a: number, x: any) => a + (sub[x.invitee] || 0), 0), list: mine.map((x: any) => ({ id: x.invitee, name: nm[x.invitee] || '?', at: x.created_at, s: ss[x.invitee] || 0, sub: sub[x.invitee] || 0, f: tf[x.invitee] || {} })) };
   return { rows, dev };
 }
 

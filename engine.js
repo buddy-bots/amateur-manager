@@ -521,7 +521,7 @@ var MGR = (function () {
     D.reserve = num(D.cfg['Rücklagen zum Start'], 5000);
     raw.regeln.forEach(function (r) {
       var l = num(r[0]); if (!l) return;
-      D.lv[l] = { l: l, name: String(r[1]), short: String(r[2]), size: num(r[3], 16), up: num(r[4]), upRel: num(r[5]), down: num(r[6]), downRel: num(r[7]), lo: num(r[8]), hi: num(r[9]),
+      D.lv[l] = { l: l, name: ligaName(String(r[1])), short: String(r[2]), size: num(r[3], 16), up: num(r[4]), upRel: num(r[5]), down: num(r[6]), downRel: num(r[7]), lo: num(r[8]), hi: num(r[9]),
         day: String(r[10]).indexOf('Sa') === 0 ? 6 : 0, budget: num(r[11]), zus: num(r[12]), ticket: num(r[13]), spons: num(r[14]), tv: num(r[15]), admin: num(r[16]),
         licCap: num(r[17]), licFlut: num(r[18]), licRasen: String(r[19] || ''), link: String(r[20] || '') };
     });
@@ -1025,7 +1025,7 @@ var MGR = (function () {
       insta: INSTA, dayev: Object.keys(DAYEV).map(function (k) { return { k: k, name: DAYEV[k][0], d: DAYEV[k][1], cost: DAYEV[k][2] }; }), rounds: RNAMES };
   }
   // Liganame ohne Staffel/Gruppe/Nummer: „Landesliga Südbaden 2“ → „Landesliga Südbaden“
-  function ligaName(n) { var s = String(n || '').replace(/^\d{2,4}\s+/, '').replace(/^BZL\b/, 'Bezirksliga').replace(/\bHerren\b/g, '').replace(/\s{2,}/g, ' ').trim();
+  function ligaName(n) { var s = String(n || '').replace(/^\d{2,4}\s+/, '').replace(/^BZL\b/, 'Bezirksliga').replace(/\bHerren\b/g, '').replace(/\s*\([^)]*Staffel\)/g, '').replace(/,?\s*\b(Staffel|Gruppe)\s+[\wÄÖÜäöü]+\b/gi, '').replace(/,\s*\d+\b/g, '').replace(/\s*\(K\)/g, '').replace(/\s*\(([^)]+)\)$/, ' $1').replace(/\s{2,}/g, ' ').trim();
     s = s.replace(/^VL\b/, 'Verbandsliga').replace(/^GL\b/, 'Gruppenliga').replace(/^KOL\b/, 'Kreisoberliga').replace(/^KL([A-D])\b/, 'Kreisliga $1').replace(/^(\d)\.\s?KK\b/, '$1. Kreisklasse').replace(/^KK\b/, 'Kreisklasse');
     // Sponsor vor dem Liganamen weg: „Lotto Hessenliga“ → „Hessenliga“
     var m = s.match(/^(.+?)\s((?:\d\.\s)?[A-ZÄÖÜ][\wäöüß./-]*(?:liga|klasse|Liga|Klasse)\b.*)$/); if (m && !/^\d+\.$/.test(m[1]) && !/(liga|klasse)$/i.test(m[1])) s = m[2];

@@ -258,6 +258,14 @@ function call(fn) {
 /* ---------- Bilder (Supabase Storage, Bucket „media“) – tauschbar über die Admin-Seite, ohne neuen Code */
 var MEDIA = [];
 function mediaUrl(path) { return SB.url + '/storage/v1/object/public/media/' + String(path).split('/').map(encodeURIComponent).join('/'); }
+var CFGROWS = [];
+// Vorgaben aus der Admin-Seite (öffentlich lesbar) – überschreiben die Standardwerte der Spielregeln
+function loadCfg() {
+  return fetch(SB.url + '/rest/v1/game_config?select=key,value&limit=200', { headers: { apikey: SB.key } })
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (rows) { CFGROWS = rows || []; if (D) MGR.applyCfg(D, CFGROWS); return CFGROWS; })
+    .catch(function () { return []; });
+}
 function loadMedia() {
   return fetch(SB.url + '/rest/v1/media?select=key,path&order=key&limit=3000', { headers: { apikey: SB.key } })
     .then(function (r) { return r.ok ? r.json() : []; })
@@ -266,7 +274,7 @@ function loadMedia() {
 }
 // Schlüssel „gruppe.name“ → Stelle in den Spieldaten
 function applyMedia(D, rows) {
-  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad'].forEach(function (g) { D.imgs[g] = {}; });
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta'].forEach(function (g) { D.imgs[g] = {}; });
   D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
   (rows || []).forEach(function (m) {
     var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);

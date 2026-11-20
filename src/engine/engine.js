@@ -109,7 +109,7 @@ var MGR = (function () {
     [4, 'testspiele', 'Testspiele', 'Testspiele im Kalender vereinbaren'],
     [4, 'kapitaen', 'Aufgaben', 'Kapitän, Elfmeter-, Freistoß- und Eckenschützen bestimmen; Vorbereitung planen'],
     [12, 'maskottchen', 'Maskottchen', 'Ein Maskottchen mit Spezialeffekt für den Verein'],
-    [13, 'lehrgang', 'Lehrgänge', 'FVM- und DFB-Lizenzen machen dich zum besseren Trainer'],
+    [13, 'lehrgang', 'Lehrgänge', 'Trainerlizenzen und Fortbildungen machen dich zum besseren Trainer'],
     [14, 'scouting', 'Scouting', 'Scouting-Tools liefern jede Woche neue Talente'],
     [8, 'psponsor', 'Persönlicher Sponsor', 'Ein eigener Sponsor für dich – das Geld geht ins Privatvermögen'],
     [20, 'jcamps', 'Internationale Camps', 'Eigene Fußballcamps weltweit – jeden Monat neue Talente'],
@@ -396,7 +396,9 @@ var MGR = (function () {
     var t = p.age < 25 ? 1 + (p.tal - 1) * 0.12 : 1;
     return nice(b * a * t);
   }
-  function salDemand(p, l) { var v = mw(p, true); var s = l >= 5 ? v * 0.0066 + 10 : v * 0.012 + 200; return Math.max(0, nice(s)); }
+  function salDemand0(p, l) { var v = mw(p, true); var s = l >= 5 ? v * 0.0066 + 10 : v * 0.012 + 200; return Math.max(0, nice(s)); }
+  // Gehalt je Liga: Standard-Spanne (SALDEF) linear auf die Spanne aus den Vorgaben (SALR) umrechnen
+  function salDemand(p, l) { var s = salDemand0(p, l), r = SALR[l], d = SALDEF[l]; if (r && d && r.length === 2) { s = d[1] > d[0] ? +r[0] + (s - d[0]) * (+r[1] - +r[0]) / (d[1] - d[0]) : (+r[0] + +r[1]) / 2; } return Math.max(0, nice(s)); }
   function newPlayer(S, D, o) {
     var age = o.age || genAge(); var tal = o.tal || genTal(o.talBonus);
     var str = o.str != null ? o.str : genStr(D, o.lvl);
@@ -681,12 +683,53 @@ var MGR = (function () {
   function mkTeam(D, l, src) { var L = D.lv[l]; var b = src && src.b != null ? src.b + gauss() * (L.hi - L.lo) * 0.07 : clamp(lvMid(D, l) + gauss() * (L.hi - L.lo) / 6, L.lo - 3, L.hi + 3); return { n: src ? src.n : '', b: Math.round(b * 10) / 10, s: Math.round(b * 10) / 10, r: l >= 5 ? 1 : 0 }; }
 
   // Echte Ligen (Verband gewählt): Regeln je Spielstand – Namen, Größen, Auf-/Abstiegsplätze der eigenen Staffel-Kette
+  // ============================================================ Vorgaben (im Admin änderbar, Tabelle game_config)
+  var INSTA_DEF = [
+    { id: 'ligaradar', name: 'ligaradar', ver: true, per: 18, col: '#b3261e', fx: {}, texts: ['{liga}: {spitze} grüßt von der Tabellenspitze ({punkte} Punkte). Wer stoppt den Primus? 📊', 'Amateur-Check {liga}: {verein} aktuell auf Platz {platz}. Trainer {trainer} hat einen Plan. 🔎', 'Spieler der Woche-Kandidat: {spieler} von {verein} überzeugt mit starken Leistungen. ⭐', '{liga}: Torflut am Wochenende! Die Highlights im Überblick ⚽'] },
+    { id: 'marktcheck', name: 'marktwert.check', ver: true, per: 14, col: '#1a2b6b', fx: {}, texts: ['Gerüchteküche {liga}: Mehrere Vereine sollen an Talenten von {verein} interessiert sein. 👀', 'Vertragsticker: Bleibt {spieler} bei {verein}? 📝', 'Transferbilanz: Wer hat in der {liga} am besten eingekauft? Jetzt abstimmen! 🗳️'] },
+    { id: 'verbandsecho', name: 'verbandsecho', ver: true, per: 2, col: '#0b6e3b', fx: { follow: 120, fans: 1 }, texts: ['Amateurfußball ist Herzblut! ❤️ Heute grüßen wir {verein} aus der {liga} – #UnsereAmateure', 'Ehrenamt verdient Applaus 👏 Danke an alle Helferinnen und Helfer bei {verein}!'] }
+  ];
+  var INSTA = INSTA_DEF, LICI = {}, SALR = {}, SALDEF = {}, CFGV = 0, CFGDEF = null, CFGNOW = {};
+  var CFG_LV = ['budget', 'zus', 'ticket', 'spons', 'tv', 'lo', 'hi', 'licCap', 'licFlut', 'prize'];
+  function salSample(l, D) { var L = D.lv[l]; if (!L) return [0, 0]; var f = function (str) { return salDemand0({ str: str, age: 26, tal: 3 }, +l); }; return [f(L.lo), f(L.hi)]; }
+  function cfgSnap(D) {
+    if (CFGDEF) return;
+    CFGDEF = { lv: {}, xp: XPLV.slice(), feat: FEATURES.map(function (f) { return f[0]; }), items: {}, courses: COURSES.map(function (c) { return [c[1], c[2]]; }), capr: JSON.parse(JSON.stringify(CAPR)), cups: {}, cupn: {}, ligaLvl: JSON.parse(JSON.stringify(LIGA_LVL)), dayev: {} };
+    Object.keys(D.lv).forEach(function (l) { var o = {}; CFG_LV.forEach(function (k) { o[k] = D.lv[l][k]; }); if (o.prize == null) o.prize = nice((D.lv[l].budget || 0) * 0.04); CFGDEF.lv[l] = o; SALDEF[l] = salSample(l, D); });
+    D.itemList.forEach(function (it) { CFGDEF.items[it.id] = { name: it.name, desc: it.desc, cost: it.cost, monthly: it.monthly, days: it.days }; });
+    Object.keys(CUPS).forEach(function (k) { CFGDEF.cups[k] = CUPS[k].prize.slice(); CFGDEF.cupn[k] = CUPS[k].name; });
+    Object.keys(DAYEV).forEach(function (k) { CFGDEF.dayev[k] = [DAYEV[k][0], DAYEV[k][2]]; });
+  }
+  // rows: [{key, value}] aus game_config – setzt immer erst die Standardwerte, dann die Änderungen (mehrfach aufrufbar)
+  function applyCfg(D, rows) {
+    cfgSnap(D); var C = {}; (rows || []).forEach(function (r) { if (r && r.key) C[r.key] = r.value; }); CFGNOW = C;
+    var nv = function (v, d) { return v === '' || v == null || isNaN(+v) ? d : +v; };
+    Object.keys(CFGDEF.lv).forEach(function (l) { var o = (C.liga || {})[l] || {}; CFG_LV.forEach(function (k) { D.lv[l][k] = nv(o[k], CFGDEF.lv[l][k]); }); });
+    var xp = Array.isArray(C.xp) && C.xp.length ? C.xp : CFGDEF.xp; XPLV.length = 0; xp.forEach(function (v, i) { XPLV.push(nv(v, CFGDEF.xp[i] || 0)); });
+    FEATURES.forEach(function (f, i) { f[0] = nv((C.feat || {})[f[1]], CFGDEF.feat[i]); });
+    D.itemList.forEach(function (it) { var d0 = CFGDEF.items[it.id], o = (C.items || {})[it.id] || {}; it.name = o.name || d0.name; it.desc = o.desc != null && o.desc !== '' ? o.desc : d0.desc; it.cost = nv(o.cost, d0.cost); it.monthly = nv(o.monthly, d0.monthly); it.days = nv(o.days, d0.days); });
+    COURSES.forEach(function (c, i) { var o = (C.courses || {})[c[0]] || {}; c[1] = o.name || CFGDEF.courses[i][0]; c[2] = o.by || CFGDEF.courses[i][1]; });
+    Object.keys(CFGDEF.capr).forEach(function (l) { var o = (C.capr || {})[l]; CAPR[l] = o && o.length === 2 ? [nv(o[0], CFGDEF.capr[l][0]), nv(o[1], CFGDEF.capr[l][1])] : CFGDEF.capr[l].slice(); });
+    Object.keys(CUPS).forEach(function (k) { var o = (C.cups || {})[k]; CUPS[k].prize = CFGDEF.cups[k].map(function (v, i) { return o ? nv(o[i], v) : v; }); CUPS[k].name = ((C.cupn || {})[k]) || CFGDEF.cupn[k]; });
+    Object.keys(CFGDEF.ligaLvl).forEach(function (l) { LIGA_LVL[l] = nv((C.ligaLvl || {})[l], CFGDEF.ligaLvl[l]); });
+    Object.keys(CFGDEF.dayev).forEach(function (k) { var o = (C.dayev || {})[k] || {}; DAYEV[k][0] = o.name || CFGDEF.dayev[k][0]; DAYEV[k][2] = nv(o.cost, CFGDEF.dayev[k][1]); });
+    LICI = C.licItems || {}; SALR = C.sal || {}; INSTA = Array.isArray(C.insta) ? C.insta : INSTA_DEF;
+    CFGV++; DCACHE = {};
+  }
+  // Alles, was die Vorgaben-Seite anzeigt: Standardwerte + aktuelle Werte
+  function cfgInfo(D) {
+    cfgSnap(D);
+    return { def: CFGDEF, now: CFGNOW, lv: Object.keys(D.lv).map(function (l) { var L = D.lv[l]; return { l: +l, name: L.name, short: L.short, size: L.size, up: L.up, down: L.down, budget: L.budget, zus: L.zus, ticket: L.ticket, spons: L.spons, tv: L.tv, lo: L.lo, hi: L.hi, licCap: L.licCap, licFlut: L.licFlut, licRasen: L.licRasen, prize: L.prize, sal: SALR[l] || SALDEF[l], salDef: SALDEF[l], cap: CAPR[l] || null, start: LIGA_LVL[l] || 0 }; }),
+      xp: XPLV.slice(), feat: FEATURES.map(function (f) { return { lvl: f[0], k: f[1], n: f[2], d: f[3] || '' }; }), items: D.itemList.map(function (it) { return { id: it.id, cat: it.cat, name: it.name, desc: it.desc, cost: it.cost, monthly: it.monthly, days: it.days, req: it.req, flvl: itemLvl(it), lic: LICI[it.id] || 0 }; }),
+      courses: COURSES.map(function (c) { return { id: c[0], name: c[1], by: c[2], cost: c[3], days: c[4], fx: c[6] }; }), cups: Object.keys(CUPS).map(function (k) { return { k: k, name: CUPS[k].name, prize: CUPS[k].prize.slice() }; }),
+      insta: INSTA, dayev: Object.keys(DAYEV).map(function (k) { return { k: k, name: DAYEV[k][0], d: DAYEV[k][1], cost: DAYEV[k][2] }; }), rounds: RNAMES };
+  }
   // Liganame ohne Staffel/Gruppe/Nummer: „Landesliga Südbaden 2“ → „Landesliga Südbaden“
   function ligaName(n) { var s = String(n || '').replace(/^\d{2,4}\s+/, '').replace(/^BZL\b/, 'Bezirksliga').replace(/^KL\b/, 'Kreisliga').replace(/^KK\b/, 'Kreisklasse').replace(/\s*\(Verband\)/, '').replace(/^(Bezirksliga|Landesliga|Kreisliga|Kreisklasse) Bayern,\s*/, '$1 ').replace(/,?\s*(Staffel|Gruppe|Gr\.|St\.)\s*[\wÄÖÜäöü-]*$/i, '').replace(/\s*[–-]\s*(Staffel\s*)?\d+$/, '').replace(/\s+\d+\s+Flex$/i, '').replace(/\b([A-D])\d+$/, '$1').replace(/\s+(\d+|[IVX]+)$/, '').replace(/\s+[–-]\s+/g, ' ').replace(/[\s,–-]+$/, '').trim(); return s || String(n || ''); }
   var DCACHE = {};
   function dOf(S, D) {
     if (!S || !S.reg || !S.reg.lv) return D;
-    var key = S.reg.key + '|' + (D.lv[1] && D.lv[1].budget);
+    var key = S.reg.key + '|' + CFGV + '|' + (D.lv[1] && D.lv[1].budget);
     if (DCACHE[key] && DCACHE[key].base === D) { DCACHE[key].d.club = S.club; return DCACHE[key].d; }
     var d = Object.create(D); d.lv = {}; Object.keys(D.lv).forEach(function (l) { d.lv[l] = D.lv[l]; });
     Object.keys(S.reg.lv).forEach(function (l) { var b = D.lv[l] || D.lv[11]; var o = {}; Object.keys(b).forEach(function (k) { o[k] = b[k]; }); var r = S.reg.lv[l]; if (r.name) r.name = ligaName(r.name); ['name', 'short', 'size', 'up', 'upRel', 'down', 'downRel'].forEach(function (k) { if (r[k] != null) o[k] = r[k]; }); o.l = +l; o.link = r.link || ''; d.lv[l] = o; });
@@ -704,7 +747,7 @@ var MGR = (function () {
     return '';
   }
   function homeStadion(S) { var L = locOf(S); return L ? 'Sportpark ' + L.ort : 'Waldstadion'; }
-  function regFix(S) { if (!S) return; if (S.cap0 == null && S.lvl) S.cap0 = capStart((S.reg && S.reg.lvl0) || S.lvl, S.pseed || 7); if (S.follow0 == null && S.follow != null) S.follow0 = S.follow; ['kit', 'ball'].forEach(function (k) { var B = k === 'ball' ? BALL_BRANDS : KIT_BRANDS; if (S[k] && B[S[k].brand]) S[k].name = B[S[k].brand]; (S[k + 'Offers'] || []).forEach(function (o) { if (B[o.brand]) o.name = B[o.brand]; }); }); if (S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); (S.cups || []).forEach(function (c) { if (CUPS[c.k] && c.name !== CUPS[c.k].name) c.name = CUPS[c.k].name; }); }
+  function regFix(S) { if (!S) return; if (S.feed && S.feed.some(function (x) { return /^(kicker|transfermarkt|dfb|fvm|fynn)$/.test(x.media || ''); })) S.feed = S.feed.filter(function (x) { return !/^(kicker|transfermarkt|dfb|fvm|fynn)$/.test(x.media || ''); }); if (S.cap0 == null && S.lvl) S.cap0 = capStart((S.reg && S.reg.lvl0) || S.lvl, S.pseed || 7); if (S.follow0 == null && S.follow != null) S.follow0 = S.follow; ['kit', 'ball'].forEach(function (k) { var B = k === 'ball' ? BALL_BRANDS : KIT_BRANDS; if (S[k] && B[S[k].brand]) S[k].name = B[S[k].brand]; (S[k + 'Offers'] || []).forEach(function (o) { if (B[o.brand]) o.name = B[o.brand]; }); }); if (S.reg && S.stadion === 'Waldstadion') S.stadion = homeStadion(S); (S.cups || []).forEach(function (c) { if (CUPS[c.k] && c.name !== CUPS[c.k].name) c.name = CUPS[c.k].name; }); }
   // Ortskoordinaten: orte = { Name: [[lat, lon, Land], …] }, part = Index der Namensteile; nur Treffer im passenden Bundesland
   var VB_LAND = { Mittelrhein: ['Nordrhein-Westfalen'], Niederrhein: ['Nordrhein-Westfalen'], Westfalen: ['Nordrhein-Westfalen'], Rheinland: ['Rheinland-Pfalz'], 'Südwest': ['Rheinland-Pfalz'], 'RV Südwest': ['Rheinland-Pfalz', 'Saarland', 'Baden-Württemberg', 'Hessen'], 'RV West': ['Nordrhein-Westfalen'], DFB: [], Bayern: ['Bayern'], Baden: ['Baden-Württemberg'], 'Südbaden': ['Baden-Württemberg'], 'Württemberg': ['Baden-Württemberg'], 'Oberliga BW': ['Baden-Württemberg'], Hessen: ['Hessen'], 'Thüringen': ['Thüringen'], 'RV Nordost': ['Thüringen', 'Sachsen', 'Sachsen-Anhalt', 'Berlin', 'Brandenburg', 'Mecklenburg-Vorpommern'] };
   function geoIndex(orte) { var part = {}; Object.keys(orte).forEach(function (k) { k.split(/[-\s]+/).forEach(function (p) { if (p.length > 3) (part[p] = part[p] || []).push.apply(part[p], orte[k]); }); }); return part; }
@@ -1226,6 +1269,7 @@ var MGR = (function () {
     var cupBest = S.cups.map(function (c) { return c.name + ': ' + (c.won ? 'Sieger' : RNAMES[Math.min(5, c.rn)]); }).join(' · ');
     S.hist.push({ season: S.season, lvl: oldLvl, liga: L.name, rank: me.rank, pts: me.pts, tore: me.tf + ':' + me.ta, result: result, goal: GOALS[S.goal], goalOk: goalOk, cups: cupBest, cash: Math.round(S.cash + (S.tb || 0)) });
     S.lastRank = me.rank;
+    if (me.rank === 1 && L.prize > 0) book(S, 'Meisterprämie', L.prize);
     if (me.rank === 1) { ach(S, 'meister', L.name, false, oldLvl); hypeUp(S, 2.5); ownPost(S, '🏆 MEISTER! Der SV Wachtberg holt den Titel in der ' + L.short + '! Danke an alle Fans – ihr seid die Besten! 💚🍾', 'pokal'); }
     if (oldLvl === 1 && me && me.rank === 1) { S.blMeister = true; S.blTitles = (S.blTitles || 0) + 1; }
     if (oldLvl === 1 && me) S.blBest = Math.min(S.blBest || 99, me.rank);
@@ -1357,6 +1401,7 @@ var MGR = (function () {
     var r = L.licRasen.toLowerCase();
     if (r.indexOf('natur') >= 0 && S.pitch.type !== 'natur') out.push('Naturrasen');
     if (r.indexOf('heiz') >= 0 && (S.pitch.type !== 'natur' || !e.heiz)) out.push('Naturrasen mit Rasenheizung');
+    Object.keys(LICI).forEach(function (id) { if (+LICI[id] >= +l && D.items[id] && !S.built[id]) out.push(D.items[id].name); });
     return out;
   }
   function simSeasonTable(teams) {
@@ -1930,8 +1975,10 @@ var MGR = (function () {
     S.moral = clamp(S.moral + (60 + e.moral - S.moral) * 0.08, 10, 100);
     S.youth.forEach(function (y) { var g = Math.max(0, y.pot - y.str) * 0.007 * (0.8 + y.tal * 0.1) * (1 + (bon(S, 'ydev') + (e.ydev || 0)) / 100) * (1 + e.dev / 100); y.str = clamp(y.str + g, 1, 99); });
     if (dow(S.date) === 1 && S.lvl > 1 && S.licWarn !== S.season && [10, 11, 12, 1, 2, 3, 4].indexOf(mon(S.date)) >= 0) { try { var lt = table(S), lme = lt.filter(function (r) { return r.svw; })[0]; if (lme && lme.rank <= 3) { var li = licenseIssues(S, D, S.lvl - 1); if (li.length) { S.licWarn = S.season; infoMail(S, 'Verband (Lizenzierung)', 'Achtung: Ihr steht auf Platz ' + lme.rank + '. Für einen Aufstieg in die ' + D.lv[S.lvl - 1].short + ' fehlt euch noch: ' + li.join(', ') + '. Ohne diese Voraussetzungen gibt es keine Lizenz – auch nicht als Meister! Baut rechtzeitig (Verein → Erweiterungen), die Bauzeit zählt.'); msg(S, 'verein', '⚠️ Lizenz-Warnung: Für die ' + D.lv[S.lvl - 1].short + ' fehlt noch ' + li.join(', ')); } } } catch (e) {} }
-    if (dow(S.date) === 1) { if (R() < 0.04) rarePost(S, D, pick(['dfb', 'fvm'])); if (R() < 0.035) rarePost(S, D, 'fynn'); if (R() < 0.065) rarePost(S, D, 'viral');
-      var nP = rint(1, 5), nM = R() < 0.75 ? rint(1, 2) : 0; for (var pk = 0; pk < nP; pk++) makePost(S, D, null); for (var mk = 0; mk < nM; mk++) mediaPost(S, D); }
+    if (dow(S.date) === 1) { if (R() < 0.065) rarePost(S, D, 'viral');
+      var nP = rint(1, 5); for (var pk = 0; pk < nP; pk++) makePost(S, D, null); }
+    // Eigene Instagram-Profile (im Admin unter Vorgaben verwaltet): Beiträge pro Saison
+    try { INSTA.forEach(function (a) { if (a && a.id && (a.per || 0) > 0 && R() < a.per / 330) accPost(S, D, a); }); } catch (e) { }
     refreshMarket(S, D, false);
     if (inWindow(S.date) || R() < 0.3) aiOffers(S, D);
     (S.watch || []).forEach(function (w) { if (w.moved && w.moved.until <= S.date) w.moved = null; if (!w.moved && R() < 0.06) { var nc = pick(S.world.lv[Math.max(1, Math.min(11, (w.lvl || S.lvl) + rint(-1, 1)))] || S.world.lv[S.lvl]).n; var mon0 = mon(S.date), un = mon0 <= 1 ? S.date.slice(0, 4) + '-07-01' : mon0 >= 7 ? (+S.date.slice(0, 4) + 1) + '-01-01' : S.date.slice(0, 4) + '-07-01'; w.moved = { club: nc, until: un }; w.club = nc; w.free = false; infoMail(S, 'Scout', 'Watchlist: ' + w.n + ' hat gewechselt', w.n + ' hat bei ' + nc + ' unterschrieben. Ein Transfer geht erst im nächsten Transferfenster wieder – eine Leihe wäre möglich.', 'info'); } });
@@ -2068,6 +2115,15 @@ var MGR = (function () {
     var L = D.lv[S.lvl], P = { dfb: ['dfb', ['Amateurfußball ist Herzblut! ❤️ Heute grüßen wir ' + svwN() + ' aus der ' + L.short + ' – #UnsereAmateure', 'Ehrenamt verdient Applaus 👏 Danke an alle Helferinnen und Helfer beim SV Wachtberg – der Macht im Ländchen!', 'Fair Play im Ländchen: Der SVW zeigt, wie Amateurfußball geht. 🤝⚽']], fvm: ['fvm', ['Vereins-Spotlight Mittelrhein: Der SV Wachtberg 🔴🟢 – die Macht im Ländchen begeistert in der ' + L.short + '!', 'Starke Jugendarbeit beim SVW – so geht Talentförderung am Mittelrhein. 💪', 'FVM-Tipp: Am Wochenende lohnt sich der Besuch bei den Rot-Grünen aus Wachtberg! ⚽']], fynn: ['fynn', ['Stark, Jungs! 🔴🟢 Mein Heimatverein zeigt, was im Ländchen steckt. Weiter so, SVW! 💪 #DieMachtImLändchen', 'Was beim SV Wachtberg gerade entsteht, ist richtig stark. Das Projekt hat Zukunft – ich drücke euch die Daumen! 🙌', 'Hier hat für mich alles angefangen. Glückwunsch zum Lauf, SVW – gebt weiter Gas! ⚽❤️', 'Grüße aus Kerkrade! 🇳🇱 Hab euer letztes Spiel verfolgt – starke Truppe. Macht weiter so, Coach ' + S.mgr + '! 👊']], viral: ['viral', ['😂 Dieser Torjubel vom SV Wachtberg geht gerade durch die Decke! #Amateurfußball', '🔥 Unfassbar: Fallrückzieher-Tor im Ländchen – das Video hat schon zigtausend Aufrufe!', '🐐 Der Platzwart des SVW mäht das Vereinslogo in den Rasen – das Netz feiert die Macht im Ländchen!', '⚽ 60-Meter-Treffer beim SV Wachtberg – Tor des Monats?!']] }[kind];
     var lk = kind === 'viral' ? rint(4000, 25000) : kind === 'fynn' ? rint(800, 3500) : rint(1500, 9000);
     S.feed.unshift({ id: S.nextId++, u: P[0], media: kind === 'viral' ? null : P[0], viral: kind === 'viral', rare: kind, t: rx(S, pick(P[1])), k: kind === 'viral' ? pick(['tor', 'fans', 'stadion']) : P[0], seed: rint(1, 9999), likes: lk, liked: false, d: S.date }); if (S.feed.length > 30) S.feed.length = 30;
+  }
+  // Beitrag eines Instagram-Profils aus den Vorgaben; Platzhalter {verein} {liga} {spieler} {spitze} {punkte} {platz} {trainer}
+  function accPost(S, D, a) {
+    var T = (a.texts || []).filter(function (x) { return String(x || '').trim(); }); if (!T.length) return;
+    var L = D.lv[S.lvl], pl = S.players.length ? pick(S.players.filter(function (p) { return !p.self; })) : null, tb = []; try { tb = table(S); } catch (e) {}
+    var me = tb.filter(function (t) { return t.svw; })[0], top = tb[0];
+    var txt = String(pick(T)).replace(/\{verein\}/g, S.club).replace(/\{liga\}/g, L.short).replace(/\{spieler\}/g, pl ? pl.n : 'unser Kapitän').replace(/\{spitze\}/g, top ? top.n : S.club).replace(/\{punkte\}/g, top ? top.pts : 0).replace(/\{platz\}/g, me ? tb.indexOf(me) + 1 : '–').replace(/\{trainer\}/g, S.mgr || 'Trainer');
+    var fx = a.fx || {}; if (fx.follow) followAdd(S, fx.follow); if (fx.fans) S.fans = clamp((S.fans || 50) + fx.fans, 0, 100); if (fx.spons) S.spons = clamp((S.spons || 50) + fx.spons, 0, 100); if (fx.moral) S.moral = clamp((S.moral || 60) + fx.moral, 0, 100); if (fx.board) S.board = clamp((S.board || 60) + fx.board, 0, 100);
+    S.feed.unshift({ id: S.nextId++, u: a.name || a.id, media: 'acc:' + a.id, ver: !!a.ver, col: a.col || '', t: txt, k: 'acc', seed: rint(1, 9999), likes: rint(40, 400) + Math.round((S.follow || 0) / 40), liked: false, d: S.date }); if (S.feed.length > 30) S.feed.length = 30;
   }
   function mediaPost(S, D) {
     var src = R() < 0.5 ? 'kicker' : 'transfermarkt', L = D.lv[S.lvl], pl = S.players.length ? pick(S.players.filter(function (p) { return !p.self; })) : null, tb = []; try { tb = table(S); } catch (e) {}
@@ -3560,5 +3616,5 @@ var MGR = (function () {
   var LIGA_LVL = { 1: 25, 2: 20, 3: 15, 4: 10 };
   // Gebiet einheitlich: in Württemberg und Südbaden sind die Bezirke die unterste Ebene (= Fußballkreis)
   function gebietNorm(vb, g) { g = String(g || ''); if (vb === 'Württemberg' || vb === 'Südbaden') { if (/^Bezirk /.test(g)) return g.replace(/^Bezirk /, 'Kreis '); if (vb === 'Südbaden' && g && !/^(Kreis |Südbaden)/.test(g)) return 'Kreis ' + g; } return g; }
-  return { ligaName: ligaName, gebietNorm: gebietNorm, LIGA_LVL: LIGA_LVL, VB_LAND: VB_LAND, PRO_ORT: PRO_ORT, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
+  return { applyCfg: applyCfg, cfgInfo: cfgInfo, ligaName: ligaName, gebietNorm: gebietNorm, LIGA_LVL: LIGA_LVL, VB_LAND: VB_LAND, PRO_ORT: PRO_ORT, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
 })();

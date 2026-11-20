@@ -286,7 +286,7 @@ function boot() {
   var hc = /[?&]hc=([0-9a-f]{40})/.exec(location.search);
   if (!hc) return boot0();
   history.replaceState(null, '', location.pathname); var code = hc[1], t0 = Date.now(), done = false;
-  D = MGR.normalize(defaultRaw()); startScreen();
+  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); startScreen();
   pop('<div style="text-align:center"><div style="font-size:44px">📱</div><h2 style="padding:0">Am PC bestätigen</h2><div class="small" style="line-height:1.6;margin:8px 0 12px">Auf deinem PC erscheint gleich die Frage, ob dieses Handy dein Spiel übernehmen darf. Tippe dort auf <b>Zulassen</b>.</div><div class="xs muted" id="hoffst">Warte auf Bestätigung …</div><button class="sm" style="margin-top:12px" onclick="location.reload()">Abbrechen</button></div>', { lock: true, free: true });
   var finish = function (msg, err) { done = true; closePop(); if (msg) toast(msg, !!err); boot0(); };
   var tick = function () {
@@ -321,7 +321,7 @@ function hoffAnswer(ok) {
 }
 function boot0() {
   sessLoad();
-  D = MGR.normalize(defaultRaw());
+  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); loadCfg();
   var back = authFromUrl();
   startScreen();
   loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });

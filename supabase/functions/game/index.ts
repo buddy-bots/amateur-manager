@@ -18,6 +18,14 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+// Vorgaben aus der Admin-Seite (game_config) – jede Minute neu geladen und in die Spielregeln übernommen
+let cfgAt = 0;
+async function refreshCfg(force = false) {
+  if (!force && Date.now() - cfgAt < 60_000) return;
+  cfgAt = Date.now();
+  const { data } = await admin.from('game_config').select('key, value').limit(200);
+  MGR.applyCfg(D, data || []);
+}
 // Bilder aus der Admin-Seite (z. B. Partnerbilder) – alle 10 Minuten neu geladen
 let mediaAt = 0;
 async function refreshMedia() {
@@ -311,6 +319,7 @@ function sanitize(action: string, params: any) {
 
 async function handle(req: Request, userId: string, body: any) {
   try { await refreshMedia(); } catch (_e) { /* Bilder sind optional */ }
+  try { await refreshCfg(body && body.op === 'cfgReload'); } catch (_e) { /* Vorgaben sind optional */ }
   const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);

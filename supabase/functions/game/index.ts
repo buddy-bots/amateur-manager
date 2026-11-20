@@ -33,7 +33,7 @@ const ligCache: Record<string, { at: number; st: any[] }> = {};
 async function verbandStaffeln(verband: string) {
   const c = ligCache[verband];
   if (c && Date.now() - c.at < 600_000) return c.st;
-  const vbs = verband === 'Rheinland' || verband === 'Südwest' ? [verband, 'RV Südwest', 'DFB'] : ['Baden', 'Südbaden', 'Württemberg'].includes(verband) ? [verband, 'Oberliga BW', 'RV Südwest', 'DFB'] : verband === 'Bayern' ? [verband, 'DFB'] : [verband, 'RV West', 'DFB'];
+  const vbs = verband === 'Rheinland' || verband === 'Südwest' ? [verband, 'RV Südwest', 'DFB'] : ['Baden', 'Südbaden', 'Württemberg'].includes(verband) ? [verband, 'Oberliga BW', 'RV Südwest', 'DFB'] : verband === 'Bayern' ? [verband, 'DFB'] : verband === 'Hessen' ? [verband, 'RV Südwest', 'DFB'] : verband === 'Thüringen' ? [verband, 'RV Nordost', 'DFB'] : [verband, 'RV West', 'DFB'];
   const st: any[] = []; let error: any = null;
   for (let o = 0; o < 20000; o += 1000) { const r = await admin.from('ligen_staffeln').select('id, ebene, klasse, name, gebiet').in('verband', vbs).eq('aktiv', true).order('id').range(o, o + 999); if (r.error) { error = r.error; break; } st.push(...(r.data || [])); if ((r.data || []).length < 1000) break; }
   if (error || !st.length) throw new HttpError(500, 'Ligadaten nicht verfügbar.');
@@ -55,10 +55,10 @@ async function regFor(teamId: string) {
   if (!t || !(t as any).ligen_staffeln) throw new HttpError(400, 'Mannschaft nicht gefunden.');
   if (!(t as any).aktiv) throw new HttpError(400, 'Diese Mannschaft ist nicht spielbar.');
   let verband = (t as any).ligen_staffeln.verband;
-  if (['DFB', 'RV West', 'RV Südwest', 'Oberliga BW'].includes(verband)) {
+  if (['DFB', 'RV West', 'RV Südwest', 'Oberliga BW', 'RV Nordost'].includes(verband)) {
     // Überregionale Liga: Verband über die eigenen Zweitmannschaften, sonst über den Fußballkreis des Ortes
     let vb = '';
-    if ((t as any).verein_id) { const { data: o } = await admin.from('ligen_teams').select('ligen_staffeln!inner(verband)').eq('verein_id', (t as any).verein_id).not('ligen_staffeln.verband', 'in', '("DFB","RV West","RV Südwest","Oberliga BW")').limit(1); vb = (o?.[0] as any)?.ligen_staffeln?.verband || ''; }
+    if ((t as any).verein_id) { const { data: o } = await admin.from('ligen_teams').select('ligen_staffeln!inner(verband)').eq('verein_id', (t as any).verein_id).not('ligen_staffeln.verband', 'in', '("DFB","RV West","RV Südwest","Oberliga BW","RV Nordost")').limit(1); vb = (o?.[0] as any)?.ligen_staffeln?.verband || ''; }
     if (!vb && (t as any).kreis) { const { data: ks } = await admin.from('ligen_staffeln').select('verband').eq('gebiet', 'Kreis ' + (t as any).kreis).limit(1); vb = (ks?.[0] as any)?.verband || ''; }
     if (!vb && verband === 'RV Südwest') vb = 'Südwest';
     if (!vb) throw new HttpError(400, 'Dieser Verein liegt (noch) nicht in einem spielbaren Bundesland.');
@@ -114,7 +114,7 @@ async function ligenImport(ref: string) {
       const own = s.teams.filter((t: any) => { if (seen[t.id] || /\bzg\.?\s*$/i.test(String(t.n).trim())) return false; seen[t.id] = 1; return true; });
       const eb = s.ebene || (v.start || 5) + order.indexOf(s.skn);
       if (own.length < 4 || eb > 11) { drop.push(s.id); continue; }
-      S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: ligStaffel(s.n, s.gn, v.name), name_fd: s.n, gebiet: s.gn, updated_at: now });
+      S.push({ id: s.id, saison: d.season, verband: v.name, ebene: s.ebene || (v.start || 5) + order.indexOf(s.skn), klasse: s.skn, name: MGR.ligaName(ligStaffel(s.n, s.gn, v.name)), name_fd: s.n, gebiet: s.gn, updated_at: now });
       for (const t of own) { const g = MGR.geoFind(orte, part, ligTeam(t.n), v.name, s.gn); T.push({ id: t.id, staffel_id: s.id, verein_id: t.club, name: ligTeam(t.n), name_fd: t.n, rang: t.r | 0, zone: t.z || '', lat: g ? g[0] : null, lon: g ? g[1] : null, updated_at: now }); }
     }
   }
@@ -130,7 +130,7 @@ async function ligenImport(ref: string) {
   const stG: Record<string, string> = {}, stV: Record<string, string> = {}; S.forEach((x) => { stG[x.id] = x.gebiet || ''; stV[x.id] = x.verband; });
   const clubK: Record<string, string> = {}, cen: Record<string, [number, number, number, string]> = {};
   T.forEach((t) => { const g = stG[t.staffel_id]; if (!/^Kreis /.test(g)) return; const k = g.replace(/^Kreis\s+/, ''); if (t.verein_id && !clubK[t.verein_id]) clubK[t.verein_id] = k; if (t.lat) { const c = (cen[k] = cen[k] || [0, 0, 0, stV[t.staffel_id]]); c[0] += t.lat; c[1] += t.lon; c[2]++; } });
-  const overall = (vb: string) => vb === 'RV Südwest' || vb === 'RV West' || vb === 'DFB' || vb === 'Oberliga BW';
+  const overall = (vb: string) => vb === 'RV Südwest' || vb === 'RV West' || vb === 'DFB' || vb === 'Oberliga BW' || vb === 'RV Nordost';
   const kLand: Record<string, string> = {}; Object.keys(cen).forEach((k) => { kLand[k] = (MGR.VB_LAND[cen[k][3]] || [])[0] || ''; });
   const near = (lat: number, lon: number, vb: string, land?: string) => { let b = '', bd = 1e9; for (const k of Object.keys(cen)) { const c = cen[k]; if (land ? kLand[k] !== land : (!overall(vb) && c[3] !== vb)) continue; const d = (c[0] / c[2] - lat) ** 2 + (c[1] / c[2] - lon) ** 2; if (d < bd) { bd = d; b = k; } } return b && (!overall(vb) || bd < 0.12) ? b : null; };
   T.forEach((t) => { const vb = stV[t.staffel_id]; const po = MGR.PRO_ORT[t.name]; t.kreis = (t.verein_id && clubK[t.verein_id]) || (t.lat ? near(t.lat, t.lon, vb, po ? po[1] : vb === 'Oberliga BW' ? 'Baden-Württemberg' : undefined) : null); t.land = overall(vb) ? (po ? po[1] : (t.kreis ? kLand[t.kreis] || null : null)) : ((MGR.VB_LAND[vb] || [])[0] || null); });
@@ -199,7 +199,7 @@ async function refMission(userId: string, profile: any, k: string) {
 }
 async function refAdmin(add: string, label: string, me = '') {
   if (add) { const code = add.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24); if (code.length < 4) throw new HttpError(400, 'Code zu kurz.'); const { error } = await admin.from('invite_codes').insert({ code, label: label.slice(0, 60) || null, seller: true }); if (error) throw new HttpError(400, 'Code existiert schon.'); }
-  const { data: codes } = await admin.from('invite_codes').select('code, user_id, label, seller, created_at').limit(5000);
+  const { data: codes } = await admin.from('invite_codes').select('code, user_id, label, seller, partner, created_at').limit(5000);
   const { data: inv } = await admin.from('invites').select('invitee, inviter, code, confirmed, seasons, created_at').limit(20000);
   const ss = await seasonsOf((inv || []).map((x: any) => x.invitee));
   const owners = [...new Set((codes || []).map((c: any) => c.user_id).filter(Boolean))];
@@ -207,8 +207,8 @@ async function refAdmin(add: string, label: string, me = '') {
   for (let i = 0; i < owners.length; i += 200) { const { data } = await admin.from('profiles').select('id, display_name').in('id', owners.slice(i, i + 200)); (data || []).forEach((p: any) => { names[p.id] = p.display_name; }); }
   const by: Record<string, any> = {}, now = Date.now();
   (inv || []).forEach((x: any) => { const n = ss[x.invitee] || 0; const o = (by[x.code] = by[x.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }); o.reg++; if (x.confirmed) o.conf++; if (n >= 1) o.s1++; if (now - new Date(x.created_at).getTime() < 30 * 864e5) o.d30++; });
-  const rows = (codes || []).map((c: any) => ({ code: c.code, seller: c.seller, label: c.label || '', owner: c.user_id ? names[c.user_id] || '' : '', created_at: c.created_at, ...(by[c.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }) }))
-    .filter((r: any) => r.seller || r.reg > 0).sort((a: any, b: any) => (b.seller - a.seller) || (b.reg - a.reg));
+  const rows = (codes || []).map((c: any) => ({ code: c.code, seller: c.seller, partner: !!c.partner, label: c.label || '', owner: c.user_id ? names[c.user_id] || '' : '', created_at: c.created_at, ...(by[c.code] || { reg: 0, conf: 0, s1: 0, d30: 0 }) }))
+    .filter((r: any) => r.seller || r.partner || r.reg > 0).sort((a: any, b: any) => (b.seller - a.seller) || (b.reg - a.reg));
   // Entwickler-Box: wen ich eingeladen habe und wie viele die wiederum eingeladen haben
   const mine = (inv || []).filter((x: any) => x.inviter === me);
   const { data: inv2 } = await admin.from('invites').select('invitee, inviter').limit(20000);

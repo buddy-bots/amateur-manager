@@ -4,7 +4,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 
 const SAISON = process.env.SAISON || '2627';
 // [Mandant, Name, Ebene der obersten Verbandsliga]
-const VERB = [[23, 'Mittelrhein', 5], [22, 'Niederrhein', 5], [21, 'Westfalen', 5], [41, 'Rheinland', 6], [42, 'Südwest', 6], [31, 'Bayern', 4], [32, 'Baden', 6], [33, 'Südbaden', 6], [35, 'Württemberg', 6]];
+const VERB = [[23, 'Mittelrhein', 5], [22, 'Niederrhein', 5], [21, 'Westfalen', 5], [41, 'Rheinland', 6], [42, 'Südwest', 6], [31, 'Bayern', 4], [32, 'Baden', 6], [33, 'Südbaden', 6], [35, 'Württemberg', 6], [34, 'Hessen', 5], [65, 'Thüringen', 6], [49, 'RV Nordost', 4]];
 // Oberliga Baden-Württemberg steht bei fussball.de unter Württemberg, gilt aber für alle drei BW-Verbände
 const OBW = { id: 35, name: 'Oberliga BW', start: 5, klassen: {}, staffeln: [] };
 const UA = 'Mozilla/5.0 (compatible; AmateurManagerDataBot/1.0; +https://amateur-manager.de)';

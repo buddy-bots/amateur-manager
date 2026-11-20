@@ -156,7 +156,7 @@ function compBox() {
   var h = '<div class="box"><h3>🏆 Wettbewerbe</h3>' + row('🏟️', lsh(V.ligaK || V.liga || 'Liga'), '<b>' + (me + 1) + '. Platz</b>');
   h += row('🥇', 'Kreispokal', st('kp') || '<span class="muted">nicht dabei</span>');
   var mr = cup('mrp'); if (mr || Q.mrp) h += row('🍺', VPN(), st('mrp') || '<b style="color:var(--g)">qualifiziert (nächste Saison)</b>');
-  if (cup('dfb') || Q.dfb) h += row('🇩🇪', 'DFB-Pokal', st('dfb') || '<b style="color:var(--g)">qualifiziert (nächste Saison)</b>');
+  if (cup('dfb') || Q.dfb) h += row('🏆', 'PRO Pokal', st('dfb') || '<b style="color:var(--g)">qualifiziert (nächste Saison)</b>');
   return h + '</div>';
 }
 function topBox1(seg, title) {
@@ -1019,7 +1019,7 @@ function tKal() {
     var inCamp = V.camp && ds >= V.camp.from && ds <= V.camp.to;
     var wdn = (start + d - 1) % 7, isWe = wdn >= 5; var trn = false;
     h += '<div class="d ' + (ds === V.date ? 'today ' : '') + (ds < V.date ? 'past ' : '') + (isWe ? 'we' : '') + '" onclick="dayClick(\'' + ds + '\')"><span class="n">' + d + '</span>' + (trn ? '<span title="Training" style="position:absolute;right:4px;bottom:2px;font-size:26px">🏃</span>' : '') +
-      ev.map(function (g) { var cn = g.comp === 'liga' ? 'Liga' : g.comp === 'test' ? (g.label === 'Benefizspiel' ? 'Benefiz' : 'Test') : g.comp === 'rel' ? 'Relegation' : g.comp === 'kp' ? 'Kreispokal' : g.comp === 'mrp' ? VPN() : g.comp === 'dfb' ? 'DFB-Pokal' : 'Pokal', cc = g.comp === 'liga' ? '#2f6fd6' : g.comp === 'test' ? '#6b7280' : g.comp === 'rel' ? '#c0392b' : '#c58a12'; return '<div class="calg">' + crest(g.opp) + '<span class="mark" style="--rot:' + (((ds.charCodeAt(9) * 5) % 7) - 3) + 'deg;--mc:' + cc + '">' + cn + ' (' + (g.home === false ? 'A' : 'H') + ')</span>' + (g.gf != null ? '<b class="xs" style="margin-left:2px">' + g.gf + ':' + g.ga + '</b>' : '') + '</div>'; }).join('') + (de ? '<span class="mark" style="--rot:' + (((ds.charCodeAt(9) * 7) % 9) - 5) + 'deg;--mc:' + (MARKC[de.k] || '#e8457a') + '">' + esc(de.name.replace(/„|“/g, '')) + '</span>' : '') + (inCamp ? '<span class="mark" style="--rot:-3deg;--mc:#3b82f6">⛺ Trainingslager</span>' : '') + (!ev.length && !de && !inCamp && ds > V.date ? '<span class="dplus">+</span>' : '') + '</div>';
+      ev.map(function (g) { var cn = g.comp === 'liga' ? 'Liga' : g.comp === 'test' ? (g.label === 'Benefizspiel' ? 'Benefiz' : 'Test') : g.comp === 'rel' ? 'Relegation' : g.comp === 'kp' ? 'Kreispokal' : g.comp === 'mrp' ? VPN() : g.comp === 'dfb' ? 'PRO Pokal' : 'Pokal', cc = g.comp === 'liga' ? '#2f6fd6' : g.comp === 'test' ? '#6b7280' : g.comp === 'rel' ? '#c0392b' : '#c58a12'; return '<div class="calg">' + crest(g.opp) + '<span class="mark" style="--rot:' + (((ds.charCodeAt(9) * 5) % 7) - 3) + 'deg;--mc:' + cc + '">' + cn + ' (' + (g.home === false ? 'A' : 'H') + ')</span>' + (g.gf != null ? '<b class="xs" style="margin-left:2px">' + g.gf + ':' + g.ga + '</b>' : '') + '</div>'; }).join('') + (de ? '<span class="mark" style="--rot:' + (((ds.charCodeAt(9) * 7) % 9) - 5) + 'deg;--mc:' + (MARKC[de.k] || '#e8457a') + '">' + esc(de.name.replace(/„|“/g, '')) + '</span>' : '') + (inCamp ? '<span class="mark" style="--rot:-3deg;--mc:#3b82f6">⛺ Trainingslager</span>' : '') + (!ev.length && !de && !inCamp && ds > V.date ? '<span class="dplus">+</span>' : '') + '</div>';
   }
   h += '</div></div>';
   var list = V.games.filter(function (g) { return g.d.slice(0, 7) === ym; });

@@ -13,7 +13,7 @@ function titleFit() {
   set('.titlewrap .pubbadge', 'right', x + 56 + tbw); set('.titlewrap .pubbadge', 'top', y);
 }
 window.addEventListener('resize', function () { titleFit(); });
-function VPN(long) { var v = S && S.reg && S.reg.verband; return v === 'Niederrhein' ? 'Niederrheinpokal' : v === 'Westfalen' ? 'Westfalenpokal' : v === 'Rheinland' ? 'Rheinlandpokal' : v === 'Südwest' ? 'Verbandspokal Südwest' : long ? 'Bitburger-Pokal (Mittelrheinpokal)' : 'Bitburger-Pokal'; }
+function VPN(long) { return 'Landespokal'; }
 function DD() { return S && MGR.dOf ? MGR.dOf(S, D) : D; }
 var NOTE = { levelUp: null };
 var ST = { tab: 'home', boardPage: 0, calMonth: null, ligaLvl: null, md: null, trSeg: 'markt', kSort: 'pos', topSeg: 'lt', igIdx: 0, mailOpen: null, vitLvl: null, screen: 'game' };
@@ -712,7 +712,7 @@ function delGame(id) {
     if (id === SAVEID) { S = null; V = null; SAVEID = null; startScreen(); refreshHome(); window.scrollTo(0, 0); } else startLoad();
   }).catch(function (x) { loading(false); toast(x.message, true); });
 }
-function lsh(n) { return String(n || '').replace(/,.*$/, '').replace(/\s+(Mittelrhein|Bonn|West)$/, ''); }
+function lsh(n) { return MGR.ligaName(String(n || '')).replace(/,.*$/, '').replace(/\s+(Mittelrhein|Bonn|West)$/, ''); }
 /* Ziehen & Ablegen auf Touch-Geräten (Tablet): HTML5-Drag-Events gibt es dort nicht, daher nachgebaut.
    Gilt für alle Elemente mit draggable="true" und Ablageziele mit ondrop-Attribut (z. B. Wechsel im Live-Spiel). */
 (function () {

@@ -24,7 +24,7 @@ textarea,input{width:100%;box-sizing:border-box;background:#0b0f0a;color:#e9ede6
 </style></head><body>
 <header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button><button data-k="inv" onclick="nav('inv')">Affiliate</button><button data-k="key" onclick="nav('key')">Keys</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a></header>
 <div id="main"><div class="spin"></div></div>
-<script src="engine.js?v=26.5.0"></script>
+<script src="engine.js?v=26.6.0"></script>
 <script>
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
 /* ===================================================================== Server-Anbindung (Supabase)
@@ -515,6 +515,8 @@ function showKeys() {
   }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }
 /* ---------- Affiliate / Seller-Team */
+function affFlag(code, k, v) { var b = {}; b[k] = !!v; rest('invite_codes?code=eq.' + encodeURIComponent(code), { method: 'PATCH', body: b }).then(function () { toast((k === 'seller' ? 'Seller' : 'Partner') + (v ? ' gesetzt ✓' : ' entfernt')); showInv(); }).catch(function (e) { toast(e.message, true); }); }
+function affBox(t, L) { var sum = function (k) { return L.reduce(function (a, x) { return a + (x[k] || 0); }, 0); }; return '<div class="card"><h3>' + t + ' <span class="pill">' + L.length + '</span> <span class="pill y">' + sum('reg') + ' Anmeldungen</span> <span class="pill">' + sum('s1') + ' mit 1+ Saison</span></h3>' + (L.length ? '<table><tr><th>Code</th><th>Wer</th><th class="r">Anmeldungen</th><th class="r">1+ Saison</th><th class="r">letzte 30 Tage</th></tr>' + L.map(function (x) { return '<tr><td><b>' + esc(x.code) + '</b></td><td>' + esc(x.label || x.owner || '–') + '</td><td class="r">' + x.reg + '</td><td class="r">' + x.s1 + '</td><td class="r">' + x.d30 + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">Noch niemand markiert – Häkchen unten in der Liste setzen.</p>') + '</div>'; }
 function showInv(add, label) {
   $('#main').innerHTML = '<div class="spin"></div>';
   game('refAdmin', add ? { add: add, label: label } : {}).then(function (r) {
@@ -522,10 +524,11 @@ function showInv(add, label) {
     var dv = r.dev || { n: 0, sub: 0, list: [] };
     $('#main').innerHTML = '<div class="card"><h3>Ich (Entwickler) <span class="pill">' + dv.n + ' eingeladen</span> <span class="pill y">' + dv.sub + ' von ihnen eingeladen</span></h3>' +
       (dv.list.length ? '<table><tr><th>Wer</th><th>seit</th><th class="r">Saisons</th><th class="r">hat eingeladen</th></tr>' + dv.list.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td>' + new Date(x.at).toLocaleDateString('de-DE') + '</td><td class="r">' + x.s + '</td><td class="r">' + x.sub + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">Über deinen Link hat sich noch niemand angemeldet.</p>') + '</div>' +
-      '<div class="card"><h3>Affiliate &amp; Seller-Team</h3><p class="muted">Jeder Spieler hat einen persönlichen Link. Für dein Vermarktungsteam legst du hier eigene Codes an (Link: amateur-manager.de/?ref=CODE). Gezählt wird, wer sich über den Code anmeldet und wer mindestens eine Saison spielt.</p>' +
+      affBox('🧑‍💼 Seller', rows.filter(function (x) { return x.seller; })) + affBox('🤝 Partner', rows.filter(function (x) { return x.partner; })) +
+      '<div class="card"><h3>Seller-Code anlegen</h3><p class="muted">Für dein Vermarktungsteam (Link: amateur-manager.de/?ref=CODE). Gezählt wird, wer sich über den Code anmeldet und wer mindestens eine Saison spielt.</p>' +
       '<div class="row"><input id="invc" placeholder="Code, z. B. TEAM-MAX" style="max-width:220px"><input id="invl" placeholder="Name / Notiz" style="max-width:260px"><button class="btn" onclick="showInv($(\'#invc\').value, $(\'#invl\').value)">Seller-Code anlegen</button></div></div>' +
-      '<div class="card"><h3>Übersicht <span class="pill">' + tot + ' Anmeldungen gesamt</span></h3><table><tr><th>Code</th><th>Wer</th><th class="r">Anmeldungen</th><th class="r">bestätigt</th><th class="r">1+ Saison</th><th class="r">letzte 30 Tage</th><th></th></tr>' +
-      (rows.length ? rows.map(function (x) { return '<tr><td><b>' + esc(x.code) + '</b>' + (x.seller ? ' <span class="pill y">Seller</span>' : '') + '</td><td>' + esc(x.label || x.owner || '–') + '</td><td class="r">' + x.reg + '</td><td class="r">' + x.conf + '</td><td class="r">' + x.s1 + '</td><td class="r">' + x.d30 + '</td><td class="r"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'https://amateur-manager.de/?ref=' + esc(x.code) + '\');toast(\'Link kopiert\')">Link</button></td></tr>'; }).join('') : '<tr><td colspan="7" class="muted">Noch keine Einladungen.</td></tr>') + '</table></div>';
+      '<div class="card"><h3>Alle Codes <span class="pill">' + tot + ' Anmeldungen gesamt</span></h3><table><tr><th>Code</th><th>Wer</th><th class="r">Anmeldungen</th><th class="r">bestätigt</th><th class="r">1+ Saison</th><th class="r">letzte 30 Tage</th><th>Seller</th><th>Partner</th><th></th></tr>' +
+      (rows.length ? rows.map(function (x) { return '<tr><td><b>' + esc(x.code) + '</b></td><td>' + esc(x.label || x.owner || '–') + '</td><td class="r">' + x.reg + '</td><td class="r">' + x.conf + '</td><td class="r">' + x.s1 + '</td><td class="r">' + x.d30 + '</td><td><input type="checkbox"' + (x.seller ? ' checked' : '') + ' onchange="affFlag(\'' + esc(x.code) + '\',\'seller\',this.checked)"></td><td><input type="checkbox"' + (x.partner ? ' checked' : '') + ' onchange="affFlag(\'' + esc(x.code) + '\',\'partner\',this.checked)"></td><td class="r"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'https://amateur-manager.de/?ref=' + esc(x.code) + '\');toast(\'Link kopiert\')">Link</button></td></tr>'; }).join('') : '<tr><td colspan="9" class="muted">Noch keine Einladungen.</td></tr>') + '</table></div>';
     if (add) toast('Code angelegt ✓');
   }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }

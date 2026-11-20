@@ -725,7 +725,11 @@ var MGR = (function () {
       insta: INSTA, dayev: Object.keys(DAYEV).map(function (k) { return { k: k, name: DAYEV[k][0], d: DAYEV[k][1], cost: DAYEV[k][2] }; }), rounds: RNAMES };
   }
   // Liganame ohne Staffel/Gruppe/Nummer: „Landesliga Südbaden 2“ → „Landesliga Südbaden“
-  function ligaName(n) { var s = String(n || '').replace(/^\d{2,4}\s+/, '').replace(/^BZL\b/, 'Bezirksliga').replace(/^KL\b/, 'Kreisliga').replace(/^KK\b/, 'Kreisklasse').replace(/\s*\(Verband\)/, '').replace(/^(Bezirksliga|Landesliga|Kreisliga|Kreisklasse) Bayern,\s*/, '$1 ').replace(/,?\s*(Staffel|Gruppe|Gr\.|St\.)\s*[\wÄÖÜäöü-]*$/i, '').replace(/\s*[–-]\s*(Staffel\s*)?\d+$/, '').replace(/\s+\d+\s+Flex$/i, '').replace(/\b([A-D])\d+$/, '$1').replace(/\s+(\d+|[IVX]+)$/, '').replace(/\s+[–-]\s+/g, ' ').replace(/[\s,–-]+$/, '').trim(); return s || String(n || ''); }
+  function ligaName(n) { var s = String(n || '').replace(/^\d{2,4}\s+/, '').replace(/^BZL\b/, 'Bezirksliga').replace(/\bHerren\b/g, '').replace(/\s{2,}/g, ' ').trim();
+    s = s.replace(/^VL\b/, 'Verbandsliga').replace(/^GL\b/, 'Gruppenliga').replace(/^KOL\b/, 'Kreisoberliga').replace(/^KL([A-D])\b/, 'Kreisliga $1').replace(/^(\d)\.\s?KK\b/, '$1. Kreisklasse').replace(/^KK\b/, 'Kreisklasse');
+    // Sponsor vor dem Liganamen weg: „Lotto Hessenliga“ → „Hessenliga“
+    var m = s.match(/^(.+?)\s((?:\d\.\s)?[A-ZÄÖÜ][\wäöüß./-]*(?:liga|klasse|Liga|Klasse)\b.*)$/); if (m && !/^\d+\.$/.test(m[1]) && !/(liga|klasse)$/i.test(m[1])) s = m[2];
+    s = s.replace(/^BZL\b/, 'Bezirksliga').replace(/^KL\b/, 'Kreisliga').replace(/^KK\b/, 'Kreisklasse').replace(/\s*\(Verband\)/, '').replace(/^(Bezirksliga|Landesliga|Kreisliga|Kreisklasse) Bayern,\s*/, '$1 ').replace(/,?\s*(Staffel|Gruppe|Gr\.|St\.)\s*[\wÄÖÜäöü-]*$/i, '').replace(/\s*[–-]\s*(Staffel\s*)?\d+$/, '').replace(/\s+\d+\s+Flex$/i, '').replace(/\b([A-D])\d+$/, '$1').replace(/\s+(\d+|[IVX]+)$/, '').replace(/\s+[–-]\s+/g, ' ').replace(/[\s,–-]+$/, '').trim(); return s || String(n || ''); }
   var DCACHE = {};
   function dOf(S, D) {
     if (!S || !S.reg || !S.reg.lv) return D;
@@ -814,9 +818,11 @@ var MGR = (function () {
     var kreis = isK(own.gebiet) ? own.gebiet : '';
     if (!kreis) { var kc = {}; st.forEach(function (x) { if (!isK(x.gebiet)) return; kc[x.gebiet] = (kc[x.gebiet] || 0) + (ownT.verein_id && x._c[ownT.verein_id] ? 100 : 0) + ov(own._c, x._c) + (town ? 30 * x.teams.filter(function (t) { return t.name.indexOf(town) >= 0; }).length : 0); }); var bk = 0; Object.keys(kc).forEach(function (g) { if (kc[g] > bk) { bk = kc[g]; kreis = g; } }); }
     var kClubs = {}; st.forEach(function (x) { if (x.gebiet === kreis) for (var k in x._c) kClubs[k] = 1; });
+    // Region bei geteilten Ligen (z. B. NOFV-Oberliga Nord/Süd)
+    var LPREF = { 'Thüringen': /Süd/, Sachsen: /Süd/, 'Sachsen-Anhalt': /Süd/, Berlin: /Nord/, Brandenburg: /Nord/, 'Mecklenburg-Vorpommern': /Nord/ };
     var chain = {}; chain[own.ebene] = own;
     var best = function (cands, sc) { var b = null, bs = -1; cands.forEach(function (x) { var v = sc(x); if (v > bs) { bs = v; b = x; } }); return b; };
-    for (var l = own.ebene - 1; l >= lo; l--) { var below = chain[l + 1]; chain[l] = best(byL[l] || [], function (x) { return (x.gebiet === kreis ? 200 : 0) + 2 * ov(x._c, below._c) + ov(x._c, kClubs); }); if (!chain[l]) break; }
+    for (var l = own.ebene - 1; l >= lo; l--) { var below = chain[l + 1]; chain[l] = best(byL[l] || [], function (x) { return (x.gebiet === kreis ? 200 : 0) + 2 * ov(x._c, below._c) + ov(x._c, kClubs) + (l === 5 && LPREF[verband] && LPREF[verband].test(x.name) ? 500 : 0); }); if (!chain[l]) break; }
     var max = own.ebene;
     for (l = own.ebene + 1; l <= hi; l++) { var above = chain[l - 1]; var all = byL[l] || [], c = all.some(function (x) { return isK(x.gebiet); }) ? all.filter(function (x) { return x.gebiet === kreis; }) : all; if (!c.length) break; chain[l] = best(c, function (x) { return 2 * ov(x._c, above._c) + ov(x._c, kClubs) - (x.teams.length < 6 ? 50 : 0); }); max = l; }
     var reg = { verband: verband, kreis: kreis.replace(/^Kreis /, ''), team: { id: ownT.id, n: ownT.name }, lvl: own.ebene, max: max, lv: {}, teams: {}, pool: {} };

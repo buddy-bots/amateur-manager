@@ -556,7 +556,7 @@ var MGR = (function () {
     ['gala', 'Laudator bei einer Sportgala', '🏆', 400, 900, 2, 0],
     ['esports', 'Showmatch im Fußball-Videospiel', '🎮', 250, 600, 3, 1],
     ['youtube', 'Challenge-Video mit einem TubeClip-Star', '▶️', 300, 800, 3, 1],
-    ['tiktok', 'TikTak-Kooperation', '🎵', 250, 700, 7, 1],
+    ['tiktok', 'Klipster-Kooperation', '🎵', 250, 700, 7, 1],
     ['reise', 'Werbung für ein Reisebüro', '✈️', 500, 1100, 14, 0],
     ['baumarkt', 'Spot für einen Baumarkt', '🔨', 400, 900, 7, 1],
     ['brille', 'Kampagne für einen Optiker', '👓', 400, 1000, 14, 1],
@@ -1242,7 +1242,7 @@ var MGR = (function () {
     lvls = lvls.filter(function (l) { return l !== S.lvl || S.world.lv[l].length > 1; });
     if (c.field && c.field.length) {
       var fw = c.field.filter(function (t) { return t.n !== D.club; });
-      var minL = rn === 0 ? S.lvl + 2 : rn === 1 ? S.lvl + 1 : 0; if (minL) { var fl = fw.filter(function (t) { return t.l >= minL; }); if (!fl.length) { var mxL = Math.max.apply(null, fw.map(function (t) { return t.l; })); fl = fw.filter(function (t) { return t.l === mxL; }); } fw = fl; }
+      var minL = rn === 0 ? S.lvl + 1 : rn === 1 ? S.lvl : 0; if (minL) { var fl = fw.filter(function (t) { return t.l >= minL; }); if (fl.length < 6) fl = fw.filter(function (t) { return t.l >= S.lvl; }); if (fl.length < 4) fl = fw.slice(); if (!fl.length) { var mxL = Math.max.apply(null, fw.map(function (t) { return t.l; })); fl = fw.filter(function (t) { return t.l === mxL; }); } fw = fl; }
       var tt = wpick(fw, function (t) { var l = t.l; if (k === 'kp') return rn < 2 ? 1 : 1 + (11 - l) * 0.3; if (k === 'mrp') return l <= 4 ? (rn < 2 ? 0.3 : 1.5) : l === 5 ? 2 : 1.5 / Math.max(1, l - 4); return 1; });
       if (tt) opp = { n: tt.n, s: Math.max(1, tt.s), l: tt.l };
     }
@@ -1407,7 +1407,7 @@ var MGR = (function () {
   // [Zähler, Text für 1, Text für n, Ziele]
   var DM_T = [['win', 'Gewinne ein Spiel', 'Gewinne {n} Spiele', [1, 2, 3, 4]], ['goal', 'Schieße ein Tor', 'Schieße {n} Tore', [2, 3, 4, 5, 6, 8]], ['game', 'Bestreite ein Pflichtspiel', 'Bestreite {n} Pflichtspiele', [1, 2, 3, 4]],
     ['csheet', 'Spiele zu Null', 'Spiele {n}-mal zu Null', [1, 2, 3]], ['homewin', 'Gewinne ein Heimspiel', 'Gewinne {n} Heimspiele', [1, 2, 3]], ['awaywin', 'Gewinne auswärts', 'Gewinne {n} Auswärtsspiele', [1, 2]],
-    ['bigwin', 'Gewinne mit 3 Toren Unterschied', 'Gewinne {n}-mal mit 3 Toren Unterschied', [1, 2]], ['scored3', 'Schieße in einem Spiel 3 Tore', 'Schieße {n}-mal 3 Tore in einem Spiel', [1, 2]], ['draw', 'Hol ein Unentschieden', 'Hol {n} Unentschieden', [1, 2]],
+    ['bigwin', 'Gewinne mit mind. 3 Toren Unterschied', 'Gewinne {n}-mal mit mind. 3 Toren Unterschied', [1, 2]], ['scored3', 'Schieße in einem Spiel mind. 3 Tore', 'Schieße {n}-mal mind. 3 Tore in einem Spiel', [1, 2]], ['draw', 'Hol ein Unentschieden', 'Hol {n} Unentschieden', [1, 2]],
     ['train', 'Leg ein Training fest', 'Leg {n}-mal das Training fest', [1, 2, 3, 4]], ['indiv', 'Mach ein Einzeltraining', 'Mach {n} Einzeltrainings', [1, 2, 3, 5, 8]], ['test', 'Vereinbare ein Testspiel', 'Vereinbare {n} Testspiele', [1, 2]],
     ['sub', 'Wechsle im Live-Spiel einmal', 'Wechsle im Live-Spiel {n}-mal', [1, 2, 3, 5]], ['talk', 'Halte eine Halbzeitansprache', 'Halte {n} Halbzeitansprachen', [1, 2, 3]], ['live', 'Spiel ein Spiel live', 'Spiel {n} Spiele live', [1, 2, 3]],
     ['social', 'Like oder beantworte einen Fan-Post', 'Like oder beantworte {n} Fan-Posts', [1, 2, 3, 5, 8]], ['post', 'Setz einen Post ab', 'Setz {n} Posts ab', [1, 2, 3]], ['fan', 'Mach eine Fan-Aktion', 'Mach {n} Fan-Aktionen', [1, 2, 3]],
@@ -1448,7 +1448,7 @@ var MGR = (function () {
   }
   function misView(S, D) {
     var lv = S.mlvl || 1, mc = S.mcnt || {}, out = { dailyOn: lv >= featLvl('tagesmissionen'), careerOn: lv >= featLvl('missionen'), daily: [], career: [] };
-    if (S.dm) out.daily = S.dm.ids.map(function (id) { var m = DMISS.filter(function (x) { return x.id === id; })[0]; if (!m) return null; var have = Math.min(m.n, (mc[m.k] || 0) - (S.dm.base[m.k] || 0)); return { id: 'd:' + id, t: m.t, n: m.n, have: Math.max(0, have), st: S.dm.got[id] ? 'claimed' : have >= m.n ? 'done' : 'open', rw: dmRw(S, D, m) }; }).filter(Boolean);
+    if (S.dm) out.daily = S.dm.ids.map(function (id) { var m = DMISS.filter(function (x) { return x.id === id; })[0]; if (!m) return null; var have = Math.min(m.n, (mc[m.k] || 0) + (mc['t_' + m.k] || 0) - (S.dm.base[m.k] || 0) - (S.dm.base['t_' + m.k] || 0)); return { id: 'd:' + id, t: m.t, n: m.n, have: Math.max(0, have), st: S.dm.got[id] ? 'claimed' : have >= m.n ? 'done' : 'open', rw: dmRw(S, D, m) }; }).filter(Boolean);
     var ci = S.cmi || 0; if (S.cmb == null) cmOpen(S, ci);
     out.cmi = ci; out.dmTotal = (S.mcnt || {}).dmdone || 0;
     out.career = CMISS.map(function (m, i) { var rw = cmRw(i), st = i < ci ? 'claimed' : i > ci ? 'locked' : 'open', have = 0, n = m[0] === 'peak' ? 1 : m[1];
@@ -1517,7 +1517,7 @@ var MGR = (function () {
     if ((SEC[dp] || []).indexOf(slot) >= 0 || (SEC[slot] || []).indexOf(dp) >= 0) return 0.75;
     var ord = { AB: 0, MF: 1, ST: 2 }; return Math.abs(ord[gs] - ord[gp]) === 1 ? 0.65 : 0.5;
   }
-  var SOCIAL = [['ytshort', 'TubeClip Short', '#ff0000', 1.1], ['tiktok', 'TikTak-Video', '#111111', 1.3], ['igstory', 'Exchangegram Story', '#d62976', 1.0], ['wakanal', 'Call Up Kanal', '#25d366', 0.8], ['fbpost', 'FaceSpace-Post', '#1877f2', 0.7], ['xpost', 'Chirp-Post', '#000000', 0.6], ['twitch', 'Streamly-Livestream', '#9146ff', 1.2], ['podcast', 'Vereins-Podcast', '#8e44ad', 0.9], ['snap', 'Snapflash-Story', '#e8d800', 0.8], ['threads', 'Strands-Post', '#222222', 0.6], ['igreel', 'Exchangegram Reel', '#962fbf', 1.25], ['ytvlog', 'TubeClip Vlog', '#cc0000', 1.15], ['callup', 'Call Up Gruppe', '#2bb673', 0.85]];
+  var SOCIAL = [['ytshort', 'TubeClip Short', '#ff0000', 1.1], ['tiktok', 'Klipster-Video', '#7b2ff7', 1.3], ['igstory', 'Exchangegram Story', '#d62976', 1.0], ['wakanal', 'Call Up Kanal', '#25d366', 0.8], ['fbpost', 'FaceSpace-Post', '#1877f2', 0.7], ['xpost', 'Chirp-Post', '#000000', 0.6], ['twitch', 'Streamly-Livestream', '#9146ff', 1.2], ['podcast', 'Vereins-Podcast', '#8e44ad', 0.9], ['snap', 'Snapflash-Story', '#e8d800', 0.8], ['threads', 'Strands-Post', '#222222', 0.6], ['igreel', 'Exchangegram Reel', '#962fbf', 1.25], ['ytvlog', 'TubeClip Vlog', '#cc0000', 1.15], ['callup', 'Call Up Gruppe', '#2bb673', 0.85]];
   function socialPick(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = parseInt(wk.replace(/-/g, ''), 10); var ids = SOCIAL.map(function (x) { return x[0]; }); var out = []; for (var i = 0; out.length < 3 && i < 40; i++) { sd = (sd * 9301 + 49297) % 233280; var k = ids[Math.floor(sd / 233280 * ids.length)]; if (out.indexOf(k) < 0) out.push(k); } return out; }
   function adCost(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = (parseInt(wk.replace(/-/g, ''), 10) * 7919) % 233280; return Math.round((50 + sd / 233280 * 950) / 10) * 10; }
   function followStart(S) { var lo = 253 + Math.max(0, 11 - S.lvl) / 10 * 3650; return Math.round(Math.min(4315, lo + rnd(0, 415))); }
@@ -1684,6 +1684,7 @@ var MGR = (function () {
       try { S.strHist = (S.strHist || []).concat([Math.round(xiAvg(S, D) * 10) / 10]).slice(-20); if (S.masc) { S.mascBond = S.mascBond || {}; S.mascBond[S.masc] = Math.min(100, (S.mascBond[S.masc] || 0) + (win ? 0.4 : draw ? 0.15 : 0)); } } catch (e) {}
       xp(S, win ? 10 : draw ? 5 : 2); if (win) { S.wins = (S.wins || 0) + 1; S.fwWins = (S.fwWins || 0) + 1; milestones(S); } else if (draw) S.draws = (S.draws || 0) + 1; else S.losses = (S.losses || 0) + 1; S.streak = win ? (S.streak || 0) + 1 : 0; if (S.streak >= 5) ach(S, 'serie5', '', true);
       if (!test) misTrack(S, { win: win, gf: gf, ga: ga, home: o.home !== false, hat: grades.some(function (g) { return g.g >= 3; }) });
+      else { if (win) mcAdd(S, 't_win'); else if (gf === ga) mcAdd(S, 't_draw'); mcAdd(S, 't_goal', gf); if (ga === 0) mcAdd(S, 't_csheet'); if (win && o.home !== false) mcAdd(S, 't_homewin'); if (win && o.home === false) mcAdd(S, 't_awaywin'); if (win && gf - ga >= 3) mcAdd(S, 't_bigwin'); if (gf >= 3) mcAdd(S, 't_scored3'); } // Testspiele zählen für Tagesmissionen mit
       grades.forEach(function (g) { if (g.g >= 3) { ach(S, 'hattrick', g.n + ' gegen ' + o.opp.n); ownPost(S, '⚽⚽⚽ HATTRICK! ' + g.n + ' schnürt gegen ' + o.opp.n + ' den Dreierpack. Was für ein Tag! 🎩🔥', 'tor'); } });
       (function () { var hy = 0; if (win && gf - ga >= 3) hy = 0.6; if (win && o.ko) { hy = Math.max(hy, 0.8); ownPost(S, '🏆 Eine Runde weiter! ' + gf + ':' + ga + ' gegen ' + o.opp.n + ' im ' + o.label + '. Weiter geht die Pokalreise! 💚', 'pokal'); }
         if (win && o.comp === 'liga') { try { var tb0 = table(S, null, S.fix.filter(function (f) { return f.md < o.md; })); if (tb0[0] && tb0[0].n === o.opp.n) { hy = Math.max(hy, 0.9); ownPost(S, '👑 Den Spitzenreiter geschlagen! ' + gf + ':' + ga + ' gegen ' + o.opp.n + '. Die Macht im Ländchen hat zugeschlagen! 🔴🟢💪', 'fans'); } else if (tb0.slice(0, 3).some(function (t) { return t.n === o.opp.n; })) hy = Math.max(hy, 0.7); } catch (e) {} }
@@ -2138,7 +2139,7 @@ var MGR = (function () {
   function maybeEvent(S, D) {
     if (R() > 0.11) return;
     var m = mon(S.date);
-    var el = D.events.filter(function (ev) { return S.lvl >= ev.top && S.lvl <= ev.bot && (!ev.months.length || ev.months.indexOf(m) >= 0) && !(S.evCd[ev.i] && diffDays(S.evCd[ev.i], S.date) < 150) && !(/veteran/.test(ev.yesFx) && (S.vetSeason === S.season || R() < 0.5)); });
+    var el = D.events.filter(function (ev) { return S.lvl >= ev.top && S.lvl <= ev.bot && (!ev.months.length || ev.months.indexOf(m) >= 0) && !(S.evCd[ev.i] && diffDays(S.evCd[ev.i], S.date) < 150) && !(/veteran/.test(ev.yesFx) && (S.vetSeason === S.season || R() < 0.5)) && !(ev.title === 'Granulat-Debatte' && (pitchCond(S) >= 0.4 || S.pitch.type === 'natur' || R() < 0.6)); });
     if (!el.length) return;
     var ev = wpick(el, function (x) { return x.w; });
     S.evCd[ev.i] = S.date;
@@ -3054,7 +3055,7 @@ var MGR = (function () {
       case 'ipo': { if (S.ag) err('Der Verein ist bereits eine AG.'); var aw = agCheck(S, D); if (aw.length) err('Börsengang noch nicht möglich: ' + aw.join(', ') + '.'); var p0 = agBase(S, D); S.ag = { p0: p0, p: p0, sold: 20, hist: [p0], since: S.season }; var ipoG = p0 * 20; bookPot(S, 'Börsengang (20 % Aktien)', ipoG, 'tb'); xp(S, 25); hypeUp(S, 1); info = '🔔 Glocke geläutet! Der SV Wachtberg ist jetzt eine AG. 20 % der Aktien bringen ' + euro(ipoG) + ' ins Transferbudget.'; msg(S, 'finanzen', info); break; }
       case 'agSell': { if (!S.ag) err('Keine AG.'); if (S.ag.sold >= 49) err('Mehr als 49 % dürfen nicht verkauft werden – die Mehrheit bleibt beim Verein.'); var sg = S.ag.p * 5; S.ag.sold += 5; bookPot(S, 'Aktienverkauf 5 %', sg, 'tb'); S.board = clamp(S.board - 2, 0, 100); S.fans = clamp(S.fans - 1, 0, 100); info = '5 % Aktien verkauft: +' + euro(sg) + ' (Transferbudget). Fans & Vorstand sehen das kritisch.'; break; }
       case 'agBuy': { if (!S.ag) err('Keine AG.'); if (S.ag.sold <= 0) err('Alle Aktien sind beim Verein.'); var bg = S.ag.p * 5; if (S.cash < bg) err('Nicht genug Bargeld (' + euro(bg) + ').'); S.ag.sold = Math.max(0, S.ag.sold - 5); bookPot(S, 'Aktienrückkauf 5 %', -bg, 'cash'); S.board = clamp(S.board + 1, 0, 100); info = '5 % Aktien zurückgekauft (−' + euro(bg) + ').'; break; }
-      case 'bondAsk': { if (S.fans < 100) err('Fan-Anleihen erst ab Fan-Ansehen 100.'); if (S.bond) err('Es läuft bereits eine Fan-Anleihe.'); var bw = wkStart(S); if (S.bondAskW === bw) err('Diese Woche wurde schon angefragt.'); S.bondAskW = bw; if (R() < 1 / 3) { var avb = Math.max(0, S.cash) + Math.max(0, S.tb || 0); S.bondOffer = { amt: nice(Math.max(2000, avb * rnd(0.05, 0.25))), rate: Math.round(rnd(6, 14) * 10) / 10, months: rint(12, 24), exp: addDays(S.date, 14) }; info = '📜 Die Fans zeichnen eine Anleihe: ' + euro(S.bondOffer.amt) + ' zu ' + S.bondOffer.rate + ' % Zinsen.'; } else info = 'Diesmal kam keine Anleihe zustande. Nächste Woche nochmal versuchen.'; break; }
+      case 'bondAsk': { if (S.fans < 90) err('Fan-Anleihen erst ab 90 % Fan-Ansehen.'); if (S.bond) err('Es läuft bereits eine Fan-Anleihe.'); var bw = wkStart(S); if (S.bondAskW === bw) err('Diese Woche wurde schon angefragt.'); S.bondAskW = bw; if (R() < 1 / 3) { var avb = Math.max(0, S.cash) + Math.max(0, S.tb || 0); S.bondOffer = { amt: nice(Math.max(2000, avb * rnd(0.05, 0.25))), rate: Math.round(rnd(6, 14) * 10) / 10, months: rint(12, 24), exp: addDays(S.date, 14) }; info = '📜 Die Fans zeichnen eine Anleihe: ' + euro(S.bondOffer.amt) + ' zu ' + S.bondOffer.rate + ' % Zinsen.'; } else info = 'Diesmal kam keine Anleihe zustande. Nächste Woche nochmal versuchen.'; break; }
       case 'bondAcc': { var bo2 = S.bondOffer; if (!bo2) err('Kein Angebot.'); if (S.bond) err('Es läuft bereits eine Fan-Anleihe.'); var tot = Math.round(bo2.amt * (1 + bo2.rate / 100 * bo2.months / 12)); S.bond = { amt: bo2.amt, total: tot, rest: tot, monthly: Math.ceil(tot / bo2.months), months: bo2.months, rate: bo2.rate, paid: 0 }; S.bondOffer = null; bookPot(S, 'Fan-Anleihe', bo2.amt, 'cash'); info = 'Fan-Anleihe angenommen: +' + euro(bo2.amt) + '. Rückzahlung ' + euro(S.bond.monthly) + ' pro Monat.'; break; }
       case 'bondNo': { S.bondOffer = null; info = 'Angebot abgelehnt.'; break; }
       case 'payoff': { if (!S.loan) err('Kein Kredit.'); if (S.cash < S.loan.rest) err('Nicht genug in der Kasse.'); bookPot(S, 'Kreditrate', -S.loan.rest, 'cash'); S.loan = null; info = 'Kredit vollständig getilgt.'; break; }
@@ -3577,6 +3578,8 @@ var MGR = (function () {
   function levelUp(S) {
     var nl = levelOf(S.xp || 0).lvl; if (nl <= (S.mlvl || 1)) return null;
     var old = S.mlvl || 1; S.mlvl = nl;
+    // Neu freigeschaltete Bereiche wieder als NEU markieren (Highlight in der Navigation)
+    if (!S.featSeen) { S.featSeen = {}; FEATURES.forEach(function (f) { if (f[0] <= old) S.featSeen[f[1]] = true; }); } FEATURES.forEach(function (f) { if (f[0] > old && f[0] <= nl) delete S.featSeen[f[1]]; });
     var feats = FEATURES.filter(function (f) { return f[0] > old && f[0] <= nl && !(f[1] === 'aufstellung' && S.aufstOk); }).map(function (f) { return { lvl: f[0], k: f[1], n: f[2], d: f[3] }; });
     msg(S, 'erfolg', '⭐ Manager-Level ' + nl + ' erreicht!' + (feats.length ? ' Neu: ' + feats.map(function (f) { return f.n; }).join(', ') : ''));
     return { lvl: nl, feats: feats };

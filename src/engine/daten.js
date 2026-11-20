@@ -175,7 +175,7 @@ var MGR_DATA = (function () {
     [4, 1, 11, '12,1,2', 'Schnee auf dem Platz', 'Der Platz ist verschneit. Räumen lassen für {betrag}?', 'Räumen', 'geld:-400', 'Training ausfallen lassen', 'form:-2; moral:-1'],
     [5, 1, 11, '', 'Brauerei als Partner', 'Eine Brauerei will exklusiver Getränkepartner werden und zahlt sofort {betrag}.', 'Annehmen', 'geld:+2500; fans:-1', 'Ablehnen', ''],
     [3, 1, 11, '', 'Autohaus stellt Bus', 'Ein Autohaus stellt einen Mannschaftsbus und will dafür Werbung auf dem Trikotärmel.', 'Annehmen', 'build:bus; fans:-1', 'Ablehnen', ''],
-    [3, 1, 11, '', 'Granulat-Debatte', 'Die Debatte um Kunststoffgranulat erreicht euch. Auf Kork umrüsten für {betrag}?', 'Umrüsten', 'geld:-2000; fans:+3; vorstand:+2', 'Abwarten', 'chance:70; vorstand:+0 || vorstand:-4'],
+    [1, 1, 11, '', 'Granulat-Debatte', 'Die Debatte um Kunststoffgranulat erreicht euch. Auf Kork umrüsten für {betrag}?', 'Umrüsten', 'geld:-2000; fans:+3; vorstand:+2', 'Abwarten', 'chance:70; vorstand:+0 || vorstand:-4'],
     [3, 5, 11, '', 'Rückkehrer', 'Ein ehemaliger Spieler (32) will zurückkehren – fast ohne Gehalt.', 'Willkommen zurück', 'veteran; fans:+3', 'Nein danke', ''],
     [5, 1, 11, '10,11,12,1,2,3', 'Grippewelle', 'Eine Grippewelle geht um. Teamarzt-Check für {betrag}?', 'Check machen', 'geld:-300; fitness:-2', 'Durchziehen', 'chance:50; fitness:-2 || kranke:3'],
     [5, 5, 11, '', 'Tombola beim Heimspiel', 'Die Damenmannschaft organisiert beim nächsten Heimspiel eine Tombola.', 'Unterstützen', 'geld:+500; fans:+2', 'Ablehnen', 'fans:-1'],

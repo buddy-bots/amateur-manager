@@ -22,9 +22,9 @@ textarea,input{width:100%;box-sizing:border-box;background:#0b0f0a;color:#e9ede6
 .toast{position:fixed;right:18px;bottom:18px;background:#1f2a18;border:1px solid #8fc852;color:#e9ede6;padding:10px 14px;border-radius:10px;z-index:99}.toast.err{border-color:#e25c5c}
 .spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:#8fc852;border-radius:50%;animation:s 1s linear infinite;margin:40px auto}@keyframes s{to{transform:rotate(360deg)}}
 </style></head><body>
-<header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button><button data-k="inv" onclick="nav('inv')">Affiliate</button><button data-k="key" onclick="nav('key')">Keys</button><button data-k="cfg" onclick="nav('cfg')">Vorgaben</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a></header>
+<header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button><button data-k="inv" onclick="nav('inv')">Affiliate</button><button data-k="key" onclick="nav('key')">Keys</button><button data-k="cfg" onclick="nav('cfg')">Vorgaben</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a><a href="#" onclick="admLogout();return false">Abmelden</a></header>
 <div id="main"><div class="spin"></div></div>
-<script src="engine.js?v=26.12.0"></script>
+<script src="engine.js?v=26.13.0"></script>
 <script>
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
 /* ===================================================================== Server-Anbindung (Supabase)
@@ -200,8 +200,8 @@ var API = {
   apiWaSync: function (tok, since) {
     since = Number(since) || 0; var iso = new Date(since).toISOString(), me = SESSION.user.id;
     var q1 = rest('wa_messages?select=id,from_user,to_user,body,read_at,created_at&or=' + encodeURIComponent('(created_at.gt."' + iso + '",read_at.is.null)') + '&order=created_at.asc&limit=500');
-    var q2 = rest('feedback_tickets?select=id,ticket_no,message,answer,answered_at,answer_read_at,created_at&order=created_at.asc&limit=200');
-    return Promise.all([q1, q2, Object.keys(WA_NAMES).length ? null : managers()]).then(function (a) {
+    var q2 = rest('feedback_tickets?select=id,ticket_no,message,answer,answered_at,answer_read_at,created_at&user_id=eq.' + me + '&order=created_at.asc&limit=200'); // nur eigene Tickets (Admin sieht sonst alle)
+    return Promise.all([q1, q2, Object.keys(WA_NAMES).length ? null : managers()]).then(function (a) { if ((a[0] || []).some(function (m) { return !WA_NAMES[m.from_user] || !WA_NAMES[m.to_user]; })) return managers().then(function () { return a; }); return a; }).then(function (a) {
       var out = [];
       (a[0] || []).forEach(function (m) { var mine = m.from_user === me, ts = Date.parse(m.created_at); if (ts <= since && (mine || m.read_at)) return; out.push({ id: 'w' + m.id, ts: ts, mine: mine, other: WA_NAMES[mine ? m.to_user : m.from_user] || '?', text: m.body, read: !!m.read_at || mine }); });
       (a[1] || []).forEach(function (t) {
@@ -217,12 +217,13 @@ var API = {
     text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500); if (!text) return Promise.reject(new Error('Leere Nachricht.'));
     if (toName === DEV_NAME) return rest('feedback_tickets', { method: 'POST', body: { user_id: SESSION.user.id, message: text } }).then(function () { return { ok: true, ts: Date.now() }; });
     var to = WA_IDS[toName]; if (!to) return Promise.reject(new Error('Manager nicht gefunden.'));
-    if (!(WA.fr || []).some(function (f) { return f.id === to && f.st === 'ok'; })) return Promise.reject(new Error('Schreiben kannst du nur deinen Favoriten. Schick ' + toName + ' unter „Spieler suchen“ eine Anfrage.'));
+    var talked = Object.keys(WA.msgs || {}).some(function (k) { var m = WA.msgs[k]; return m.other === toName && !m.mine; }); // wer mir schreibt, dem darf ich antworten
+    if (!talked && !(WA.fr || []).some(function (f) { return f.id === to && f.st === 'ok'; })) return Promise.reject(new Error('Schreiben kannst du nur deinen Favoriten. Schick ' + toName + ' unter „Spieler suchen“ eine Anfrage.'));
     return rest('wa_messages', { method: 'POST', body: { from_user: SESSION.user.id, to_user: to, body: text } }).then(function () { return { ok: true, ts: Date.now() }; });
   },
   apiWaRead: function (tok, withName) {
     var now = new Date().toISOString();
-    if (withName === DEV_NAME) return rest('feedback_tickets?answer=not.is.null&answer_read_at=is.null', { method: 'PATCH', body: { answer_read_at: now } }).then(function () { return { ok: true }; });
+    if (withName === DEV_NAME) return rest('feedback_tickets?user_id=eq.' + SESSION.user.id + '&answer=not.is.null&answer_read_at=is.null', { method: 'PATCH', body: { answer_read_at: now } }).then(function () { return { ok: true }; });
     var other = WA_IDS[withName]; if (!other) return Promise.resolve({ ok: true });
     return rest('wa_messages?from_user=eq.' + other + '&to_user=eq.' + SESSION.user.id + '&read_at=is.null', { method: 'PATCH', body: { read_at: now } }).then(function () { return { ok: true }; });
   },
@@ -336,14 +337,19 @@ function eur(c) { return ((c || 0) / 100).toLocaleString('de-DE', { style: 'curr
 
 function start() {
   sessLoad(); authFromUrl();
-  if (!SESSION) return gate('Bitte zuerst im Spiel anmelden – dann diese Seite neu laden.');
+  if (!SESSION) return loginGate();
   myProfile().then(function (p) {
     if (!p || !p.is_admin) return gate('Kein Zugriff. Diese Seite ist nur für den Entwickler.');
     var X = MGR_DATA; D0 = MGR.normalize({ regeln: X.REGELN, ligen: X.LIGEN, ausbau: X.AUSBAU, camps: X.CAMPS, events: X.EVENTS, konfig: X.KONFIG, mails: X.MAILS, vornamen: X.VORNAMEN, nachnamen: X.NACHNAMEN });
     $('#who').textContent = p.display_name; nav('over');
   }).catch(function (e) { gate('Fehler: ' + e.message); });
 }
-function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a></div>'; }
+function loginGate(err) {
+  $('#main').innerHTML = '<div class="card" style="max-width:380px;margin:40px auto"><h2>Admin-Login</h2>' + (err ? '<p class="err">' + esc(err) + '</p>' : '') + '<input id="lgm" type="email" placeholder="E-Mail" autocomplete="username" style="width:100%;margin:6px 0"><input id="lgp" type="password" placeholder="Passwort" autocomplete="current-password" style="width:100%;margin:6px 0" onkeydown="if(event.key===\'Enter\')admLogin()"><button class="btn" style="width:100%;margin-top:8px" onclick="admLogin()">Anmelden</button><button class="btn" style="width:100%;margin-top:8px;background:#fff;color:#222" onclick="authGoogle()">Mit Google anmelden</button><p class="small" style="opacity:.7;margin-top:12px">Gleiches Konto wie im Spiel. Nur Konten mit Admin-Rechten kommen hinein.</p></div>';
+}
+function admLogin() { var m = ($('#lgm').value || '').trim(), pw = $('#lgp').value || ''; if (!m || !pw) return toast('E-Mail und Passwort eingeben.', true); authSignIn(m, pw).then(function () { start(); }).catch(function (e) { loginGate(e.message || 'Anmeldung fehlgeschlagen.'); }); }
+function admLogout() { authSignOut(); loginGate(); }
+function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a> <button class="btn" onclick="admLogout()">Anderes Konto</button></div>'; }
 function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys, cfg: showCfg })[k](); }
 
 /* ---------- Übersicht */

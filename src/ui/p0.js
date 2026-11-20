@@ -172,8 +172,8 @@ var API = {
   apiWaSync: function (tok, since) {
     since = Number(since) || 0; var iso = new Date(since).toISOString(), me = SESSION.user.id;
     var q1 = rest('wa_messages?select=id,from_user,to_user,body,read_at,created_at&or=' + encodeURIComponent('(created_at.gt."' + iso + '",read_at.is.null)') + '&order=created_at.asc&limit=500');
-    var q2 = rest('feedback_tickets?select=id,ticket_no,message,answer,answered_at,answer_read_at,created_at&order=created_at.asc&limit=200');
-    return Promise.all([q1, q2, Object.keys(WA_NAMES).length ? null : managers()]).then(function (a) {
+    var q2 = rest('feedback_tickets?select=id,ticket_no,message,answer,answered_at,answer_read_at,created_at&user_id=eq.' + me + '&order=created_at.asc&limit=200'); // nur eigene Tickets (Admin sieht sonst alle)
+    return Promise.all([q1, q2, Object.keys(WA_NAMES).length ? null : managers()]).then(function (a) { if ((a[0] || []).some(function (m) { return !WA_NAMES[m.from_user] || !WA_NAMES[m.to_user]; })) return managers().then(function () { return a; }); return a; }).then(function (a) {
       var out = [];
       (a[0] || []).forEach(function (m) { var mine = m.from_user === me, ts = Date.parse(m.created_at); if (ts <= since && (mine || m.read_at)) return; out.push({ id: 'w' + m.id, ts: ts, mine: mine, other: WA_NAMES[mine ? m.to_user : m.from_user] || '?', text: m.body, read: !!m.read_at || mine }); });
       (a[1] || []).forEach(function (t) {
@@ -189,12 +189,13 @@ var API = {
     text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500); if (!text) return Promise.reject(new Error('Leere Nachricht.'));
     if (toName === DEV_NAME) return rest('feedback_tickets', { method: 'POST', body: { user_id: SESSION.user.id, message: text } }).then(function () { return { ok: true, ts: Date.now() }; });
     var to = WA_IDS[toName]; if (!to) return Promise.reject(new Error('Manager nicht gefunden.'));
-    if (!(WA.fr || []).some(function (f) { return f.id === to && f.st === 'ok'; })) return Promise.reject(new Error('Schreiben kannst du nur deinen Favoriten. Schick ' + toName + ' unter „Spieler suchen“ eine Anfrage.'));
+    var talked = Object.keys(WA.msgs || {}).some(function (k) { var m = WA.msgs[k]; return m.other === toName && !m.mine; }); // wer mir schreibt, dem darf ich antworten
+    if (!talked && !(WA.fr || []).some(function (f) { return f.id === to && f.st === 'ok'; })) return Promise.reject(new Error('Schreiben kannst du nur deinen Favoriten. Schick ' + toName + ' unter „Spieler suchen“ eine Anfrage.'));
     return rest('wa_messages', { method: 'POST', body: { from_user: SESSION.user.id, to_user: to, body: text } }).then(function () { return { ok: true, ts: Date.now() }; });
   },
   apiWaRead: function (tok, withName) {
     var now = new Date().toISOString();
-    if (withName === DEV_NAME) return rest('feedback_tickets?answer=not.is.null&answer_read_at=is.null', { method: 'PATCH', body: { answer_read_at: now } }).then(function () { return { ok: true }; });
+    if (withName === DEV_NAME) return rest('feedback_tickets?user_id=eq.' + SESSION.user.id + '&answer=not.is.null&answer_read_at=is.null', { method: 'PATCH', body: { answer_read_at: now } }).then(function () { return { ok: true }; });
     var other = WA_IDS[withName]; if (!other) return Promise.resolve({ ok: true });
     return rest('wa_messages?from_user=eq.' + other + '&to_user=eq.' + SESSION.user.id + '&read_at=is.null', { method: 'PATCH', body: { read_at: now } }).then(function () { return { ok: true }; });
   },

@@ -19,14 +19,19 @@ function eur(c) { return ((c || 0) / 100).toLocaleString('de-DE', { style: 'curr
 
 function start() {
   sessLoad(); authFromUrl();
-  if (!SESSION) return gate('Bitte zuerst im Spiel anmelden – dann diese Seite neu laden.');
+  if (!SESSION) return loginGate();
   myProfile().then(function (p) {
     if (!p || !p.is_admin) return gate('Kein Zugriff. Diese Seite ist nur für den Entwickler.');
     var X = MGR_DATA; D0 = MGR.normalize({ regeln: X.REGELN, ligen: X.LIGEN, ausbau: X.AUSBAU, camps: X.CAMPS, events: X.EVENTS, konfig: X.KONFIG, mails: X.MAILS, vornamen: X.VORNAMEN, nachnamen: X.NACHNAMEN });
     $('#who').textContent = p.display_name; nav('over');
   }).catch(function (e) { gate('Fehler: ' + e.message); });
 }
-function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a></div>'; }
+function loginGate(err) {
+  $('#main').innerHTML = '<div class="card" style="max-width:380px;margin:40px auto"><h2>Admin-Login</h2>' + (err ? '<p class="err">' + esc(err) + '</p>' : '') + '<input id="lgm" type="email" placeholder="E-Mail" autocomplete="username" style="width:100%;margin:6px 0"><input id="lgp" type="password" placeholder="Passwort" autocomplete="current-password" style="width:100%;margin:6px 0" onkeydown="if(event.key===\'Enter\')admLogin()"><button class="btn" style="width:100%;margin-top:8px" onclick="admLogin()">Anmelden</button><button class="btn" style="width:100%;margin-top:8px;background:#fff;color:#222" onclick="authGoogle()">Mit Google anmelden</button><p class="small" style="opacity:.7;margin-top:12px">Gleiches Konto wie im Spiel. Nur Konten mit Admin-Rechten kommen hinein.</p></div>';
+}
+function admLogin() { var m = ($('#lgm').value || '').trim(), pw = $('#lgp').value || ''; if (!m || !pw) return toast('E-Mail und Passwort eingeben.', true); authSignIn(m, pw).then(function () { start(); }).catch(function (e) { loginGate(e.message || 'Anmeldung fehlgeschlagen.'); }); }
+function admLogout() { authSignOut(); loginGate(); }
+function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a> <button class="btn" onclick="admLogout()">Anderes Konto</button></div>'; }
 function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys, cfg: showCfg })[k](); }
 
 /* ---------- Übersicht */

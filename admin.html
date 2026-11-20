@@ -21,7 +21,7 @@ textarea,input{width:100%;box-sizing:border-box;background:#0b0f0a;color:#e9ede6
 .th.drop,.slot.add.drop{outline:3px solid #8fc852;outline-offset:2px;background-color:rgba(143,200,82,.15)!important}.slot.add small{font-weight:400;color:#a3aa9f}.slot.add{text-align:center;height:96px;border-radius:10px;border:1px dashed rgba(143,200,82,.5);display:grid;place-items:center;cursor:pointer;color:#8fc852;font-weight:700}
 .toast{position:fixed;right:18px;bottom:18px;background:#1f2a18;border:1px solid #8fc852;color:#e9ede6;padding:10px 14px;border-radius:10px;z-index:99}.toast.err{border-color:#e25c5c}
 .spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:#8fc852;border-radius:50%;animation:s 1s linear infinite;margin:40px auto}@keyframes s{to{transform:rotate(360deg)}}
-</style></head><body>
+@media(max-width:700px){header{flex-wrap:wrap;gap:8px}header h1{font-size:15px;width:100%}header nav{display:flex;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}header nav button{flex:none}}</style></head><body>
 <header><h1>AMATEUR MANAGER · ADMIN</h1><nav><button data-k="over" onclick="nav('over')">Übersicht</button><button data-k="fb" onclick="nav('fb')">Feedback</button><button data-k="img" onclick="nav('img')">Bilder</button><button data-k="lig" onclick="nav('lig')">Ligen</button><button data-k="inv" onclick="nav('inv')">Affiliate</button><button data-k="key" onclick="nav('key')">Keys</button><button data-k="cfg" onclick="nav('cfg')">Vorgaben</button></nav><span class="sp"></span><span class="muted" id="who"></span><a href="./">Zum Spiel</a><a href="#" onclick="admLogout();return false">Abmelden</a></header>
 <div id="main"><div class="spin"></div></div>
 <script src="engine.js?v=26.14.0"></script>
@@ -335,14 +335,18 @@ function toast(t, err) { var el = document.createElement('div'); el.className = 
 function dt(s) { return s ? new Date(s).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '–'; }
 function eur(c) { return ((c || 0) / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }); }
 
+// Fehler sichtbar machen statt endlos zu laden
+window.addEventListener('error', function (e) { var m = document.getElementById('main'); if (m && m.querySelector('.spin')) m.innerHTML = '<div class="card err">Fehler: ' + esc((e && e.message) || 'unbekannt') + '</div>'; });
+window.addEventListener('unhandledrejection', function (e) { var m = document.getElementById('main'); if (m && m.querySelector('.spin')) m.innerHTML = '<div class="card err">Fehler: ' + esc((e && e.reason && e.reason.message) || 'unbekannt') + '</div>'; });
 function start() {
   sessLoad(); authFromUrl();
   if (!SESSION) return loginGate();
-  myProfile().then(function (p) {
+  // nach Google-Login fehlt das Nutzer-Objekt noch → erst laden (sonst hängt die Seite im Ladekreis)
+  (SESSION.user && SESSION.user.id ? Promise.resolve() : ensureFresh().then(loadUser)).then(myProfile).then(function (p) {
     if (!p || !p.is_admin) return gate('Kein Zugriff. Diese Seite ist nur für den Entwickler.');
     var X = MGR_DATA; D0 = MGR.normalize({ regeln: X.REGELN, ligen: X.LIGEN, ausbau: X.AUSBAU, camps: X.CAMPS, events: X.EVENTS, konfig: X.KONFIG, mails: X.MAILS, vornamen: X.VORNAMEN, nachnamen: X.NACHNAMEN });
     $('#who').textContent = p.display_name; nav('over');
-  }).catch(function (e) { gate('Fehler: ' + e.message); });
+  }).catch(function (e) { if (e && (e.status === 401 || e.status === 403)) { authSignOut(); return loginGate('Sitzung abgelaufen – bitte neu anmelden.'); } gate('Fehler: ' + ((e && e.message) || e)); });
 }
 function loginGate(err) {
   $('#main').innerHTML = '<div class="card" style="max-width:380px;margin:40px auto"><h2>Admin-Login</h2>' + (err ? '<p class="err">' + esc(err) + '</p>' : '') + '<input id="lgm" type="email" placeholder="E-Mail" autocomplete="username" style="width:100%;margin:6px 0"><input id="lgp" type="password" placeholder="Passwort" autocomplete="current-password" style="width:100%;margin:6px 0" onkeydown="if(event.key===\'Enter\')admLogin()"><button class="btn" style="width:100%;margin-top:8px" onclick="admLogin()">Anmelden</button><button class="btn" style="width:100%;margin-top:8px;background:#fff;color:#222" onclick="authGoogle()">Mit Google anmelden</button><p class="small" style="opacity:.7;margin-top:12px">Gleiches Konto wie im Spiel. Nur Konten mit Admin-Rechten kommen hinein.</p></div>';

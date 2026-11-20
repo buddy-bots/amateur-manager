@@ -17,14 +17,18 @@ function toast(t, err) { var el = document.createElement('div'); el.className = 
 function dt(s) { return s ? new Date(s).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '–'; }
 function eur(c) { return ((c || 0) / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }); }
 
+// Fehler sichtbar machen statt endlos zu laden
+window.addEventListener('error', function (e) { var m = document.getElementById('main'); if (m && m.querySelector('.spin')) m.innerHTML = '<div class="card err">Fehler: ' + esc((e && e.message) || 'unbekannt') + '</div>'; });
+window.addEventListener('unhandledrejection', function (e) { var m = document.getElementById('main'); if (m && m.querySelector('.spin')) m.innerHTML = '<div class="card err">Fehler: ' + esc((e && e.reason && e.reason.message) || 'unbekannt') + '</div>'; });
 function start() {
   sessLoad(); authFromUrl();
   if (!SESSION) return loginGate();
-  myProfile().then(function (p) {
+  // nach Google-Login fehlt das Nutzer-Objekt noch → erst laden (sonst hängt die Seite im Ladekreis)
+  (SESSION.user && SESSION.user.id ? Promise.resolve() : ensureFresh().then(loadUser)).then(myProfile).then(function (p) {
     if (!p || !p.is_admin) return gate('Kein Zugriff. Diese Seite ist nur für den Entwickler.');
     var X = MGR_DATA; D0 = MGR.normalize({ regeln: X.REGELN, ligen: X.LIGEN, ausbau: X.AUSBAU, camps: X.CAMPS, events: X.EVENTS, konfig: X.KONFIG, mails: X.MAILS, vornamen: X.VORNAMEN, nachnamen: X.NACHNAMEN });
     $('#who').textContent = p.display_name; nav('over');
-  }).catch(function (e) { gate('Fehler: ' + e.message); });
+  }).catch(function (e) { if (e && (e.status === 401 || e.status === 403)) { authSignOut(); return loginGate('Sitzung abgelaufen – bitte neu anmelden.'); } gate('Fehler: ' + ((e && e.message) || e)); });
 }
 function loginGate(err) {
   $('#main').innerHTML = '<div class="card" style="max-width:380px;margin:40px auto"><h2>Admin-Login</h2>' + (err ? '<p class="err">' + esc(err) + '</p>' : '') + '<input id="lgm" type="email" placeholder="E-Mail" autocomplete="username" style="width:100%;margin:6px 0"><input id="lgp" type="password" placeholder="Passwort" autocomplete="current-password" style="width:100%;margin:6px 0" onkeydown="if(event.key===\'Enter\')admLogin()"><button class="btn" style="width:100%;margin-top:8px" onclick="admLogin()">Anmelden</button><button class="btn" style="width:100%;margin-top:8px;background:#fff;color:#222" onclick="authGoogle()">Mit Google anmelden</button><p class="small" style="opacity:.7;margin-top:12px">Gleiches Konto wie im Spiel. Nur Konten mit Admin-Rechten kommen hinein.</p></div>';

@@ -728,7 +728,7 @@ function rules() {
 }
 
 /* ===================================================================== MatchDay – Vorschau & Livespiel */
-var LIVE = { timer: null, paused: false, ms: 1333, fast: false, evN: 0, popT: null };
+var LIVE = { timer: null, paused: false, ms: 1000, fast: false, evN: 0, popT: null };
 function strCls(v) { var a = V.lgAvg || 0; return v >= a + 3 ? 'g' : v >= a - 3 ? 'y' : 'r'; }
 function strBox(v, sm) { var c = strCls(v); return '<span class="mini" style="background:' + (c === 'g' ? 'var(--g)' : c === 'y' ? 'var(--y)' : 'var(--r)') + ';' + (c === 'r' ? 'color:#fff;' : '') + (sm ? '' : 'min-width:34px;height:24px;font-size:12px') + '">' + Math.round(v) + '</span>'; }
 function g10(g) { return Math.max(1, Math.min(10, Math.round((10 - (g - 1) * 1.8) * 10) / 10)); }
@@ -817,10 +817,10 @@ function talkBox(home) {
 function talkDo(k, ev) { act('talk', { k: k }, { quiet: true, norender: true }).then(function (r) { if (!r) return; toast(r.info); if (V.talk && V.talk.b >= 0.6) rewardFx(ev.pageX, ev.pageY); preMatch(); }); }
 function kickOff() { try { pileClear(); } catch (e) {}
   liveAct('liveStart', {}).then(function () {
-  LIVE.evN = 0; LIVE.paused = false; var fs0 = !!S.prefFast; LIVE.fast = fs0; LIVE.ms = fs0 ? 250 : 1333; liveScreen(true);
+  LIVE.evN = 0; LIVE.paused = false; var fs0 = !!S.prefFast; LIVE.fast = fs0; LIVE.ms = fs0 ? 250 : 1000; liveScreen(true);
   }, function (e) { toast((e && e.message) || String(e), true); });
 }
-function liveScreen(first) { if (!V.live || LANIM.qid !== V.live.qid) { LANIM.P = null; LANIM.B = null; LANIM.seen = 0; LANIM.qid = V.live && V.live.qid; }
+function liveScreen(first) { if (!V.live || LANIM.qid !== V.live.qid) { LANIM.P = null; LANIM.B = null; LANIM.seen = 0; LANIM.tr = []; LANIM.qid = V.live && V.live.qid; }
   ST.screen = 'live'; stopIg(); closePop(); window.scrollTo(0, 0);
   var L = V.live; var n = { d: L.d, comp: L.comp, label: L.label, opp: L.opp, home: L.home, oppLvl: V.matchToday ? V.matchToday.oppLvl : null };
   var hn = L.home === false ? L.opp : V.club, an = L.home === false ? V.club : L.opp;
@@ -891,8 +891,8 @@ function liveTimeline(L) {
   var val = []; for (var m = 0; m <= T; m++) val[m] = 0;
   ev.forEach(function (e, i) { var wO = TLW.own[e.k] || 0, wA = TLW.opp[e.k] || 0; if (!wO && !wA) return; var mm = pos(e.m || 0, hti < 0 || i < hti ? 1 : 2); for (var d = -3; d <= 3; d++) { var q = mm + d; if (q < 0 || q > T) continue; var f = 1 - Math.abs(d) / 4; val[q] += (wO - wA) * f; } });
   var seed = (L.opp || '').length * 13 + (L.d || '').length, bars = '';
-  for (m = 1; m <= Math.min(T, cur); m++) { var MO = L.mom || [], mo = function (k) { return MO[k] != null ? MO[k] : 0; }, base = MO.length ? (mo(m - 2) + mo(m - 1) * 2 + mo(m)) / 4 / 100 * 2.2 : Math.sin((m + seed) * 0.37) * 0.7 + Math.sin((m + seed) * 0.11) * 0.5 + ((V.liveS ? (V.liveS.own - V.liveS.opp) : 0) / 12); var v = Math.max(-1, Math.min(1, (val[m] * (MO.length ? 0.5 : 1) + base) / 2.6)); /* echtes Momentum aus der Spielfeld-Engine */ var h = Math.max(2, Math.abs(v) * 27);
-    bars += v >= 0 ? '<rect x="' + ((m - 1) / T * 900 + 1).toFixed(1) + '" y="' + (30 - h).toFixed(1) + '" width="' + (900 / T - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="#8fc852" opacity="' + (0.55 + Math.abs(v) * 0.45).toFixed(2) + '"/>' : '<rect x="' + ((m - 1) / T * 900 + 1).toFixed(1) + '" y="30" width="' + (900 / T - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="#e0564f" opacity="' + (0.4 + Math.abs(v) * 0.4).toFixed(2) + '"/>'; }
+  for (m = 1; m <= Math.min(T, cur); m++) { var MO = L.mom || [], mo = function (k) { return MO[k] != null ? MO[k] : 0; }, base = MO.length ? (mo(m - 1) + mo(m) * 2) / 3 / 100 * 2.6 : Math.sin((m + seed) * 0.37) * 0.7 + Math.sin((m + seed) * 0.11) * 0.5 + ((V.liveS ? (V.liveS.own - V.liveS.opp) : 0) / 12); var v = Math.max(-1, Math.min(1, (val[m] * (MO.length ? 0.5 : 1) + base) / 2.6)); /* echtes Momentum aus der Spielfeld-Engine */ var h = Math.max(2, Math.abs(v) * 27);
+    var nw = m === Math.min(T, cur) && !L.done ? ' class="mnew"' : ''; bars += v >= 0 ? '<rect' + nw + ' x="' + ((m - 1) / T * 900 + 1).toFixed(1) + '" y="' + (30 - h).toFixed(1) + '" width="' + (900 / T - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="#8fc852" opacity="' + (0.55 + Math.abs(v) * 0.45).toFixed(2) + '"/>' : '<rect' + nw + ' x="' + ((m - 1) / T * 900 + 1).toFixed(1) + '" y="30" width="' + (900 / T - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="#e0564f" opacity="' + (0.4 + Math.abs(v) * 0.4).toFixed(2) + '"/>'; }
   var marks = ev.map(function (e, i) { if (!/^(goal|goalA|red|redA|yellow|yellowA|inj|pen|penA)$/.test(e.k)) return ''; var mm = pos(e.m || 0, hti < 0 || i < hti ? 1 : 2); return '<span class="cdm ' + (/A$/.test(e.k) ? 'a' : 'h') + '" style="left:' + (mm / T * 100).toFixed(2) + '%" title="' + (e.m || 0) + '\'">' + (LIC[e.k] || '•') + '</span>'; }).join('');
   w.innerHTML = '<svg viewBox="0 0 900 60" preserveAspectRatio="none"><line x1="0" y1="30" x2="900" y2="30" stroke="rgba(255,255,255,.25)"/><line x1="' + (45 / T * 900) + '" y1="4" x2="' + (45 / T * 900) + '" y2="56" stroke="rgba(255,255,255,.35)" stroke-dasharray="3 3"/>' + (et ? '<line x1="' + (90 / T * 900) + '" y1="4" x2="' + (90 / T * 900) + '" y2="56" stroke="rgba(255,255,255,.3)" stroke-dasharray="3 3"/>' : '') + bars + '<rect x="' + (Math.min(T, cur) / T * 900).toFixed(1) + '" y="2" width="2" height="56" fill="#fff" opacity="' + (L.done ? 0 : 0.8) + '"/></svg><div id="lcdm">' + marks + '</div>';
 }
@@ -961,7 +961,7 @@ function heatDraw0(pts, goals) {
   var bw = 46 * k, bh = H * 0.46; x.strokeRect(m, H / 2 - bh / 2, bw, bh); x.strokeRect(W - m - bw, H / 2 - bh / 2, bw, bh); x.strokeRect(m, H / 2 - bh / 4, bw / 2.6, bh / 2); x.strokeRect(W - m - bw / 2.6, H / 2 - bh / 4, bw / 2.6, bh / 2);
   var off = document.createElement('canvas'); off.width = W; off.height = H; var o = off.getContext('2d'), rr = 30 * k;
   var NP = (pts || []).length, pa = Math.max(0.035, Math.min(0.22, 2.2 / Math.sqrt(NP + 1))); rr = (NP > 120 ? 26 : 32) * k;
-  (pts || []).forEach(function (p) { var px = p[0] / 100 * W, py = p[1] / 100 * H; var g = o.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, 'rgba(0,0,0,' + pa + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); o.fillStyle = g; o.fillRect(px - rr, py - rr, rr * 2, rr * 2); });
+  (pts || []).forEach(function (p, ii) { var px = p[0] / 100 * W, py = p[1] / 100 * H, wr = 1 + 1.6 * Math.max(0, 1 - (NP - ii) / 60); var g = o.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, 'rgba(0,0,0,' + Math.min(0.5, pa * wr) + ')'); /* letzte ~10 Minuten zählen stärker → die Heatmap wandert mit dem Spiel */ g.addColorStop(1, 'rgba(0,0,0,0)'); o.fillStyle = g; o.fillRect(px - rr, py - rr, rr * 2, rr * 2); });
   var d = o.getImageData(0, 0, W, H), dd = d.data, amax = 0; for (var q0 = 3; q0 < dd.length; q0 += 4) if (dd[q0] > amax) amax = dd[q0]; amax = Math.max(40, amax);
   var CM = [[0, 30, 136, 229], [0.3, 67, 160, 71], [0.55, 253, 216, 53], [0.78, 251, 140, 0], [1, 229, 57, 53]];
   for (var q = 0; q < dd.length; q += 4) { var t = Math.pow(dd[q + 3] / amax, 1.5); if (t < 0.1) { dd[q + 3] = 0; continue; } var j = 1; while (j < CM.length - 1 && t > CM[j][0]) j++; var A = CM[j - 1], Bc = CM[j], f = Math.max(0, Math.min(1, (t - A[0]) / (Bc[0] - A[0]))); dd[q] = Math.round(A[1] + (Bc[1] - A[1]) * f); dd[q + 1] = Math.round(A[2] + (Bc[2] - A[2]) * f); dd[q + 2] = Math.round(A[3] + (Bc[3] - A[3]) * f); dd[q + 3] = Math.round(40 + 170 * Math.min(1, t)); }
@@ -1069,7 +1069,7 @@ function liveStepShow(gf0, ga0, ev0) {
 }
 function livePause() { LIVE.paused = true; clearTimeout(LIVE.timer); liveDraw(); }
 function liveResume() { LIVE.paused = false; if (V.live.pause && /^(ht|inj|et|et2)$/.test(V.live.pause.type)) { liveStepOnce(true).then(liveRun); return; } liveRun(); }
-function liveFast() { LIVE.fast = !LIVE.fast; LIVE.ms = LIVE.fast ? 250 : 1333; S.prefFast = LIVE.fast; uiFlag('prefFast', LIVE.fast); liveDraw(); liveRun(); }
+function liveFast() { LIVE.fast = !LIVE.fast; LIVE.ms = LIVE.fast ? 250 : 1000; S.prefFast = LIVE.fast; uiFlag('prefFast', LIVE.fast); liveDraw(); liveRun(); }
 function liveInstant() { clearTimeout(LIVE.timer); var o = $('.evpop'); if (o) o.remove(); LIVE.hold = false; liveAct('liveAuto', {}).then(function () { SND.whistle(); liveDraw(); instInfo(); }, function (e) { toast((e && e.message) || String(e), true); }); }
 function liveGk(pid) { liveAct('liveGk', { pid: pid }).then(function () { SND.click(); var o = $('.evpop'); if (o) o.remove(); LIVE.hold = false; LIVE.paused = false; liveDraw(); liveRun(); }, function (e) { toast((e && e.message) || String(e), true); }); }
 function livePen(dir) { liveAct('livePen', { dir: dir }).then(function () { if (V.live.pause && V.live.pause.ok) SND.goal(); liveDraw(); }, function (e) { toast((e && e.message) || String(e), true); }); }
@@ -1110,11 +1110,13 @@ function liveAnimStart(L) {
     // Ballführer: nächster Feldspieler des Teams am Ball
     var carrier = -1, best = 1e9; LANIM.P.forEach(function (p, i) { if (p.gk || p.home !== (B.t === 1)) return; var d = Math.pow(p.x - B.x, 2) + Math.pow(p.y - B.y, 2); if (d < best) { best = d; carrier = i; } });
     LANIM.P.forEach(function (p, i) {
-      if (!frz) { var ownBall = p.home === (B.t === 1), dir = p.home ? 1 : -1, push = ownBall ? 9 * dir : -6 * dir, sh = (B.x - 50) * 0.45, tx, ty;
+      if (!frz) { var ownBall = p.home === (B.t === 1), dir = p.home ? 1 : -1, push = ownBall ? 5 * dir : -3 * dir, sh = (B.x - 50) * 0.22, tx, ty;
         if (p.gk) { tx = p.bx + (p.home ? Math.max(0, (B.x - 60) * 0.08) : Math.min(0, (B.x - 40) * 0.08)); ty = clampN(50 + (B.y - 50) * 0.25, 35, 65); }
-        else { tx = clampN(p.bx + sh + push + Math.sin(tm * 1.2 + i) * 2, 4, 96); ty = clampN(p.by + (B.y - p.by) * (ownBall ? 0.18 : 0.32) + Math.cos(tm * 1.05 + i * 1.7) * 2.5, 4, 96); if (i === carrier) { tx = B.x - dir * 1.5; ty = B.y; } }
+        else { tx = clampN(p.bx + sh + push + Math.sin(tm * 1.2 + i) * 2, 4, 96); ty = clampN(p.by + (B.y - p.by) * (ownBall ? 0.08 : 0.16) + Math.cos(tm * 1.05 + i * 1.7) * 1.5, 4, 96); if (i === carrier) { tx = B.x - dir * 1.5; ty = B.y; } }
         p.x += (tx - p.x) * 0.07; p.y += (ty - p.y) * 0.07; }
       var q = map(p.x, p.y); x.beginPath(); x.arc(q[0], q[1], pr, 0, 7); x.fillStyle = p.home ? '#111' : '#e03030'; x.fill(); x.lineWidth = 1.6; x.strokeStyle = p.home ? '#fff' : '#fff'; x.stroke(); if (p.gk) { x.lineWidth = 2; x.strokeStyle = '#f0c24b'; x.stroke(); } });
+    if (!frz) { (LANIM.tr = LANIM.tr || []).push([B.x, B.y]); if (LANIM.tr.length > 40) LANIM.tr.shift(); }
+    (LANIM.tr || []).forEach(function (q0, k2, A) { if (k2 % 2) return; var qq = map(q0[0], q0[1]), al = (k2 + 1) / A.length; x.beginPath(); x.arc(qq[0], qq[1], 2 + al * 3, 0, 7); x.fillStyle = 'rgba(255,240,170,' + (al * 0.45).toFixed(2) + ')'; x.fill(); });
     var bq = map(B.x, B.y); try { ballIcon(x, bq[0], bq[1], 6); } catch (e) { x.beginPath(); x.arc(bq[0], bq[1], 5, 0, 7); x.fillStyle = '#fff'; x.fill(); }
     LANIM.raf = LITE ? setTimeout(function () { requestAnimationFrame(frame); }, 33) : requestAnimationFrame(frame);
   })();
@@ -1132,7 +1134,7 @@ function subPop(slot) {
 }
 function doSub(slot, pid) { var wasInj = V.live && V.live.pause && V.live.pause.type === 'inj'; liveAct('liveSub', { slot: slot, pid: pid }).then(function () { closePop(); SND.click(); liveDraw(); if (wasInj && V.live && !V.live.done && !V.live.pause) { var o = $('.evpop'); if (o) o.remove(); LIVE.hold = false; LIVE.paused = false; liveRun(); } }, function (e) { toast((e && e.message) || String(e), true); }); }
 function liveClose() {
-  clearTimeout(LIVE.timer); LIVE.paused = false; LIVE.ms = 1333; LIVE.fast = false;
+  clearTimeout(LIVE.timer); LIVE.paused = false; LIVE.ms = 1000; LIVE.fast = false;
   var L = V.live, md = null, before = null;
   if (L && L.comp === 'liga') { try { var lv = MGR.leagueView(S, D, V.lvl); Object.keys(lv.byMd).forEach(function (k) { if (lv.byMd[k].some(function (f) { return f.svw && f.d === L.d; })) md = +k; }); if (md) before = MGR.tableBefore(S, D, md); } catch (e) {} }
   act('liveClose', {}, { quiet: true, norender: true }).then(function (r) { if (r && r.levelUp) NOTE.levelUp = r.levelUp; ST.tab = 'home'; ST.screen = 'game'; render(); window.scrollTo(0, 0);

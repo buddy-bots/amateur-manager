@@ -125,13 +125,28 @@ function optimizeAll() {
   next();
 }
 function shrink(file, max) {
-  if (file.type === 'image/gif') return Promise.resolve({ blob: file, ext: 'gif', type: 'image/gif' });
+  if (file.type === 'image/gif') { if (file.size > 4.8e6) return Promise.reject(new Error('GIF ist zu groß (max. 4,8 MB).')); return Promise.resolve({ blob: file, ext: 'gif', type: 'image/gif' }); }
   return new Promise(function (res, rej) {
-    var img = new Image(); img.onload = function () {
-      var s = Math.min(1, (max || 1920) / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      var png = false; c.toBlob(function (b) { b ? res({ blob: b, ext: png ? 'png' : 'webp', type: png ? 'image/png' : 'image/webp' }) : rej(new Error('Bild konnte nicht gelesen werden.')); }, png ? 'image/png' : 'image/webp', 0.82);
-    }; img.onerror = function () { rej(new Error('Bild konnte nicht gelesen werden.')); }; img.src = URL.createObjectURL(file);
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      // Größe und Qualität schrittweise senken, bis die Datei sicher unter dem Speicherlimit (5 MB) liegt; echten Dateityp übernehmen (manche Browser liefern statt WebP ein PNG/JPEG)
+      var tries = [[max || 1920, 0.82], [max || 1920, 0.7], [1600, 0.7], [1280, 0.65], [1024, 0.6]], k = 0;
+      var step = function () {
+        var t = tries[k++]; if (!t) return rej(new Error('Bild ist zu groß – bitte ein kleineres Bild wählen.'));
+        var s0 = Math.min(1, t[0] / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round((img.naturalWidth || img.width) * s0)); c.height = Math.max(1, Math.round((img.naturalHeight || img.height) * s0));
+        try { c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); } catch (e) { return rej(new Error('Bild konnte nicht verarbeitet werden.')); }
+        c.toBlob(function (b) {
+          if (!b) return rej(new Error('Bild konnte nicht gelesen werden.'));
+          var ty = b.type || 'image/webp'; if (ty === 'image/png' && b.size > 2e6) return c.toBlob(function (j) { if (j && j.size < 4.5e6) res({ blob: j, ext: 'jpg', type: 'image/jpeg' }); else step(); }, 'image/jpeg', t[1]);
+          if (b.size > 4.5e6) return step();
+          res({ blob: b, ext: ty === 'image/png' ? 'png' : ty === 'image/jpeg' ? 'jpg' : 'webp', type: ty });
+        }, 'image/webp', t[1]);
+      };
+      step();
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('Bild konnte nicht gelesen werden (Format nicht unterstützt?).')); };
+    img.src = url;
   });
 }
 function upload(key, file, quiet) {
@@ -140,7 +155,7 @@ function upload(key, file, quiet) {
     var path = key.replace(/[^\w.-]+/g, '_') + '-' + Date.now() + '.' + o.ext;
     return ensureFresh().then(function () {
       return fetch(SB.url + '/storage/v1/object/media/' + encodeURIComponent(path), { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + SESSION.access_token, 'Content-Type': o.type }, body: o.blob });
-    }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('Upload fehlgeschlagen: ' + t); }); })
+    }).then(function (r) { if (!r.ok) return r.text().then(function (t) { var m0 = t; try { m0 = JSON.parse(t).message || t; } catch (e) {} throw new Error('Upload fehlgeschlagen (' + r.status + '): ' + m0); }); }, function () { throw new Error('Upload abgebrochen – Verbindung unterbrochen. Bitte nochmal versuchen (' + Math.round(o.blob.size / 1024) + ' KB).'); })
       .then(function () { var old = MAP[key]; return rest('media', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: key, path: path, updated_at: new Date().toISOString() } }).then(function () { if (old) removeFile(old.path); }); })
       .then(function () { if (!quiet) toast('Gespeichert ✓'); MAP[key] = { key: key, path: path }; });
   }).catch(function (e) { toast(e.message, true); });

@@ -452,7 +452,8 @@ button.done{background:#3a3f38!important;color:#9aa199!important;opacity:1!impor
 .tk3 .tkstub{justify-content:flex-start!important;gap:6px;padding:4px 0 4px!important}.tk3 .tkpr{text-align:center;line-height:1.05}.tk3 .tkpr b{display:block;color:#e8622c;font-size:24px;font-weight:800}.tk3 .tkno{margin-top:auto;font-size:8.5px!important;letter-spacing:.06em!important}
 .tk3 .tkbc{transform:rotate(90deg);width:100px!important;margin:24px 0}.tk3 .tkbc svg{width:100px!important;height:auto}
 .partner3 .pt{background:radial-gradient(circle at 100% 0,rgba(214,41,118,.10),transparent 55%),radial-gradient(circle at 0 100%,rgba(79,91,213,.12),transparent 55%),linear-gradient(180deg,#fff,#eef0f4)!important}
-.pp3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}.pp3>div{min-width:0}.pp3 .ppc .box:first-child{margin-top:0!important}
+.skp{margin-top:6px}.skrow{display:flex;flex-wrap:wrap;gap:8px 6px;justify-content:center}.skrow.sm{justify-content:flex-start;gap:4px}.skr{display:flex;flex-direction:column;align-items:center;width:64px}.skrow.sm .skr{width:56px}.skr small{font-size:10px;color:#556;text-align:center;line-height:1.15;margin-top:2px}.skr.off small{color:#aaa}.skr .ska{animation:skin .9s ease-out}@keyframes skin{from{stroke-dasharray:0 400}}.skgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:8px}.skg{background:rgba(0,0,0,.035);border-radius:12px;padding:8px}.skg>b{display:block;margin-bottom:4px}.skchip{display:inline-flex;flex-direction:column;gap:1px;background:rgba(0,0,0,.05);border-radius:10px;padding:6px 10px;font-size:12px}.skchip em{font-style:normal;font-size:10.5px;color:#667}.skchip.off{color:#999}
+.pp3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}.pp3>div{min-width:0}.pp3 .ppc .box:first-child{margin-top:0!important}@media(max-width:1100px){.pp3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pp3 .ppc{grid-column:1/-1}}@media(max-width:700px){.pp3{grid-template-columns:minmax(0,1fr)}.skgrid{grid-template-columns:1fr 1fr}.skrow.sm .skr{width:52px}}
 .pl .acts .tbB,.tbB{padding:2px 8px!important;font-size:10.5px!important;font-weight:800!important;line-height:1.4!important;border-radius:999px!important;min-height:0}.pl .acts .tbB.r,.tbB.r{background:#e25c5c!important;color:#fff!important}.pl .acts .tbB.y,.tbB.y{background:#f0c24b!important;color:#2a2200!important}
 .ymap{width:100%;height:auto;display:block}.yo.sc{opacity:1!important;filter:none!important}.yo.sc>*{opacity:1!important;filter:none!important}.yo.sc.off>.scr{opacity:.88!important;filter:saturate(.45)!important}.yo.sc.lk>.scr{opacity:.55!important;filter:saturate(.1)!important}.yo.sc.lk>.sclab{opacity:.75!important}.yo.sc:hover>.scr,.yo.sc.hl>.scr{opacity:1!important;filter:drop-shadow(0 0 12px rgba(143,200,82,.6))!important}.yo.sc.on:hover>.scr{filter:drop-shadow(0 0 12px rgba(255,255,255,.35))}.yo.sc{transition:transform .2s}.isoframe:has(.scene){background:#3b8a2c}.yo{cursor:pointer;transition:opacity .25s,filter .25s,transform .25s}.yo.off{opacity:.32;filter:grayscale(1)}.yo.bld{opacity:.7}.yo:hover,.yo.hl{opacity:1!important;filter:none!important}.yo.hl{filter:drop-shadow(0 0 10px #8fc852)!important}
 .yoinfo{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--flaeche2);min-height:46px}
@@ -766,8 +767,8 @@ button.ybt{width:24px!important;height:22px!important;min-width:0!important;padd
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<script src="engine.js?v=26.17.0"></script>
-<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Betaphase · v26.17.0', ENGVER = '26.17.0', PHASE = 'Betaphase';</script>
+<script src="engine.js?v=26.18.0"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Betaphase · v26.18.0', ENGVER = '26.18.0', PHASE = 'Betaphase';</script>
 <script>
 
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
@@ -2586,7 +2587,7 @@ function teamPop(name, lvl) {
   var sq = MGR.teamSquad(S, D, name); if (!sq) return;
   var avg = Math.round(sq.slice(0, 11).reduce(function (a, p) { return a + p.str; }, 0) / 11 * 10) / 10;
   pop('<div class="row" style="gap:10px;padding-right:26px">' + crest(name) + '<div><h2 style="padding:0;margin:0">' + esc(name) + '</h2><div class="xs muted">' + esc(DD().lv[lvl] ? DD().lv[lvl].short : '') + ' · Ø Stärke Startelf ' + String(avg).replace('.', ',') + '</div></div></div><div class="plist" style="margin-top:10px;max-height:420px;overflow:auto">' +
-    sq.map(function (p) { return '<div class="pl" style="cursor:default"><span class="pb ' + p.pos + '">' + p.pos + '</span><div><b>' + esc(p.n) + '</b><div class="meta">' + stars(p.tal, p.tal) + '<span>' + p.age + ' J.</span><span>MW ' + eurK(p.mw) + '</span></div></div><div class="row" style="gap:6px">' + strBox(p.str) + (has('transfers') ? '<button class="sm pri" onclick="scoutBuy(\'' + esc(name).replace(/'/g, "\\'") + '\',' + p.i + ')">Holen</button>' : '') + '</div></div>'; }).join('') + '</div>', { wide: true });
+    sq.map(function (p) { return '<div class="pl" onclick="oppPop(\'' + esc(name).replace(/'/g, "\\'") + '\',' + p.i + ')"><span class="pb ' + p.pos + '">' + p.pos + '</span><div><b>' + esc(p.n) + '</b><div class="meta">' + stars(p.tal, p.tal) + '<span>' + p.age + ' J.</span><span>MW ' + eurK(p.mw) + '</span></div></div><div class="row" style="gap:6px">' + strBox(p.str) + (has('transfers') ? '<button class="sm pri" onclick="event.stopPropagation();scoutBuy(\'' + esc(name).replace(/'/g, "\\'") + '\',' + p.i + ')">Holen</button>' : '') + '</div></div>'; }).join('') + '</div>', { wide: true });
 }
 function scoutBuy(team, i) { var nm = MGR.teamSquad(S, D, team)[i].n; act('scoutAdd', { team: team, i: i }, { quiet: true, norender: true }).then(function (r) { if (!r) return; var w = V.watch.filter(function (x) { return x.n === nm; })[0]; closePop(); if (w) buyPop(w.mid); else toast(r.info); }); }
 function zoneOf(rank, n, lvl) { var L = DD().lv[lvl]; if (!L) return ''; var z = rank <= L.up ? 'up' : (L.upRel && rank <= L.up + L.upRel) ? 'uprel' : rank > n - L.down ? 'down' : (L.downRel && rank > n - L.down - L.downRel) ? 'downrel' : ''; if (lvl === 1 && z === 'up') z = ''; return z; }
@@ -3127,6 +3128,46 @@ function radarSVG(p) {
   vals.forEach(function (v, i) { var q = pt(i, v / mx); o += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="3" fill="#8fc852"/>'; });
   return o + '</svg>';
 }
+/* ===================================================================== Spielerwerte als Kreisdiagramme */
+var SKREF = null; // Farbe relativ zur eigenen Stärke: Stärken grün/türkis, Schwächen orange/rot
+function skCol(v) { var d = SKREF == null ? (v - 50) / 3 : v - SKREF; return d >= 8 ? '#3fc1c9' : d >= 3 ? '#5fbf3a' : d >= -3 ? '#a8c84a' : d >= -8 ? '#e6c02e' : '#e2734f'; }
+function skRing(v, lbl, o) {
+  o = o || {}; var sz = o.sz || 62, r = sz / 2 - 6, C = 2 * Math.PI * r, f = o.max ? v / o.max : v / 100, hid = v == null, col = o.col || (hid ? '#555' : skCol(o.max ? v / o.max * 100 : v));
+  var txt = hid ? (o.lock ? '🔒' : '?') : (o.txt != null ? o.txt : v);
+  return '<div class="skr' + (hid ? ' off' : '') + '" title="' + esc(o.tip || lbl) + '"><svg viewBox="0 0 ' + sz + ' ' + sz + '" width="' + sz + '" height="' + sz + '"><circle cx="' + sz / 2 + '" cy="' + sz / 2 + '" r="' + r + '" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6"' + (hid ? ' stroke-dasharray="3 4"' : '') + '/>' +
+    (hid ? '' : '<circle class="ska" cx="' + sz / 2 + '" cy="' + sz / 2 + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (C * Math.max(0.02, Math.min(1, f))).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 ' + sz / 2 + ' ' + sz / 2 + ')"/>') +
+    '<text x="50%" y="53%" dominant-baseline="middle" text-anchor="middle" font-size="' + (String(txt).length > 3 ? 11 : 15) + '" font-weight="800" fill="' + (hid ? '#999' : '#1f2b1f') + '" font-family="Montserrat,sans-serif">' + txt + '</text></svg><small>' + esc(lbl) + '</small></div>';
+}
+var SKGRP = [['tw', '🧤 Torwart'], ['phy', '⚡ Physis'], ['def', '🛡️ Defensive'], ['tec', '🎯 Technik'], ['off', '⚽ Angriff']];
+// Profil-Kuchen: Anteil der vier Bereiche am Spielertyp
+function skPie(sk, tw) {
+  var G = SKGRP.filter(function (g) { return tw ? g[0] !== 'off' : g[0] !== 'tw'; }), cols = { tw: '#f0a73a', phy: '#4fa3e0', def: '#8fc852', tec: '#c77dff', off: '#ef5f5f' };
+  var av = G.map(function (g) { var L = MGR.SKL.filter(function (s) { return s[2] === g[0] && sk[s[0]] != null; }); return L.length ? L.reduce(function (a, s) { return a + sk[s[0]]; }, 0) / L.length : 0; });
+  var tot = av.reduce(function (a, b) { return a + b; }, 0) || 1, a0 = -Math.PI / 2, R = 46, c = 56, o = '<svg viewBox="0 0 112 112" width="112" height="112">';
+  av.forEach(function (v, i) { var a1 = a0 + v / tot * Math.PI * 2, lg = a1 - a0 > Math.PI ? 1 : 0; o += '<path d="M' + c + ' ' + c + ' L' + (c + R * Math.cos(a0)).toFixed(1) + ' ' + (c + R * Math.sin(a0)).toFixed(1) + ' A' + R + ' ' + R + ' 0 ' + lg + ' 1 ' + (c + R * Math.cos(a1)).toFixed(1) + ' ' + (c + R * Math.sin(a1)).toFixed(1) + 'Z" fill="' + cols[G[i][0]] + '" stroke="#fff" stroke-width="1.5"/>'; a0 = a1; });
+  o += '<circle cx="' + c + '" cy="' + c + '" r="24" fill="#fff"/><text x="56" y="52" text-anchor="middle" font-size="8.5" fill="#778" font-family="Montserrat,sans-serif">Typ</text><text x="56" y="65" text-anchor="middle" font-size="10" font-weight="800" fill="#1f2b1f" font-family="Montserrat,sans-serif">' + G[av.indexOf(Math.max.apply(null, av))][1].replace(/^\S+ /, '') + '</text></svg>';
+  return '<div class="row" style="gap:12px;align-items:center">' + o + '<div class="xs" style="display:grid;gap:3px">' + G.map(function (g, i) { return '<span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + cols[g[0]] + ';margin-right:5px"></i>' + g[1].replace(/^\S+ /, '') + ' <b>' + Math.round(av[i]) + '</b></span>'; }).join('') + '</div></div>';
+}
+// x = { sk, ex, rg, ip, pers } (bei Watchlist-Spielern nur teilweise); p = { str, tal/talLo/talHi, pot, fit, pos }
+function skPanel(p, x, o) {
+  o = o || {}; x = x || { sk: {} }; var sk = x.sk || {}, tw = p.pos === 'TW', tal = p.tal != null ? p.tal : p.talLo != null && p.talHi != null ? (p.talLo + p.talHi) / 2 : null, talK = p.talLo != null && p.talHi != null && p.talLo !== p.talHi;
+  SKREF = null; var h = '<div class="skp"><div class="skrow">' + skRing(Math.round(p.str), 'Stärke', { col: V.xiAvg ? (p.str >= V.xiAvg + 2 ? '#5fbf3a' : p.str >= V.xiAvg - 2 ? '#e6c02e' : '#e2734f') : null, tip: 'Gesamtstärke (Farbe im Vergleich zu eurem Schnitt)' }) + (tal != null ? skRing(tal, 'Talent', { max: 5, txt: (talK ? p.talLo + '–' + p.talHi : String(tal).replace('.', ',')) + '★', col: '#f0c24b' }) : '') +
+    skRing(p.pot != null ? p.pot : null, 'Potenzial', { lock: p.pot == null, tip: p.pot == null ? 'Sichtbar ab Scouting-Score 40' + (V.scoutScore2 != null ? ' (aktuell ' + V.scoutScore2 + ')' : '') : 'Höchste erreichbare Stärke' }) +
+    skRing(x.ex != null ? x.ex : null, 'Erfahrung', { max: 5, txt: x.ex != null ? x.ex + '/5' : null, col: '#c77dff' }) + (p.fit != null ? skRing(p.fit, 'Fitness', { col: fcol(p.fit, 60, 80) }) : '') + skRing(x.rg != null ? x.rg : null, 'Regeneration', { tip: 'Wie schnell er sich erholt – sinkt mit dem Alter', col: '#4fa3e0' }) + '</div>';
+  if (p.pot == null) h += '<div class="xs muted" style="text-align:center;margin:-2px 0 6px">🔒 Potenzial ab Scouting-Score 40 sichtbar</div>';
+  SKREF = p.str; var hasAll = MGR.SKL.every(function (s) { return sk[s[0]] != null; });
+  h += '<div class="skgrid">' + SKGRP.filter(function (g) { return tw ? g[0] !== 'off' : g[0] !== 'tw'; }).sort(function (a, b) { return tw ? (b[0] === 'tw') - (a[0] === 'tw') : 0; }).map(function (g) { return '<div class="skg"><b class="xs">' + g[1] + '</b><div class="skrow sm">' + MGR.SKL.filter(function (s) { return s[2] === g[0]; }).map(function (s) { return skRing(sk[s[0]] != null ? sk[s[0]] : null, s[1], { sz: 52 }); }).join('') + '</div></div>'; }).join('') + '</div>';
+  if (hasAll) h += '<div style="margin:8px 0 4px">' + skPie(sk, tw) + '</div>';
+  var ipc = ['#5fbf3a', '#e6c02e', '#e25c5c'];
+  h += '<div class="row wr" style="gap:6px;margin-top:8px">' + (x.pers != null ? '<span class="skchip" title="' + esc(MGR.PERS[x.pers][1]) + '">🧠 ' + esc(MGR.PERS[x.pers][0]) + '<em>' + esc(MGR.PERS[x.pers][1]) + '</em></span>' : '<span class="skchip off">🧠 Persönlichkeit ?</span>') +
+    (x.ip != null ? '<span class="skchip">🩹 Verletzungsanfällig: <b style="color:' + ipc[x.ip] + '">' + ['nein', 'normal', 'ja'][x.ip] + '</b></span>' : '<span class="skchip off">🩹 Verletzungsanfälligkeit ?</span>') + '</div>';
+  SKREF = null; return h + '<div class="xs muted" style="margin-top:6px">Farben: türkis/grün = Stärke des Spielers, orange/rot = Schwäche (im Vergleich zu seiner Gesamtstärke).</div></div>';
+}
+function oppPop(team, i) {
+  var q = MGR.teamSquad(S, D, team)[i]; if (!q) return; var x = MGR.skInfo({ n: q.n, dp: q.pos, str: q.str, age: q.age });
+  pop('<div class="row" style="gap:10px;align-items:center"><span class="pb ' + q.pos + '">' + q.pos + '</span><div><h2 style="margin:0;padding:0">' + esc(q.n) + '</h2><div class="xs muted">' + esc(team) + ' · ' + q.age + ' Jahre · MW ' + eurK(q.mw) + '</div></div></div>' + skPanel({ str: q.str, tal: q.tal, pot: null, pos: q.pos }, x) +
+    '<div class="row" style="gap:8px;margin-top:10px"><button class="sm" onclick="teamPop(\'' + esc(team).replace(/'/g, "\\'") + '\',' + q.lvl + ')">◀ Kader</button>' + (has('transfers') ? '<button class="sm pri" onclick="scoutBuy(\'' + esc(team).replace(/'/g, "\\'") + '\',' + i + ')">Holen</button>' : '') + '</div>', { wide: true });
+}
 function posBox(p) {
   var row = function (dp, v, lbl, col) { return '<div class="psrow"><span class="pb ' + dp + '">' + dp + '</span><div style="flex:1;min-width:0"><div class="row sp xs"><b>' + esc(V.dpn[dp] || dp) + '</b><span class="muted">' + lbl + ' · <b style="color:' + col + '">' + v + ' %</b></span></div><div class="psbar"><i style="width:' + v + '%;background:' + col + '"></i></div></div></div>'; };
   var h = '<div class="box" style="margin:10px 0;padding:10px 12px"><div class="row sp"><b class="small">📍 Positionen</b>' + (p.self ? '' : '<select class="sm" style="max-width:190px" onchange="if(this.value)act(\'posWish\',{pid:' + p.id + ',dp:this.value})"><option value="">' + (p.pos3 ? '🔁 Wunschposition ändern' : '➕ Wunschposition anlegen') + '</option>' + ['TW', 'RV', 'LV', 'IV', 'DM', 'ZM', 'OM', 'LM', 'RM', 'LA', 'ST', 'RA'].filter(function (d) { return d !== p.pos && d !== p.pos2 && d !== p.pos3; }).map(function (d) { return '<option value="' + d + '">' + d + ' – ' + esc(V.dpn[d] || d) + '</option>'; }).join('') + '</select>') + '</div><div style="display:grid;gap:7px;margin-top:8px">' + row(p.pos, 100, 'Hauptposition', '#2fa84f');
@@ -3138,8 +3179,8 @@ function playerPop(id) {
   var p = V.players.filter(function (x) { return x.id === id; })[0]; if (!p) return;
   var yrs = []; for (var y = p.ce + 1; y <= +V.season.slice(0, 4) + 5; y++) yrs.push(y);
   var h = '<div class="pp3"><div class="ppa"><div class="row"><span class="pb ' + p.pos + '">' + p.pos + '</span><h2 style="margin:0">' + esc(p.n) + '</h2></div><div class="xs muted" style="margin-top:4px">' + esc(V.dpn[p.pos]) + (false ? '' : '') + '</div>' +
-    '<div class="grid" style="margin:12px 0;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><div class="kpi" style="min-height:0"><small>Stärke</small><b>' + p.strF + '</b></div><div class="kpi" style="min-height:0"><small>Talent</small>' + stars(p.talLo, p.talHi) + (p.pot ? '<div class="xs muted">Potenzial ' + p.pot + '</div>' : '') + '</div><div class="kpi" style="min-height:0"><small>Marktwert</small><b style="font-size:14px">' + eurK(p.mw) + '</b></div></div>' +
-    posBox(p) + '</div><div class="ppb">' + radarSVG(p) +
+    '<div class="grid" style="margin:12px 0;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><div class="kpi" style="min-height:0"><small>Stärke</small><b>' + p.strF + '</b></div><div class="kpi" style="min-height:0"><small>Talent</small>' + stars(p.talLo, p.talHi) + (p.pot ? '<div class="xs muted">Potenzial ' + p.pot + '</div>' : '<div class="xs muted">Potenzial 🔒</div>') + '</div><div class="kpi" style="min-height:0"><small>Marktwert</small><b style="font-size:14px">' + eurK(p.mw) + '</b></div></div>' +
+    posBox(p) + '</div><div class="ppb">' + skPanel(p, p.skx) +
     '<div class="small" style="line-height:1.8">Alter <b>' + p.age + '</b> · Fitness <b>' + p.fit + '</b> · Form <b>' + p.form + '</b> · Niveau ≈ <b>' + esc(lvlName(p.natLvl)) + '</b><br>Saison: <b>' + p.gp + '</b> Spiele · <b>' + p.g + '</b> Tore · <b>' + p.a + '</b> Vorlagen' + (p.avg ? ' · Ø Note <b>' + gtx(p.avg) + '</b>' : '') + (p.yc ? ' · ' + p.yc + '× Gelb' : '') + '<br>Gehalt <b>' + eur(p.sal) + '</b>/Monat · Vertrag bis <b>06/' + p.ce + '</b>' + (p.inj ? '<br><span class="neg">Verletzt: noch ' + p.inj + ' Tage</span>' : '') + (p.ban ? '<br><span class="neg">Gesperrt: ' + p.ban + ' Spiel(e)</span>' : '') + (p.loan ? '<br>' + (p.loan.to ? 'Verliehen an ' + esc(p.loan.to) : 'Ausgeliehen von ' + esc(p.loan.from)) + ' bis Saisonende' : '') + (p.untouch ? '<br><span class="gelb">Unverkäuflich</span>' : '') + '</div>' +
     '<div class="hint">Gute Noten, Tore, Vorlagen, Paraden und weiße Westen lassen die Stärke steigen – schwache Spiele lassen sie sinken. Ganz selten ändert sich sogar das Talent.</div>';
   h += '</div><div class="ppc">';
@@ -3721,6 +3762,11 @@ function tTransfer() {
 '<div class="box sm1"><h3>📤 Meine Transferliste</h3>' + (tl0.length ? tl0.map(function (p) { return '<div class="row sp small" style="padding:5px 0;border-top:1px solid var(--linie);cursor:pointer" onclick="playerPop(' + p.id + ')"><span><span class="pb ' + p.pos + '">' + p.pos + '</span> ' + esc(p.n) + '</span>' + strBox(p.str) + '</div>'; }).join('') : '<div class="xs muted">Niemand – Spieler setzt du über die Spielerinfo drauf.</div>') + '</div>';
   return L4(c1, mid, c4);
 }
+function mkSkillBox(m, watched) {
+  if (!watched || !m.skx) return '<div class="hint">👁 Auf dem Transfermarkt siehst du nur Stärke und Talent. Setz ihn auf die Watchlist – dann deckt dein Scout Tag für Tag mehr Werte auf (nach 3–5 Tagen alles).</div>';
+  var x = m.skx, done = x.n >= x.all;
+  return '<div class="box" style="margin:8px 0;padding:10px 12px"><div class="row sp"><b class="small">🔎 Scouting-Bericht</b><span class="xs ' + (done ? 'pos' : 'muted') + '">' + (done ? 'komplett' : x.n + ' / ' + x.all + ' Werte · noch ca. ' + Math.max(1, x.left) + ' Tag' + (x.left === 1 ? '' : 'e')) + '</span></div><div class="psbar" style="margin:6px 0 4px"><i style="width:' + Math.round(x.n / x.all * 100) + '%;background:#3fc1c9"></i></div>' + skPanel({ str: m.str, talLo: m.talLo, talHi: m.talHi, pot: m.pot, pos: m.pos }, x) + '</div>';
+}
 function findMk(mid) { return V.market.list.filter(function (x) { return x.mid === mid; })[0] || V.watch.filter(function (x) { return x.mid === mid; })[0]; }
 function buyPop(mid) {
   var m = findMk(mid); if (!m) return;
@@ -3732,6 +3778,7 @@ function buyPop(mid) {
   var dpn = (V.dpn || {})[m.pos] || m.pos, kp = function (t, v) { return '<div class="kpi" style="flex:1;min-width:84px"><small>' + t + '</small><b style="font-size:15px">' + v + '</b></div>'; };
   pop('<div class="row" style="gap:12px;align-items:center"><span class="pb ' + m.pos + '" style="transform:scale(1.35);margin:0 6px">' + m.pos + '</span><div style="flex:1;min-width:0"><h2 style="margin:0;padding:0">' + esc(m.n) + '</h2><div class="small muted">' + esc(dpn) + (m.pos2 ? ' · auch ' + m.pos2 : '') + ' · ' + m.age + ' Jahre</div><div style="margin-top:3px">' + stars(m.talLo, m.talHi) + '</div></div>' + strCircle(m.str) + '</div>' +
     '<div class="row wr" style="gap:6px;margin:10px 0">' + kp('Verein', esc(m.club) + (m.liga ? ' <span class="xs muted">' + esc(m.liga) + '</span>' : '')) + kp('Marktwert', eurK(m.mw)) + kp('Ablöse', m.free ? 'frei' : eurK(m.fee)) + kp('Gehaltswunsch', eur(m.dem)) + (m.pot ? kp('Potenzial', m.pot) : '') + kp('Passt zu uns', m.gap >= 3 ? '<span class="neg">will höher</span>' : m.gap >= 1 ? '<span class="gelb">will mehr Geld</span>' : '<span class="pos">ja</span>') + '</div>' +
+    mkSkillBox(m, watched) +
     (m.moved ? '<div class="hint">🔄 Gerade zu ' + esc(m.moved.club) + ' gewechselt – ein Kauf geht erst ab ' + dFull(m.moved.until) + '. Eine Leihe wäre möglich.</div>' : '') +
     '<div><button class="sm" onclick="act(\'watch\',{mid:' + m.mid + '})">' + (watched ? 'Von der Watchlist nehmen' : '👁 Auf die Watchlist') + '</button></div>' +
     (canBuy ? (m.free ? '' : feeStage(m)) + (m.free || (FN && FN.ok) ? playerStage(m, ys, need) : '') : '<div class="hint">🔒 Spieler kaufen ab Level ' + MGR.featLvl('transfers') + '.</div>'), { nofocus: true, cls: 'buypop' });

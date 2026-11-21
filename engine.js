@@ -368,7 +368,7 @@ var MGR = (function () {
     if (S.world && S.fix) { if (!S.mc) S.mc = { sal: salRoll(S), until: S.season + 2, startLvl: S.lvl, offer: null }; if (!S.priv) S.priv = { cash: 0, owned: {}, rent: null, log: [] }; if (S.relStreak == null) S.relStreak = 0; }
     S.players.forEach(ensureDp); (S.youth || []).forEach(ensureDp);
     if (S.market) { (S.market.list || []).forEach(ensureDp); (S.market.loans || []).forEach(ensureDp); }
-    (S.watch || []).forEach(ensureDp);
+    (S.watch || []).forEach(function (w) { ensureDp(w); if (!w.wd) w.wd = S.date; });
     if (!FORMS[S.lineup.form]) { S.lineup.form = '4-4-2'; S.lineup.xi = null; }
     if (!S.mq) S.mq = [];
   }
@@ -1908,6 +1908,7 @@ var MGR = (function () {
     s += Math.min(2, ((S.lvMoral || 1) - 1) * 0.25) + (S.trainBoost || 0);
     var xiIds = currentXI(S).map(function (p) { return p ? p.id : null; });
     if (S.captain && xiIds.indexOf(S.captain) >= 0) s += 0.3;
+    (function () { var xi0 = currentXI(S).filter(Boolean); if (!xi0.length) return; s += (xi0.reduce(function (a, q) { return a + skExp(q); }, 0) / xi0.length - 3) * 0.3; if (xi0.some(function (q) { return skTraits(q).pers === 0; })) s += 0.25; })();
     ['pen', 'fk', 'ck'].forEach(function (k) { if (S[k] && xiIds.indexOf(S[k]) >= 0) s += 0.15; });
     s += home ? 1.0 + e.heim : e.away;
     if (S.start && S.season === +S.start.slice(0, 4)) s += 0.5;
@@ -1929,8 +1930,8 @@ var MGR = (function () {
     var res = { gf: gf, ga: ga, ms: ms, os: os, scorers: [], played: {}, inj: [], cards: [], pen: null };
     on.forEach(function (p) { res.played[p.id] = { min: 90, g: 0, a: 0, sv: 0, grade: 0, sub: false }; });
     for (var g = 0; g < gf; g++) {
-      var sc = wpick(on, function (p) { return SW[p.dp] * p.str; });
-      var as = R() < 0.75 ? wpick(on.filter(function (p) { return p !== sc; }), function (p) { return AW[p.dp] * p.str; }) : null;
+      var sc = wpick(on, function (p) { return SW[p.dp] * scW(p); });
+      var as = R() < 0.75 ? wpick(on.filter(function (p) { return p !== sc; }), function (p) { return AW[p.dp] * asW(p); }) : null;
       res.played[sc.id].g++; if (as) res.played[as.id].a++;
       res.scorers.push({ min: rint(1, 90), n: sc.n, a: as ? as.n : null });
     }
@@ -1939,13 +1940,13 @@ var MGR = (function () {
       var x = res.played[p.id];
       if (p.dp === 'TW') x.sv = Math.max(0, Math.round(la * 2 + gauss()));
       x.grade = clamp(3.5 - (gf - ga) * 0.35 - (p.str - ms) * 0.04 + gauss() * 0.7 - x.g * 0.6 - x.a * 0.3 - x.sv * 0.08, 1, 6);
-      var pr = 0.02 * (S.pitch.type === 'kunst' && pitchCond(S) < 0.2 ? 1.4 : 1) * (p.fit < 60 ? 1.6 : 1) * (1 + e.inj / 100) * (S.train.int === 'hart' ? 1.15 : 1);
+      var pr = 0.02 * [0.6, 1, 1.8][skTraits(p).ip] * (S.pitch.type === 'kunst' && pitchCond(S) < 0.2 ? 1.4 : 1) * (p.fit < 60 ? 1.6 : 1) * (1 + e.inj / 100) * (S.train.int === 'hart' ? 1.15 : 1);
       if (R() < pr) res.inj.push({ id: p.id, days: injDays(e) });
-      if (o.comp !== 'test') { if (R() < 0.0035) res.cards.push({ id: p.id, t: 'r' }); else if (R() < 0.085) res.cards.push({ id: p.id, t: 'y' }); }
+      if (o.comp !== 'test') { var cq = skTraits(p).pers === 5 ? 0.6 : 1; if (R() < 0.0035 * cq) res.cards.push({ id: p.id, t: 'r' }); else if (R() < 0.085 * cq) res.cards.push({ id: p.id, t: 'y' }); }
     });
     if (o.ko && gf === ga) {
       res.et = true; var eg = poisson(lf / 3), ea = poisson(la / 3);
-      for (var q = 0; q < eg; q++) { var sc2 = wpick(on, function (p) { return SW[p.dp] * p.str; }); res.played[sc2.id].g++; res.scorers.push({ min: rint(91, 120), n: sc2.n, a: null }); }
+      for (var q = 0; q < eg; q++) { var sc2 = wpick(on, function (p) { return SW[p.dp] * scW(p); }); res.played[sc2.id].g++; res.scorers.push({ min: rint(91, 120), n: sc2.n, a: null }); }
       res.gf += eg; res.ga += ea; gf = res.gf; ga = res.ga; on.forEach(function (p) { res.played[p.id].min = 120; });
       if (gf === ga) { var pb = S.pen && on.some(function (p) { return p.id === S.pen; }) ? 0.6 : 0; res.pen = R() < 1 / (1 + Math.exp(-(ms - os + pb * 6) * 0.08)) ? 'n.E. gewonnen' : 'n.E. verloren'; }
     }
@@ -1969,11 +1970,11 @@ var MGR = (function () {
     var SLOTMAP = {}; (function () { var xs = S.live && S.live.on ? S.live.on : (S.lineup.xi || currentXI(S).map(function (q) { return q ? q.id : null; })); var sl = FORMS[S.lineup.form]; xs.forEach(function (id, i) { if (id != null) SLOTMAP[id] = sl[i]; }); if (S.live && S.live.st) Object.keys(S.live.st).forEach(function (id) { if (S.live.st[id].slot) SLOTMAP[id] = SLOTMAP[id] || S.live.st[id].slot; }); })();
     Object.keys(res.played).forEach(function (id) {
       var x = res.played[id]; var p = S.players.filter(function (q) { return q.id === +id; })[0]; if (!p || !x.min) return;
-      p.gp++; p.recent = (p.recent || 0) + 1; p.g += x.g; p.a += x.a; if (!test) p.mins = (p.mins || 0) + (x.min || 0);
+      p.gp++; p.xgp = (p.xgp || 0) + 1; p.recent = (p.recent || 0) + 1; p.g += x.g; p.a += x.a; if (!test) p.mins = (p.mins || 0) + (x.min || 0);
       var grade = Math.round(clamp(x.grade, 1, 6) * 10) / 10; p.gr += grade;
       if (o.comp === 'kp' || o.comp === 'mrp' || o.comp === 'dfb') { p.cgp = (p.cgp || 0) + 1; p.cg = (p.cg || 0) + x.g; p.ca = (p.ca || 0) + x.a; p.cgr = (p.cgr || 0) + grade; } if (o.comp === 'liga') { p.lgp = (p.lgp || 0) + 1; p.lg = (p.lg || 0) + x.g; p.la = (p.la || 0) + x.a; p.lgr = (p.lgr || 0) + grade; if (p.dp === 'TW' && x.min >= 60) { p.lkg = (p.lkg || 0) + 1; p.lga = (p.lga || 0) + ga; } } p.lastGrade = grade; grades.push({ id: p.id, n: p.n, pos: p.dp, grade: grade, min: x.min, g: x.g, a: x.a, sv: x.sv || 0, sub: !!x.sub });
       p.form = clamp(p.form * 0.7 + (3.5 - grade) * 1.5, -5, 5);
-      var drop = (test ? rnd(8, 14) : rnd(17, 28)) * x.min / 90 * (p.age >= 31 ? 1.1 : 1) * (S.live && S.live.wx && S.live.wx.heat ? 1.25 : 1); p.fit = clamp(p.fit - drop, 20, 100);
+      var drop = (test ? rnd(8, 14) : rnd(17, 28)) * x.min / 90 * (p.age >= 31 ? 1.1 : 1) * clamp(1 - (skAt(p, 'aus') - p.str) / 50, 0.75, 1.25) * (skTraits(p).pers === 7 ? 0.88 : 1) * (S.live && S.live.wx && S.live.wx.heat ? 1.25 : 1); p.fit = clamp(p.fit - drop, 20, 100);
       // Entwicklung durch Leistung
       var spos = SLOTMAP[id]; if (x.min >= 30 && spos && !test) { p.posG = p.posG || {}; p.posG[spos] = (p.posG[spos] || 0) + 1; }
       if (x.min >= 30 && !test) { if (p.dp2 && spos === p.dp2) { if (p.f2 == null) p.f2 = rnd(0.73, 0.82); if (p.f2 < 1) { p.f2 = Math.min(1, p.f2 + rnd(0.008, 0.018)); if (p.f2 >= 1 && (p.posG[p.dp2] || 0) >= 12 && !p.posAsked && !S.posPop) S.posPop = { pid: p.id, w: 2 }; } } if (p.dp3 && spos === p.dp3 && p.f3 < 1) { p.f3 = Math.min(1, p.f3 + rnd(0.008, 0.018)); if (p.f3 >= 1 && (p.posG[p.dp3] || 0) >= 12 && !p.posAsked3 && !S.posPop) S.posPop = { pid: p.id, w: 3 }; } }
@@ -2113,7 +2114,9 @@ var MGR = (function () {
       else if (e.k === 'chance') { B.t = 0; B.x = rnd(88, 95); thr += 1; } else if (e.k === 'chanceA') { B.t = 1; B.x = rnd(5, 12); thr -= 1; } else if (e.k === 'save') { B.t = 1; B.x = rnd(6, 12); thr -= 0.8; } }
     L.mom.push(Math.round(clamp(thr / Math.max(1, n) * 140, -100, 100)));
   }
-  function liveScorer(S, on, w) { var c = on.filter(Boolean); return c.length ? wpick(c, function (p) { return w[p.dp] * p.str; }) : null; }
+  function liveScorer(S, on, w) { var c = on.filter(Boolean); return c.length ? wpick(c, function (p) { return w[p.dp] * (w === AW ? asW(p) : scW(p)); }) : null; }
+  function scW(p) { var k = skillsOf(p); return p.str * 0.45 + k.sch * 0.4 + k.kop * 0.15; }
+  function asW(p) { var k = skillsOf(p); return (p.str * 0.5 + k.pas * 0.3 + k.fla * 0.2) * (skTraits(p).pers === 2 ? 1.3 : 1); }
   function liveMinute(S, D) {
     var L = S.live; L.min++;
     var on = liveOn(S); var ms = liveStr(S, D); var os = L.os;
@@ -2157,7 +2160,7 @@ var MGR = (function () {
     var e = eff(S, D);
     on.forEach(function (p, i) {
       if (!p || L.st[p.id].inj) return;
-      var ip = 0.018 / 90 * (p.fit < 60 ? 1.6 : 1) * (1 + e.inj / 100) * (S.train.int === 'hart' ? 1.15 : 1) * (S.pitch.type === 'kunst' && pitchCond(S) < 0.2 ? 1.4 : 1);
+      var ip = 0.018 / 90 * [0.6, 1, 1.8][skTraits(p).ip] * (p.fit < 60 ? 1.6 : 1) * (1 + e.inj / 100) * (S.train.int === 'hart' ? 1.15 : 1) * (S.pitch.type === 'kunst' && pitchCond(S) < 0.2 ? 1.4 : 1);
       if (R() < ip) { var days = injDays(e); L.st[p.id].inj = days; L.inj.push({ id: p.id, days: days }); liveEv(L, 'inj', cm('inj', { p: p.n + ' (' + p.dp + ')' }), rnd(20, 80), rnd(10, 90), 1); if (L.subs < L.maxSubs && avail(S).some(function (q) { return !L.st[q.id]; })) L.pause = { type: 'inj', slot: i, pid: p.id, n: p.n, pos: p.dp }; else if (FORMS[S.lineup.form][i] === 'TW') { L.st[p.id].to = L.min; L.on[i] = null; L.pause = { type: 'gk', slot: i, pid: p.id, n: p.n }; liveEv(L, 'inj', 'Kein Wechsel mehr – ein Feldspieler muss ins Tor!'); } else { L.st[p.id].to = L.min; L.on[i] = null; (L.injOut = L.injOut || []).push(i); liveEv(L, 'inj', 'Kein Wechsel mehr möglich – wir spielen mit einem Mann weniger.'); } }
     });
   }
@@ -2362,7 +2365,7 @@ var MGR = (function () {
     var wk0 = addDays(d, -((dow(d) + 6) % 7));
     if (false && !S.autoTr && S.lvl >= 7 && S.weekWk !== wk0) { S.weekWk = wk0; var tds = []; for (var wi = 0; wi < 7; wi++) { var wdd = addDays(wk0, wi); if (wdd >= d && isTrainDay(S, D, wdd)) tds.push(wdd); } if (tds.length) S.weekNeed = tds; }
     var rec = (S.built.athletik ? 1.2 : 1) * 3 + (e.rec || 0) * 0.6 + (S.train.int === 'locker' ? 1.2 : S.train.int === 'hart' ? -1.2 : 0) + (S.train.focus === 'regeneration' ? 1.8 : S.train.focus === 'kondition' ? 0.6 : 0) + (inCamp ? 1 : 0);
-    S.players.forEach(function (p) { if (p.inj > 0) { p.inj--; if (!p.inj) p.fit = Math.min(p.fit, 70); } else { var r1 = (rec * 0.55 + 0.17 * (100 - p.fit)) * rnd(0.7, 1.3) * (p.age >= 31 ? 0.85 : p.age <= 22 ? 1.1 : 1); if (R() < 0.08) r1 -= rnd(2, 6); p.fit = clamp(p.fit + r1, 35, p.fitCap || 100); } });
+    S.players.forEach(function (p) { if (p.inj > 0) { p.inj--; if (!p.inj) p.fit = Math.min(p.fit, 70); } else { var r1 = (rec * 0.55 + 0.17 * (100 - p.fit)) * rnd(0.7, 1.3) * skRegF(p) * 0.95; if (R() < 0.08) r1 -= rnd(2, 6); p.fit = clamp(p.fit + r1, 35, p.fitCap || 100); } });
     if (S.camp && S.camp.to === d) {
       var ce = S.camp.e; S.moral = clamp(S.moral + 3 * ce, 0, 100); S.chem = { v: 0.4 * ce, until: addDays(d, 30) };
       S.players.forEach(function (p) { if (!p.inj && !(p.loan && p.loan.to)) { p.form = clamp(p.form + ce, -5, 5); p.str = Math.min(p.pot, p.str + 0.15 * ce * (p.age <= 25 ? 1 : 0.4)); } });
@@ -2442,10 +2445,11 @@ var MGR = (function () {
       var fac = 1 + (e.dev + (p.pos === 'TW' ? e.twdev : 0)) / 100;
       var play = p.loan && p.loan.to ? 1.15 : (p.recent >= 1 ? 1.15 : 0.85 * (1 + e.bench / 100));
       var g = Math.max(0, p.pot - p.str) * 0.0055 * ageF * (0.55 + p.tal * 0.2) * m * fac * play;
+      var trt = skTraits(p); if (trt.pers === 1 && g > 0) g *= 1.1;
       if (p.age >= 31) g -= 0.035 + (p.age - 31) * 0.02;
-      p.str = clamp(p.str + g, 1, 99);
-      p.form = p.form * 0.85; p.recent = 0;
-      var ir = 0.006 * { locker: 0.6, normal: 1, hart: 1.6 }[tf.int] * (1 + e.inj / 100);
+      p.str = clamp(p.str + g, 1, 99); skTrain(p, g, p.tp || tf.focus);
+      p.form = p.form * 0.85 + (trt.pers === 4 ? gauss() * 0.6 : 0); p.recent = 0;
+      var ir = 0.006 * { locker: 0.6, normal: 1, hart: 1.6 }[tf.int] * (1 + e.inj / 100) * [0.6, 1, 1.8][trt.ip];
       if (!(p.loan && p.loan.to) && R() < ir) { p.inj = injDays(e); msg(S, 'training', p.n + ' hat sich im Training verletzt (' + p.inj + ' Tage).'); }
     });
     if (tf.int === 'hart') S.moral = clamp(S.moral - 1, 10, 100);
@@ -3061,7 +3065,7 @@ var MGR = (function () {
         S.watch = S.watch || []; var wi = S.watch.filter(function (x) { return x.mid === +p.mid; })[0];
         if (wi) { S.watch = S.watch.filter(function (x) { return x !== wi; }); info = wi.n + ' von der Watchlist entfernt.'; break; }
         var wm = S.market.list.filter(function (x) { return x.mid === +p.mid; })[0]; if (!wm) err('Spieler nicht gefunden.');
-        if (S.watch.length >= 12) err('Die Watchlist ist voll (12).'); S.watch.push(wm); info = wm.n + ' steht auf deiner Watchlist.'; break;
+        if (S.watch.length >= 12) err('Die Watchlist ist voll (12).'); wm.wd = S.date; S.watch.push(wm); info = wm.n + ' steht auf deiner Watchlist – die Werte siehst du nach und nach (komplett nach 3–5 Tagen).'; break;
       }
       case 'loanin': {
         need(S, 'leihe');
@@ -3582,6 +3586,34 @@ var MGR = (function () {
   function srng(seed) { var x = (seed >>> 0) || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
   function hashS(str) { var h = 2166136261; str = String(str); for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
   function sPois(l, r) { l = clamp(l, 0.05, 8); var L = Math.exp(-l), k = 0, p = 1; do { k++; p *= r(); } while (p > L); return k - 1; }
+  // ============================================================ Spielerwerte (1–100): Fähigkeiten, Erfahrung, Regeneration, Verletzungsanfälligkeit, Persönlichkeit
+  // Die Werte ergeben sich fest aus Name, Position und Stärke – ihr gewichteter Schnitt ist immer die Stärke. Training verschiebt sie (p.skd).
+  var SKL = [['tem', 'Tempo', 'phy'], ['aus', 'Ausdauer', 'phy'], ['zwk', 'Zweikampf', 'def'], ['gra', 'Grätsche', 'def'], ['stl', 'Stellungsspiel', 'def'], ['kop', 'Kopfball', 'def'], ['pas', 'Passspiel', 'tec'], ['tec', 'Technik', 'tec'], ['fla', 'Flanken', 'tec'], ['sch', 'Schuss', 'off'], ['ref', 'Reflexe', 'tw'], ['fan', 'Fangsicherheit', 'tw']];
+  var SKW = { // Gewicht je Position: tem aus zwk gra stl kop pas tec fla sch ref fan
+    TW: [.5, .5, .1, .1, 2, .3, .5, .2, .05, .05, 4, 3], IV: [1, 1, 3, 2.5, 2.5, 2.5, 1, .5, .2, .2, 0, 0], RV: [2.5, 2, 2, 1.5, 1.5, .6, 1, .8, 2, .3, 0, 0],
+    DM: [.8, 2, 2.5, 2, 2, 1, 2.5, 1, .3, .5, 0, 0], ZM: [1, 2, 1.2, .6, 1.2, .5, 3, 2.5, .6, 1, 0, 0], OM: [1.5, 1, .5, .2, .8, .4, 3, 3, 1, 2, 0, 0],
+    RM: [2.5, 2, .8, .4, .7, .4, 1.5, 2, 3, 1, 0, 0], RA: [3, 1.2, .3, .1, .8, .5, 1.2, 2.5, 2, 2, 0, 0], ST: [2, 1, 1, .1, 2, 2.5, .8, 1.5, .2, 3.5, 0, 0] };
+  var SKWM = { LV: 'RV', LM: 'RM', LA: 'RA' };
+  var PERS = [['Führungsspieler', 'Hebt die Stimmung im Team, wenn er regelmäßig spielt'], ['Ehrgeizig', 'Entwickelt sich etwas schneller'], ['Teamplayer', 'Legt öfter Tore auf'], ['Profi', 'Regeneriert schneller'], ['Launisch', 'Seine Form schwankt stärker'], ['Ruhig', 'Sieht seltener Karten'], ['Lebemann', 'Regeneriert etwas langsamer'], ['Kämpfer', 'Ermüdet im Spiel weniger']];
+  var IPN = ['gering', 'normal', 'hoch'];
+  function skSeed(p) { return srng(hashS(String(p.n || '') + '|sk')); }
+  function skTraits(p) { var r = skSeed(p); for (var i = 0; i < 14; i++) r(); var a = r(), b = r(); return { ip: a < 0.2 ? 0 : a < 0.92 ? 1 : 2, pers: Math.floor(b * PERS.length) }; }
+  function skExp(p) { return clamp(Math.floor(1 + Math.max(0, (p.age || 25) - 18) / 4.5 + (p.xgp || 0) / 90), 1, 5); }
+  function skRegF(p) { var t = skTraits(p); return clamp(1.15 - Math.max(0, (p.age || 25) - 23) * 0.03, 0.6, 1.15) * (t.pers === 3 ? 1.1 : t.pers === 6 ? 0.9 : 1); }
+  function skillsOf(p) {
+    var dp = p.dp || p.pos || 'ZM'; if (dp === 'AB') dp = 'IV'; if (dp === 'MF') dp = 'ZM'; var w = SKW[SKWM[dp] || dp] || SKW.ZM, tw = dp === 'TW', r = skSeed(p), d = p.skd || {};
+    var mx = Math.max.apply(null, w), raw = SKL.map(function (s, i) { var b = 13 * w[i] / mx - 6.5 + sGauss(r) * 4; var st0 = p.str || 40; if (!tw && s[2] === 'tw') b -= st0 * 0.6; if (tw && s[2] !== 'tw' && s[0] !== 'stl' && s[0] !== 'aus' && s[0] !== 'tem' && s[0] !== 'pas') b -= st0 * 0.3; return b + (d[s[0]] || 0); });
+    var sw = 0, sv = 0; raw.forEach(function (b, i) { var wi = w[i] || 0.02; sw += wi; sv += wi * b; }); var c = sv / sw, str = p.str || 1, o = {};
+    SKL.forEach(function (s, i) { o[s[0]] = Math.round(clamp(str + raw[i] - c, 1, 100)); }); return o;
+  }
+  function skInfo(p) { var t = skTraits(p); return { sk: skillsOf(p), ex: skExp(p), rg: Math.round(skRegF(p) / 1.265 * 100), ip: t.ip, pers: t.pers }; }
+  var SKFOC = { technik: ['tec', 'pas', 'fla'], abschluss: ['sch', 'kop'], abwehr: ['zwk', 'gra', 'stl'], torwart: ['ref', 'fan'], kondition: ['aus', 'tem'], taktik: ['stl', 'pas'] };
+  function skTrain(p, g, focus) { var ks = SKFOC[focus]; if (!ks || !(g > 0)) return; p.skd = p.skd || {}; ks.forEach(function (k) { p.skd[k] = clamp((p.skd[k] || 0) + g * 5, -15, 15); }); }
+  function skAt(p, k) { return skillsOf(p)[k] || p.str; }
+  function potVis(S) { return !!(S.scout && (S.scout.score || 0) >= 40); }
+  // Watchlist: in 3–5 Tagen werden die Werte nach und nach aufgedeckt (fest gemischte Reihenfolge)
+  function wReveal(S, mp) { var w = (S.watch || []).filter(function (x) { return x.mid === mp.mid; })[0]; if (!w) return null; var rv = 3 + hashS(mp.n + '|rv') % 3, days = w.wd ? Math.max(0, diffDays(w.wd, S.date)) : 0; var tw = (mp.dp || mp.pos) === 'TW', ks = SKL.filter(function (s) { return tw ? s[2] !== 'off' : s[2] !== 'tw'; }).map(function (s) { return s[0]; }).concat(['_ex', '_tr']), N = ks.length; var n = days >= rv ? N : Math.floor(N * (days + 0.5) / (rv + 0.5)); var r = srng(hashS(mp.n + '|ord')), ord = ks.map(function (k) { return [k, r()]; }).sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; }); return { keys: ord.slice(0, n), n: n, all: N, left: Math.max(0, rv - days) }; }
+  function mkSkills(S, mp) { var rv = wReveal(S, mp); if (!rv) return null; var I = skInfo(mp), o = { n: rv.n, all: rv.all, left: rv.left, sk: {} }; rv.keys.forEach(function (k) { if (k === '_ex') { o.ex = I.ex; o.rg = I.rg; } else if (k === '_tr') { o.ip = I.ip; o.pers = I.pers; } else o.sk[k] = I.sk[k]; }); return o; }
   function sGauss(r) { var u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
   function synthPlayers(S, D, team) {
     var r = srng(hashS(team + '|' + S.season)); var pk = function (a) { return a[Math.floor(r() * a.length)]; };
@@ -4035,11 +4067,11 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
     var mdShow = Math.max(1, curMd);
     var matchday = function (md) { return S.fix.filter(function (f) { return f.md === md; }).map(function (f) { return { h: teams[f.h].n, a: teams[f.a].n, hg: f.hg, ag: f.ag, d: f.d, svw: !!(teams[f.h].svw || teams[f.a].svw) }; }); };
     var players = S.players.map(function (p) {
-      return { id: p.id, n: p.n, pos: p.dp, pos2: p.dp2, f2: p.dp2 ? Math.round((p.f2 == null ? 0.78 : p.f2) * 100) : null, pos3: p.dp3 || null, f3: p.dp3 ? Math.round((p.f3 || 0) * 100) : null, grp: p.pos, age: p.age, str: Math.round(p.str), dS: p.str0 != null ? Math.round(p.str) - Math.round(p.str0) : 0, sh: (p.sh || []).concat([Math.round(p.str * 10) / 10]), isNew: !!p.isNew, injN: p.injN || (p.inj > 0 ? ((INJ_T.filter(function (x) { return p.inj <= x[0]; })[0] || INJ_T[3])[1][p.id % 3]) : null), docOk: !!(p.inj >= 10 && (!p.docD || diffDays(p.docD, S.date) >= 14)), docIn: p.docD ? Math.max(0, 14 - diffDays(p.docD, S.date)) : 0, docCost: p.inj > 0 ? docCost(S, D, p) : 0, leaving: p.leaving || null, lgp: p.lgp || 0, mins: p.mins || 0, lg: p.lg || 0, la: p.la || 0, lgr: p.lgp ? Math.round(p.lgr / p.lgp * 10) / 10 : null, strF: Math.round(p.str * 10) / 10, tal: p.tal, talLo: e.scout ? p.tal : Math.max(1, p.tal - 1), talHi: e.scout ? p.tal : Math.min(5, p.tal + 1), pot: e.scout ? Math.round(p.pot) : null,
+      return { id: p.id, n: p.n, pos: p.dp, pos2: p.dp2, f2: p.dp2 ? Math.round((p.f2 == null ? 0.78 : p.f2) * 100) : null, pos3: p.dp3 || null, f3: p.dp3 ? Math.round((p.f3 || 0) * 100) : null, grp: p.pos, age: p.age, str: Math.round(p.str), dS: p.str0 != null ? Math.round(p.str) - Math.round(p.str0) : 0, sh: (p.sh || []).concat([Math.round(p.str * 10) / 10]), isNew: !!p.isNew, injN: p.injN || (p.inj > 0 ? ((INJ_T.filter(function (x) { return p.inj <= x[0]; })[0] || INJ_T[3])[1][p.id % 3]) : null), docOk: !!(p.inj >= 10 && (!p.docD || diffDays(p.docD, S.date) >= 14)), docIn: p.docD ? Math.max(0, 14 - diffDays(p.docD, S.date)) : 0, docCost: p.inj > 0 ? docCost(S, D, p) : 0, leaving: p.leaving || null, lgp: p.lgp || 0, mins: p.mins || 0, lg: p.lg || 0, la: p.la || 0, lgr: p.lgp ? Math.round(p.lgr / p.lgp * 10) / 10 : null, strF: Math.round(p.str * 10) / 10, tal: p.tal, talLo: e.scout ? p.tal : Math.max(1, p.tal - 1), talHi: e.scout ? p.tal : Math.min(5, p.tal + 1), pot: potVis(S) ? Math.round(p.pot) : null, skx: skInfo(p),
         fit: Math.round(p.fit), form: Math.round(p.form * 10) / 10, inj: p.inj, mw: mw(p), sal: p.sal, ce: p.ce, g: p.g, a: p.a, gp: p.gp, avg: p.gp ? Math.round(p.gr / p.gp * 10) / 10 : null, last: p.lastGrade || null,
         loan: p.loan || null, tl: !!p.tl, ask: p.ask || null, fp: S.train.fp.indexOf(p.id) >= 0, youth: !!p.youth, block: !!p.block, ending: p.ce <= seasonEndYear(S), dem: salDemand(p, S.lvl), natLvl: natLvl(D, p.str), inXI: xi.indexOf(p) >= 0, posG: p.posG || null, starDone: p.starS === S.season, dStr: p.dStr || 0, dSeas: Math.round((p.str - (p.str0 == null ? p.str : p.str0)) * 10) / 10, tp: p.tp || null, retrain: p.retrain || null, self: !!p.self, ban: p.ban || 0, abs: p.abs || 0, yc: p.yc || 0, untouch: !!p.untouch };
     });
-    var mkMarket = function (mp) { return { nlz: !!mp.nlz, nlzLeft: mp.nlz ? diffDays(S.date, mp.nlzUntil) + 1 : 0, mid: mp.mid, n: mp.n, pos: mp.dp, pos2: mp.dp2, age: mp.age, str: Math.round(mp.str), talLo: e.scout ? mp.tal : Math.max(1, mp.tal - 1), talHi: e.scout ? mp.tal : Math.min(5, mp.tal + 1), pot: e.scout ? Math.round(mp.pot) : null, mw: mw(mp), fee: mp.fee, dem: mp.dem, club: mp.club, clubLvl: mp.clubLvl, liga: D.lv[mp.clubLvl] ? D.lv[mp.clubLvl].short : '', free: mp.free, loanFee: mp.loanFee, share: mp.share, gap: S.lvl - natLvl(D, mp.str), moved: mp.moved || null, watched: (S.watch || []).some(function (w) { return w.mid === mp.mid; }) }; };
+    var mkMarket = function (mp) { return { nlz: !!mp.nlz, nlzLeft: mp.nlz ? diffDays(S.date, mp.nlzUntil) + 1 : 0, mid: mp.mid, n: mp.n, pos: mp.dp, pos2: mp.dp2, age: mp.age, str: Math.round(mp.str), talLo: e.scout ? mp.tal : Math.max(1, mp.tal - 1), talHi: e.scout ? mp.tal : Math.min(5, mp.tal + 1), pot: potVis(S) ? Math.round(mp.pot) : null, skx: mkSkills(S, mp), mw: mw(mp), fee: mp.fee, dem: mp.dem, club: mp.club, clubLvl: mp.clubLvl, liga: D.lv[mp.clubLvl] ? D.lv[mp.clubLvl].short : '', free: mp.free, loanFee: mp.loanFee, share: mp.share, gap: S.lvl - natLvl(D, mp.str), moved: mp.moved || null, watched: (S.watch || []).some(function (w) { return w.mid === mp.mid; }) }; };
     var hist = S.fin.hist.concat(S.fin.cur ? [S.fin.cur] : []).slice(-12).map(function (m) { var i = 0, o = 0; Object.keys(m.inn).forEach(function (k) { i += m.inn[k]; }); Object.keys(m.out).forEach(function (k) { o += m.out[k]; }); return { m: m.m, inn: Math.round(i), out: Math.round(o), detIn: m.inn, detOut: m.out }; });
     var monthlySal = S.players.reduce(function (a, p) { return a + (p.loan && p.loan.to ? 0 : p.sal); }, 0);
     var monthlyItems = Object.keys(S.built).reduce(function (a, id) { return a + (D.items[id] ? itemMonthly(S, D, D.items[id]) : 0); }, 0);
@@ -4062,11 +4094,11 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
       full: S.full, mlvl: S.mlvl || 1, xp: Math.floor(S.xp || 0), xpGame: Math.floor(S.xpGame || 0), level: lv, features: FEATURES, xplv: XPLV,
       pots: { cash: Math.round(S.cash), tb: Math.round(S.tb), sav: Math.round(S.sav) }, wealth: Math.round(wealth(S)), alloc: S.alloc,
       stufen: { fans: S.lvFans, board: S.lvBoard, moral: S.lvMoral }, fanbase: S.fanbase, fitness: fitAvg,
-      feed: S.feed, mails: S.mails, youth: S.youth.map(function (y) { return { bday: y.bday || null, id: y.id, dS: Math.round((y.str - (y.s0 != null ? y.s0 : y.str)) * 10) / 10, from: y.from || null, n: y.n, pos: y.dp, pos2: y.dp2, age: y.age, str: Math.round(y.str), tal: y.tal, talLo: e.scout ? y.tal : Math.max(1, y.tal - 1), talHi: e.scout ? y.tal : Math.min(5, y.tal + 1), pot: e.scout ? Math.round(y.pot) : null }; }),
+      feed: S.feed, mails: S.mails, youth: S.youth.map(function (y) { return { bday: y.bday || null, id: y.id, dS: Math.round((y.str - (y.s0 != null ? y.s0 : y.str)) * 10) / 10, from: y.from || null, n: y.n, pos: y.dp, pos2: y.dp2, age: y.age, str: Math.round(y.str), tal: y.tal, talLo: e.scout ? y.tal : Math.max(1, y.tal - 1), talHi: e.scout ? y.tal : Math.min(5, y.tal + 1), pot: potVis(S) ? Math.round(y.pot) : null, skx: skInfo(y) }; }),
       youthTeams: ['u15', 'u17', 'u19'].filter(function (k) { return S.built[k]; }),
       achv: S.achv || [], achDef: ACH, spons: SPONS, sponsorsAll: S.sponsors, captain: S.captain, pen: S.pen, loanInfo: S.loan, fcs: S.fcs || [], fcNext: (S.fcs || []).length < FC_STEPS.length ? { pct: FC_STEPS[(S.fcs || []).length][1], need: FC_STEPS[(S.fcs || []).length][3] } : null, dk: S.dk ? { price: S.dk.price, hist: S.dk.hist, canSet: (S.hist || []).length > 0 && S.dk.setS !== S.season, fair: DK_FAIR[S.lvl] || 50 } : null, sellPop: S.sellPop || null, matchWx: S.mq && S.mq.length ? wxFor(S.mq[0].o.d || S.date, S.mq[0].o.opp && S.mq[0].o.opp.n) : null, talkOpts: talkOpts(S), hollyOn: hollyOn(S), holly: S.holly ? S.holly.list.filter(function (x) { return x.exp >= S.date; }) : [], hollyStar: S.hollyStar || null, streamFol: S.streamFol || 0, inhPop: S.inhPop || null, socUsed: socUsed(S), certPop: S.certPop || null, courseSpent: S.courseSpent || 0, qualF: qualF(S), tipPop: S.tipPop || null, daily: S.daily ? { streak: S.daily.streak, open: !!S.daily.open } : null, dailyLast: S.dailyLast || null, jokIntro: S.jokIntro === 1 && !S.live, starIntro: S.starIntro === 1 && !S.live && S.jokIntro !== 1, ag: S.ag || null, agWhy: S.ag ? [] : agCheck(S, D), agBase: agBase(S, D), bond: S.bond || null, bondOffer: S.bondOffer || null, bondAskDone: S.bondAskW === wkStart(S), credMax: nice(L.budget * 0.6), stadion: S.stadion, jersey: S.jersey,
       top: top, out: { inj: S.players.filter(function (p) { return p.inj > 0; }).map(pub), ban: S.players.filter(function (p) { return p.ban > 0; }).map(pub), loanOut: S.players.filter(function (p) { return p.loan && p.loan.to; }).map(pub), loanIn: S.players.filter(function (p) { return p.loan && p.loan.from; }).map(pub) },
-      tplans: TPLANS, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
+      tplans: TPLANS, potVis: potVis(S), scoutScore2: S.scout ? Math.round(S.scout.score || 0) : 0, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
 
       club: D.club, mgr: S.mgr, date: S.date, dateF: fmtD(S.date), season: S.season + '/' + String(S.season + 1).slice(2), lvl: S.lvl, liga: L.name, ligaShort: L.short,
       cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, gev: gevView(S, D), power: S.power == null ? 100 : S.power, jokNew: !!S.jokNew,
@@ -4106,5 +4138,5 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
   var LIGA_LVL = { 1: 999, 2: 999, 3: 999, 4: 999 };
   // Gebiet einheitlich: in Württemberg und Südbaden sind die Bezirke die unterste Ebene (= Fußballkreis)
   function gebietNorm(vb, g) { g = String(g || ''); if (vb === 'Württemberg' || vb === 'Südbaden') { if (/^Bezirk /.test(g)) return g.replace(/^Bezirk /, 'Kreis '); if (vb === 'Südbaden' && g && !/^(Kreis |Südbaden)/.test(g)) return 'Kreis ' + g; } return g; }
-  return { applyCfg: applyCfg, cfgInfo: cfgInfo, ligaName: ligaName, gebietNorm: gebietNorm, LIGA_LVL: LIGA_LVL, VB_LAND: VB_LAND, PRO_ORT: PRO_ORT, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
+  return { skInfo: skInfo, SKL: SKL, PERS: PERS, IPN: IPN, applyCfg: applyCfg, cfgInfo: cfgInfo, ligaName: ligaName, gebietNorm: gebietNorm, LIGA_LVL: LIGA_LVL, VB_LAND: VB_LAND, PRO_ORT: PRO_ORT, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
 })();

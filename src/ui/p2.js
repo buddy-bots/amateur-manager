@@ -142,6 +142,8 @@ function fitPartner() {
   pt.forEach(function (x) { x.style.height = Math.max(70, hgt) + 'px'; });
 }
 window.addEventListener('resize', function () { if (ST.tab === 'home') fitPartner(); });
+// Offene Entscheidung direkt wieder anzeigen (falls ihr Fenster von einem anderen verdrängt wurde)
+function pendShow() { if (!V.pending) return; if (V.pending.type === 'goal') goalPop(); else decisionPop(); }
 function decisionPop() {
   var p = V.pending, ic = { event: '❓', offer: '💰', sponsor: '🤝' }[p.type] || '❓';
   pop('<div id="deci" class="evw"><div class="row" style="gap:10px;align-items:center"><span style="font-size:30px">' + ic + '</span><h2 style="padding:0;margin:0;flex:1">' + esc(p.title) + '</h2>' + (V.pendingCount > 1 ? '<span class="pill">noch ' + (V.pendingCount - 1) + ' weitere</span>' : '') + '</div><div style="line-height:1.55;margin:10px 0 12px">' + esc(p.text) + '</div>' + (p.vet ? extCard(p.vet) : p.pid != null && /abwerb/i.test(p.title) ? abwCard(p.pid) : p.pid != null && (PCARD_RX.test(p.title + ' ' + p.text) || p.type === 'offer') ? pCard(p.pid, true) : '') + '<div class="evbtns">' +
@@ -163,7 +165,10 @@ function act(action, params, o) {
     if (r.info && !o.quiet) toast(r.info);
     if (!o.norender) afterUpdate(mailsBefore);
     return r;
-  }, function (e) { if (e && e.status !== 409) toast((e && e.message) || String(e), true); return null; });
+  }, function (e) { var em = (e && e.message) || String(e);
+    // Server sieht noch eine offene Entscheidung, die hier nicht angezeigt wird: Spielstand neu laden und das Fenster zeigen
+    if (/offene Entscheidung|Saisonbericht|höhere Mannschaft/.test(em)) { reloadGame().then(function () { if (V.pending) pendShow(); else afterUpdate(openMails()); }); return null; }
+    if (e && e.status !== 409) toast(em, true); return null; });
 }
 function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (!V || ST.screen !== 'game') return;
@@ -215,7 +220,7 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
 }
 function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (SIMRUN) return;
-  if (V.pending) { toast('Erst die offene Entscheidung treffen.', true); return; }
+  if (V.pending) { pendShow(); return; }
   if (V.blockMails) { toast('Erst die offenen Nachrichten beantworten.', true); go('home'); return; }
   if (V.trainToday) { trainPop(); return; }
   if (ST.tab !== 'home') { ST.tab = 'home'; render(true); }

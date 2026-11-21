@@ -767,8 +767,8 @@ button.ybt{width:24px!important;height:22px!important;min-width:0!important;padd
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<script src="engine.js?v=26.18.1"></script>
-<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Betaphase · v26.18.1', ENGVER = '26.18.1', PHASE = 'Betaphase';</script>
+<script src="engine.js?v=26.18.2"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Betaphase · v26.18.2', ENGVER = '26.18.2', PHASE = 'Betaphase';</script>
 <script>
 
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
@@ -2018,6 +2018,8 @@ function fitPartner() {
   pt.forEach(function (x) { x.style.height = Math.max(70, hgt) + 'px'; });
 }
 window.addEventListener('resize', function () { if (ST.tab === 'home') fitPartner(); });
+// Offene Entscheidung direkt wieder anzeigen (falls ihr Fenster von einem anderen verdrängt wurde)
+function pendShow() { if (!V.pending) return; if (V.pending.type === 'goal') goalPop(); else decisionPop(); }
 function decisionPop() {
   var p = V.pending, ic = { event: '❓', offer: '💰', sponsor: '🤝' }[p.type] || '❓';
   pop('<div id="deci" class="evw"><div class="row" style="gap:10px;align-items:center"><span style="font-size:30px">' + ic + '</span><h2 style="padding:0;margin:0;flex:1">' + esc(p.title) + '</h2>' + (V.pendingCount > 1 ? '<span class="pill">noch ' + (V.pendingCount - 1) + ' weitere</span>' : '') + '</div><div style="line-height:1.55;margin:10px 0 12px">' + esc(p.text) + '</div>' + (p.vet ? extCard(p.vet) : p.pid != null && /abwerb/i.test(p.title) ? abwCard(p.pid) : p.pid != null && (PCARD_RX.test(p.title + ' ' + p.text) || p.type === 'offer') ? pCard(p.pid, true) : '') + '<div class="evbtns">' +
@@ -2039,7 +2041,10 @@ function act(action, params, o) {
     if (r.info && !o.quiet) toast(r.info);
     if (!o.norender) afterUpdate(mailsBefore);
     return r;
-  }, function (e) { if (e && e.status !== 409) toast((e && e.message) || String(e), true); return null; });
+  }, function (e) { var em = (e && e.message) || String(e);
+    // Server sieht noch eine offene Entscheidung, die hier nicht angezeigt wird: Spielstand neu laden und das Fenster zeigen
+    if (/offene Entscheidung|Saisonbericht|höhere Mannschaft/.test(em)) { reloadGame().then(function () { if (V.pending) pendShow(); else afterUpdate(openMails()); }); return null; }
+    if (e && e.status !== 409) toast(em, true); return null; });
 }
 function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
   if (!V || ST.screen !== 'game') return;
@@ -2091,7 +2096,7 @@ function afterUpdate(mailsBefore) { try { symWatch(); } catch (e) {}
 }
 function sim(mode) { if (mode === 'match') { try { pileClear(); } catch (e) {} }
   if (SIMRUN) return;
-  if (V.pending) { toast('Erst die offene Entscheidung treffen.', true); return; }
+  if (V.pending) { pendShow(); return; }
   if (V.blockMails) { toast('Erst die offenen Nachrichten beantworten.', true); go('home'); return; }
   if (V.trainToday) { trainPop(); return; }
   if (ST.tab !== 'home') { ST.tab = 'home'; render(true); }
@@ -4943,7 +4948,7 @@ function gradeCol(g) { var t = g10(g); return t >= 8.5 ? '#2fa84f' : t >= 7 ? '#
 function gradeBox(g) { return '<span class="mini" title="Note 1 (schwach) bis 10 (Weltklasse)" style="background:' + gradeCol(g) + ';color:#fff">' + gtx(g) + '</span>'; }
 function tStars(t) { return stars(t || 0, t || 0); }
 function matchDay(ok2) {
-  if (V.pending) return toast('Erst die offene Entscheidung treffen.', true);
+  if (V.pending) return pendShow();
   if (V.blockMails) { go('home'); return toast('Erst die offenen Nachrichten beantworten.', true); }
   var miss = V.lineup.slots.filter(function (s) { return s.unavail; });
   if (miss.length) {
@@ -5295,8 +5300,8 @@ function liveAnimStart(L) {
   var fitCv = function (c) { var cw = Math.round(c.clientWidth), ch = Math.round(c.clientHeight); if (cw > 20 && ch > 20 && (c.width !== cw || c.height !== ch)) { c.width = cw; c.height = ch; } W = c.width; H = c.height; };
   // eigene Formation aus der Aufstellung (FPOS: x quer, y 0 = gegnerisches Tor) → Spielfeld-Koordinaten (fx = Richtung gegnerisches Tor)
   var form = (V.lineup && V.lineup.form) || '4-4-2', FP = (typeof FPOS !== 'undefined' && (FPOS[form] || FPOS['4-4-2'])) || [];
-  var on = V.liveOn || [], mine = []; FP.forEach(function (p, i) { if (on[i]) mine.push({ bx: (100 - p[1]) * 0.9 + 2, by: p[0], home: true, gk: i === 0 }); });
-  var opp = ((typeof FPOS !== 'undefined' && FPOS['4-4-2']) || []).map(function (p, i) { return { bx: 100 - ((100 - p[1]) * 0.9 + 2), by: 100 - p[0], home: false, gk: i === 0 }; }).slice(0, 11 - (L.oppRed || 0));
+  var on = V.liveOn || [], mine = [], SL = (MGR.FORMS && MGR.FORMS[form]) || [], SLO = (MGR.FORMS && MGR.FORMS['4-4-2']) || []; FP.forEach(function (p, i) { if (on[i]) mine.push({ bx: (100 - p[1]) * 0.9 + 2, by: p[0], home: true, gk: i === 0, lb: (on[i] && on[i].slot) || SL[i] || '' }); });
+  var opp = ((typeof FPOS !== 'undefined' && FPOS['4-4-2']) || []).map(function (p, i) { return { bx: 100 - ((100 - p[1]) * 0.9 + 2), by: 100 - p[0], home: false, gk: i === 0, lb: SLO[i] || '' }; }).slice(0, 11 - (L.oppRed || 0));
   var key = form + '|' + mine.length + '|' + opp.length;
   if (!LANIM.P || LANIM.key !== key) { var old = LANIM.P || []; LANIM.P = mine.concat(opp).map(function (p, i) { var o = old[i]; p.x = o ? o.x : p.bx; p.y = o ? o.y : p.by; return p; }); LANIM.key = key; }
   if (!LANIM.B) LANIM.B = { x: 50, y: 50, t: 1, q: [] };
@@ -5312,7 +5317,7 @@ function liveAnimStart(L) {
     var B = LANIM.B, spd = Math.max(0.035, Math.min(0.12, 60 / Math.max(300, (LIVE.ms || 900)) * 0.9));
     if (!frz && B.q.length) { var tg = B.q[0], dx = tg[0] - B.x, dy = tg[1] - B.y; B.x += dx * spd * 1.6; B.y += dy * spd * 1.6; B.t = tg[2]; if (Math.abs(dx) + Math.abs(dy) < 2.2) B.q.shift(); }
     if (!frz) LANIM.tm = (LANIM.tm || 0) + 1 / 60; var tm = LANIM.tm || 0;
-    x.clearRect(0, 0, W, H); var pr = Math.max(5, Math.min(9, W / 34));
+    x.clearRect(0, 0, W, H); var pr = Math.max(7, Math.min(14, Math.min(W, H * 0.75) / 21));
     // Ballführer: nächster Feldspieler des Teams am Ball
     var carrier = -1, best = 1e9; LANIM.P.forEach(function (p, i) { if (p.gk || p.home !== (B.t === 1)) return; var d = Math.pow(p.x - B.x, 2) + Math.pow(p.y - B.y, 2); if (d < best) { best = d; carrier = i; } });
     LANIM.P.forEach(function (p, i) {
@@ -5320,7 +5325,18 @@ function liveAnimStart(L) {
         if (p.gk) { tx = p.bx + (p.home ? Math.max(0, (B.x - 60) * 0.08) : Math.min(0, (B.x - 40) * 0.08)); ty = clampN(50 + (B.y - 50) * 0.25, 35, 65); }
         else { tx = clampN(p.bx + sh + push + Math.sin(tm * 1.2 + i) * 2, 4, 96); ty = clampN(p.by + (B.y - p.by) * (ownBall ? 0.08 : 0.16) + Math.cos(tm * 1.05 + i * 1.7) * 1.5, 4, 96); if (i === carrier) { tx = B.x - dir * 1.5; ty = B.y; } }
         p.x += (tx - p.x) * 0.07; p.y += (ty - p.y) * 0.07; }
-      var q = map(p.x, p.y); x.beginPath(); x.arc(q[0], q[1], pr, 0, 7); x.fillStyle = p.home ? '#111' : '#e03030'; x.fill(); x.lineWidth = 1.6; x.strokeStyle = p.home ? '#fff' : '#fff'; x.stroke(); if (p.gk) { x.lineWidth = 2; x.strokeStyle = '#f0c24b'; x.stroke(); } });
+      p.sx = map(p.x, p.y); });
+    // Ballführer hervorheben: pulsierende gelbe Ringe + Pfeil in Laufrichtung
+    var nxt = B.q.length ? B.q[0] : null, cp = carrier >= 0 ? LANIM.P[carrier] : null;
+    if (cp) { var cq = cp.sx, pl = 1 + Math.sin(tm * 4) * 0.08; x.lineWidth = 2.2; x.strokeStyle = 'rgba(240,200,60,.9)'; x.beginPath(); x.arc(cq[0], cq[1], pr * 1.75 * pl, 0, 7); x.stroke(); x.lineWidth = 1.2; x.strokeStyle = 'rgba(240,200,60,.45)'; x.beginPath(); x.arc(cq[0], cq[1], pr * 2.6 * pl, 0, 7); x.stroke(); x.fillStyle = 'rgba(240,200,60,.12)'; x.beginPath(); x.arc(cq[0], cq[1], pr * 1.75 * pl, 0, 7); x.fill(); }
+    // Pass/Weg des Balls: gestrichelte Linie zum nächsten Ziel
+    if (nxt && !frz) { var a0 = map(B.x, B.y), a1 = map(nxt[0], nxt[1]), dl = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]); if (dl > pr * 3) { x.save(); x.setLineDash([3, 6]); x.lineCap = 'round'; x.lineWidth = 2.4; x.strokeStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.moveTo(a0[0], a0[1]); x.lineTo(a1[0], a1[1]); x.stroke(); x.restore(); var an = Math.atan2(a1[1] - a0[1], a1[0] - a0[0]); x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.moveTo(a1[0], a1[1]); x.lineTo(a1[0] - 9 * Math.cos(an - 0.45), a1[1] - 9 * Math.sin(an - 0.45)); x.lineTo(a1[0] - 9 * Math.cos(an + 0.45), a1[1] - 9 * Math.sin(an + 0.45)); x.fill(); }
+      if (cp) { var c0 = cp.sx, an2 = Math.atan2(a1[1] - c0[1], a1[0] - c0[0]), r1 = pr * 1.15, r2 = pr * 2.3; x.strokeStyle = '#f0c83c'; x.fillStyle = '#f0c83c'; x.lineWidth = 3; x.beginPath(); x.moveTo(c0[0] + r1 * Math.cos(an2), c0[1] + r1 * Math.sin(an2)); x.lineTo(c0[0] + r2 * Math.cos(an2), c0[1] + r2 * Math.sin(an2)); x.stroke(); var hx = c0[0] + (r2 + 5) * Math.cos(an2), hy = c0[1] + (r2 + 5) * Math.sin(an2); x.beginPath(); x.moveTo(hx, hy); x.lineTo(hx - 8 * Math.cos(an2 - 0.5), hy - 8 * Math.sin(an2 - 0.5)); x.lineTo(hx - 8 * Math.cos(an2 + 0.5), hy - 8 * Math.sin(an2 + 0.5)); x.fill(); } }
+    // Spieler als Kreise mit Positionskürzel (grün = wir, rot = Gegner)
+    LANIM.P.filter(function (p) { return !p.home; }).concat(LANIM.P.filter(function (p) { return p.home && p !== cp; }), cp ? [cp] : []).forEach(function (p) { var q = p.sx; x.beginPath(); x.arc(q[0] + 1, q[1] + 2.5, pr, 0, 7); x.fillStyle = 'rgba(0,0,0,.35)'; x.fill();
+      var g = x.createRadialGradient(q[0] - pr * 0.35, q[1] - pr * 0.4, pr * 0.15, q[0], q[1], pr); if (p.home) { g.addColorStop(0, '#6fe08a'); g.addColorStop(1, '#1f9a45'); } else { g.addColorStop(0, '#ff7a6e'); g.addColorStop(1, '#c62828'); }
+      x.beginPath(); x.arc(q[0], q[1], pr, 0, 7); x.fillStyle = g; x.fill(); x.lineWidth = 2; x.strokeStyle = p.gk ? '#f0c24b' : '#fff'; x.stroke();
+      if (pr >= 8 && p.lb) { x.fillStyle = '#fff'; x.font = '800 ' + Math.round(pr * (p.lb.length > 2 ? 0.62 : 0.78)) + 'px Montserrat,sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(p.lb, q[0], q[1] + 0.5); } });
     if (!frz) { (LANIM.tr = LANIM.tr || []).push([B.x, B.y]); if (LANIM.tr.length > 40) LANIM.tr.shift(); }
     (LANIM.tr || []).forEach(function (q0, k2, A) { if (k2 % 2) return; var qq = map(q0[0], q0[1]), al = (k2 + 1) / A.length; x.beginPath(); x.arc(qq[0], qq[1], 2 + al * 3, 0, 7); x.fillStyle = 'rgba(255,240,170,' + (al * 0.45).toFixed(2) + ')'; x.fill(); });
     var bq = map(B.x, B.y); try { ballIcon(x, bq[0], bq[1], 6); } catch (e) { x.beginPath(); x.arc(bq[0], bq[1], 5, 0, 7); x.fillStyle = '#fff'; x.fill(); }

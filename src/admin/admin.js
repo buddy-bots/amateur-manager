@@ -372,7 +372,7 @@ function showCfgInsta() { var d = Array.prototype.slice.call(document.querySelec
 function instaPic(id) { chooser(false, function (f) { if (f[0]) upload('insta.' + id, f[0]).then(function () { return loadMap(); }).then(function () { showCfgInsta(); }); }); }
 
 /* ---------- Freundesliga: Profilbild, Willkommensnachricht, aktuelle Woche */
-var FL_DEF = '🏆 Willkommen in der Freundesliga! Jede Woche (Montag bis Sonntag) trittst du gegen deine Call-Up-Favoriten an. Punkte gibt es für Siege (3), Unentschieden (1), erledigte Tagesmissionen (2), Karriere-Missionen (5) und +1 je 5 % mehr Follower. Am Montag werden die Sieger gekürt: Platz 1 bekommt 100 XP, Platz 2 60 XP und Platz 3 30 XP. Die aktuelle Tabelle siehst du immer oben in diesem Chat. Viel Erfolg!';
+var FL_DEF = '🏆 Willkommen in der Freundesliga! Jede Woche (Montag bis Sonntag) trittst du gegen deine Call-Up-Favoriten an. Punkte gibt es für Siege (3), Unentschieden (1), erledigte Tagesmissionen (2), Karriere-Missionen (5) und +1 je 5 % mehr Follower. Am Montag werden die Sieger gekürt: Platz 1 bekommt 100 XP, Platz 2 60 XP und Platz 3 30 XP – dazu gibt es jeweils ein Pokal-Abzeichen. Die aktuelle Tabelle siehst du immer oben in diesem Chat. Viel Erfolg!';
 function showFl() {
   $('#main').innerHTML = '<div class="spin"></div>';
   Promise.all([loadMap().catch(function () {}), rest('game_config?select=value&key=eq.flWelcome').catch(function () { return []; }), rpc('fl_admin', {}).catch(function () { return []; })]).then(function (a) {

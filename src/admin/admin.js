@@ -96,7 +96,8 @@ function slot(key, label) {
   var m = MAP[key], u = m ? mediaUrl(m.path) : '';
   return '<div class="slot' + (m ? ' has' : '') + '" title="' + esc(key) + '"><div class="th" data-key="' + esc(key) + '" onclick="pick(\'' + esc(key).replace(/'/g, '') + '\')" style="' + (u ? 'background-image:url(&quot;' + u + '&quot;)' : '') + '">' + (u ? '' : '<span>＋</span>') + '</div><div class="lb">' + esc(label || key.split('.').slice(1).join('.')) + '</div>' + (m ? '<button class="x" onclick="delImg(\'' + esc(key).replace(/'/g, '') + '\')" title="Entfernen">✕</button>' : '') + (m && key.indexOf('hintergrund.') === 0 ? '<button class="bgstar' + (BGDEF === u ? ' on' : '') + '" onclick="bgDef(' + (BGDEF === u ? '\'\'' : '\'' + u.replace(/'/g, '') + '\'') + ')" title="' + (BGDEF === u ? 'Standard (klicken zum Aufheben)' : 'Als Standard für neue Spieler') + '">' + (BGDEF === u ? '★ Standard' : '☆ Standard') + '</button>' : '') + '</div>';
 }
-function chooser(multi, cb) { var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.multiple = !!multi; i.onchange = function () { cb(Array.prototype.slice.call(i.files)); }; i.click(); }
+// Das Datei-Feld muss im Dokument hängen – sonst verwirft Safari auf dem iPhone es manchmal, bevor ein Bild gewählt ist (es passiert dann einfach nichts)
+function chooser(multi, cb) { var o = document.getElementById('amfile'); if (o) o.remove(); var i = document.createElement('input'); i.type = 'file'; i.id = 'amfile'; i.accept = 'image/*'; i.multiple = !!multi; i.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'; document.body.appendChild(i); i.onchange = function () { var fs = Array.prototype.slice.call(i.files || []); setTimeout(function () { i.remove(); }, 1000); if (!fs.length) return; toast('Bild wird vorbereitet …'); try { cb(fs); } catch (e) { toast(e.message || String(e), true); } }; i.click(); }
 function pick(key) { chooser(false, function (f) { if (f[0]) upload(key, f[0]).then(function () { showImg(true); }); }); }
 function pickNamed() { var n = $('#stn').value.trim(); if (!n) return toast('Bitte Vereinsnamen eingeben.', true); pick('stad.' + n); }
 function pickList(g) { chooser(true, function (fs) { uploadList(g, fs); }); }
@@ -115,7 +116,7 @@ window.addEventListener('dragover', function (e) { e.preventDefault(); }); windo
 // Verkleinern (GIFs bleiben unverändert, damit die Animation erhalten bleibt)
 function maxFor(key) { return /^(bg|hintergrund|kauf|verkauf|rel)\./.test(key) ? 1920 : 900; }
 function optimizeAll() {
-  var ks = Object.keys(MAP).filter(function (k) { return !/\.(webp|gif)$/i.test(MAP[k].path); }), i = 0, b = $('#optb'); if (!ks.length) return;
+  var ks = Object.keys(MAP).filter(function (k) { return !/\.(webp|gif|jpe?g)$/i.test(MAP[k].path); }), i = 0, b = $('#optb'); if (!ks.length) return;
   if (b) b.disabled = true;
   var next = function () {
     if (i >= ks.length) { toast('Fertig – ' + ks.length + ' Bilder optimiert ✓'); return showImg(true); }

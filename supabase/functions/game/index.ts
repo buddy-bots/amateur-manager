@@ -27,6 +27,9 @@ async function refreshCfg(force = false) {
   cfgAt = Date.now();
   const { data } = await admin.from('game_config').select('key, value').limit(200);
   MGR.applyCfg(D, data || []);
+  // Events aus dem Admin (echte Kalenderdaten)
+  const { data: ev } = await admin.from('game_events').select('id, title, body, task, target, tiers, show_from, starts_at, ends_at').eq('active', true).lte('show_from', new Date().toISOString()).gte('ends_at', new Date(Date.now() - 3 * 864e5).toISOString()).limit(50);
+  (D as any).gev = (ev || []).map((e: any) => ({ ...e, starts_at: new Date(e.starts_at).toISOString(), ends_at: new Date(e.ends_at).toISOString() }));
 }
 // Bilder aus der Admin-Seite (z. B. Partnerbilder) – alle 10 Minuten neu geladen
 let mediaAt = 0;
@@ -269,7 +272,7 @@ async function loadSave(userId: string, saveId: string) {
 }
 
 function prepare(S: any, profile: any) {
-  S.xp = Number(profile.xp) || 0;
+  S.xp = Number(profile.xp) || 0; S._now = new Date().toISOString();
   const l = MGR.levelOf(S.xp).lvl;
   if (l > (S.mlvl || 1)) S.mlvl = l;
   return S;
@@ -317,6 +320,39 @@ async function addXp(userId: string, profile: any, delta: number) {
   profile.xp = (Number(profile.xp) || 0) + Math.round(delta);
 }
 
+// ---------- Freundesliga: Wochenpunkte (Mo–So, deutsche Zeit) – Sieg 3, Unentschieden 1, Tagesmission 2, Karriere-Mission 5, +1 je 5 % mehr Follower
+function flWeek(d = new Date()): string { const b = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Berlin' })); const wd = (b.getDay() + 6) % 7; b.setDate(b.getDate() - wd); return b.getFullYear() + '-' + String(b.getMonth() + 1).padStart(2, '0') + '-' + String(b.getDate()).padStart(2, '0'); }
+function flCnt(S: any) { const m = S.mcnt || {}; return { w: m.win || 0, d: m.draw || 0, dm: m.dmdone || 0, cm: S.cmi || 0, fol: Math.round(S.follow || 0) }; }
+function flPts(b: any, c: any) { const g = (k: string) => Math.max(0, (c[k] || 0) - (b[k] || 0)); return g('w') * 3 + g('d') + g('dm') * 2 + g('cm') * 5 + Math.floor(Math.max(0, (c.fol || 0) - (b.fol || 0)) / Math.max(1, b.fol || 1) * 100 / 5); }
+async function flUpdate(userId: string, saveId: string, S: any) {
+  try {
+    const week = flWeek(), c = flCnt(S);
+    const { data: row } = await admin.from('fl_week').select('*').eq('user_id', userId).eq('week', week).maybeSingle();
+    if (!row) { await admin.from('fl_week').insert({ user_id: userId, week, save_id: saveId, base: c, cur: c, acc: 0, pts: 0 }); return; }
+    let base = row.base || {}, acc = row.acc || 0;
+    if (row.save_id !== saveId) { acc += flPts(base, row.cur || {}); base = c; } // anderer Spielstand: bisherige Punkte bleiben, neu gezählt ab hier
+    const pts = acc + flPts(base, c);
+    await admin.from('fl_week').update({ save_id: saveId, base, cur: c, acc, pts, updated_at: new Date().toISOString() }).eq('user_id', userId).eq('week', week);
+  } catch (_e) { /* Freundesliga ist optional */ }
+}
+// Wochensieger belohnen (beim ersten Start in der neuen Woche): Platz 1 = 100 XP, 2 = 60, 3 = 30
+async function flReward(userId: string, profile: any) {
+  try {
+    const d = new Date(); d.setDate(d.getDate() - 7); const last = flWeek(d);
+    const { data: mine } = await admin.from('fl_week').select('pts, rewarded').eq('user_id', userId).eq('week', last).maybeSingle();
+    if (!mine || mine.rewarded) return null;
+    const { data: favs } = await admin.from('wa_favorites').select('contact').eq('user_id', userId).limit(200);
+    const names = (favs || []).map((f: any) => f.contact);
+    let others: any[] = [];
+    if (names.length) { const { data: ps } = await admin.from('profiles').select('id, display_name').in('display_name', names).limit(200); const ids = (ps || []).map((p: any) => p.id).filter((x: string) => x !== userId); if (ids.length) { const { data: ws } = await admin.from('fl_week').select('user_id, pts').eq('week', last).in('user_id', ids); others = ws || []; } }
+    if (!others.length) { await admin.from('fl_week').update({ rewarded: true }).eq('user_id', userId).eq('week', last); return null; }
+    const rank = 1 + others.filter((o: any) => o.pts > mine.pts).length, n = others.length + 1, xp = [0, 100, 60, 30][rank] || 0;
+    await admin.from('fl_week').update({ rewarded: true, rank }).eq('user_id', userId).eq('week', last);
+    if (xp) await addXp(userId, profile, xp);
+    return { week: last, rank, n, xp, pts: mine.pts };
+  } catch (_e) { return null; }
+}
+
 function sanitize(action: string, params: any) {
   const p = params && typeof params === 'object' ? { ...params } : {};
   delete p._srv; // nur der Server setzt Bonus-Belohnungen
@@ -333,9 +369,10 @@ async function handle(req: Request, userId: string, body: any) {
   const op = String(body.op || '');
 
   if (op === 'init') {
+    const flr = await flReward(userId, profile);
     await admin.from('daily_logins').upsert({ user_id: userId, day: berlinDay() }, { onConflict: 'user_id,day', ignoreDuplicates: true });
     const { data: saves } = await admin.from('saves').select('id, mode, engine_version, club_name, league_name, season, updated_at').eq('user_id', userId).order('updated_at', { ascending: false });
-    return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin, access: hasAccess(profile), accessExpired: !!(profile.access_at && !hasAccess(profile)), accessUntil: profile.access_until || null }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
+    return { profile: { name: profile.display_name, xp: profile.xp, level: MGR.levelOf(Number(profile.xp) || 0), ready, admin: profile.is_admin, access: hasAccess(profile), accessExpired: !!(profile.access_at && !hasAccess(profile)), accessUntil: profile.access_until || null, flReward: flr }, saves: saves || [], engineVersion: ENGINE_VERSION, today: berlinDay() };
   }
   if (op === 'keyRedeem') {
     // Zugangscode einmalig einlösen
@@ -454,6 +491,7 @@ async function handle(req: Request, userId: string, body: any) {
     await addXp(userId, profile, (S.xpGame || 0) - xpBefore);
     S.xp = Number(profile.xp) || 0;
     const out = await persist(userId, saveId, S, sv.version, extra);
+    await flUpdate(userId, saveId, S);
     if (credit) { const b = { ...(profile.bonus || {}), cr: { j: 0, h: 0 } }; await admin.from('profiles').update({ bonus: b }).eq('id', userId); }
     const jk = extra.joker_snap === undefined && jokerOk(S, sv);
     return { r: r || {}, ...out, joker: jk };

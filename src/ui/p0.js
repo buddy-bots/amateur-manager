@@ -97,10 +97,20 @@ function myProfile() { return rest('profiles?select=*&id=eq.' + SESSION.user.id)
 function loadUser() { return sbFetch('/auth/v1/user').then(function (u) { SESSION.user = u; sessSave(SESSION); return u; }); }
 
 /* ---------- Spiel-Server */
+// ---------- Freundesliga: Nachrichten im Call Up (Willkommen + Wochenergebnis), lokal je Nutzer gespeichert
+function flKey(k) { return 'am_fl_' + k + '_' + ((SESSION && SESSION.user && SESSION.user.id) || ''); }
+function flGet(k, d) { try { var v = localStorage.getItem(flKey(k)); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+function flSet(k, v) { try { localStorage.setItem(flKey(k), JSON.stringify(v)); } catch (e) {} }
+function flStore(r) { var L = flGet('m', []); if (L.some(function (x) { return x.week === r.week; })) return; L.push({ week: r.week, rank: r.rank, n: r.n, xp: r.xp, pts: r.pts, ts: Date.now() }); flSet('m', L.slice(-20)); }
+function flMsgs() { var out = [], w = flGet('w', 0); if (!w) { w = Date.now(); flSet('w', w); } var rd = flGet('r', 0);
+  var tx = (typeof CFGROWS !== 'undefined' && (CFGROWS.filter(function (c) { return c.key === 'flWelcome'; })[0] || {}).value) || '🏆 Willkommen in der Freundesliga! Jede Woche (Montag bis Sonntag) trittst du gegen deine Call-Up-Favoriten an. Punkte gibt es für Siege (3), Unentschieden (1), erledigte Tagesmissionen (2), Karriere-Missionen (5) und +1 je 5 % mehr Follower. Am Montag werden die Sieger gekürt: Platz 1 bekommt 100 XP, Platz 2 60 XP und Platz 3 30 XP. Die aktuelle Tabelle siehst du immer oben in diesem Chat. Viel Erfolg!';
+  out.push({ id: 'flw', ts: w, mine: false, other: 'Freundesliga', text: typeof tx === 'string' ? tx : String(tx), read: rd >= w });
+  flGet('m', []).forEach(function (m) { out.push({ id: 'flm' + m.week, ts: m.ts, mine: false, other: 'Freundesliga', text: (m.rank === 1 ? '🥇 Glückwunsch – du hast die Freundesliga gewonnen!' : m.rank <= 3 ? (m.rank === 2 ? '🥈' : '🥉') + ' Stark – Platz ' + m.rank + ' in der Freundesliga!' : '📊 Die Freundesliga-Woche ist vorbei: Platz ' + m.rank + ' von ' + m.n + '.') + ' (' + m.pts + ' Punkte' + (m.xp ? ', +' + m.xp + ' XP' : '') + ')', read: rd >= m.ts }); });
+  return out; }
 function game(op, body) {
   body = body || {}; body.op = op;
   var pr = sbFetch('/functions/v1/game', { method: 'POST', body: body });
-  if (op === 'init') pr.then(function (r) { if (r && r.profile && r.profile.ready) refTry(); }, function () {});
+  if (op === 'init') pr.then(function (r) { if (r && r.profile && r.profile.ready) refTry(); if (r && r.profile && r.profile.flReward) flStore(r.profile.flReward); }, function () {});
   return pr;
 }
 // Einladungslink: ?ref=CODE merken und nach der Anmeldung einmal dem Einladenden zuordnen
@@ -181,6 +191,7 @@ var API = {
         if (ts > since) out.push({ id: 'fb' + t.id, ts: ts, mine: true, other: DEV_NAME, text: t.message, read: true, ticket: tk });
         if (t.answer) { var at = Date.parse(t.answered_at) || ts + 1000; if (at > since || !t.answer_read_at) out.push({ id: 'fa' + t.id, ts: at, mine: false, other: DEV_NAME, text: t.answer, read: !!t.answer_read_at, ticket: tk }); }
       });
+      flMsgs().forEach(function (m) { if (m.ts > since || !m.read) out.push(m); });
       out.sort(function (x, y) { return x.ts - y.ts; });
       return { ok: true, msgs: out, now: Date.now() };
     });
@@ -261,7 +272,11 @@ var MEDIA = [];
 function mediaUrl(path) { return SB.url + '/storage/v1/object/public/media/' + String(path).split('/').map(encodeURIComponent).join('/'); }
 var CFGROWS = [];
 // Vorgaben aus der Admin-Seite (öffentlich lesbar) – überschreiben die Standardwerte der Spielregeln
-function loadCfg() {
+// Events aus dem Admin laden (für die Anzeige im Spiel; gezählt wird auf dem Server)
+function loadEvents() { var iso = function (x) { return new Date(x).toISOString(); };
+  return fetch(SB.url + '/rest/v1/game_events?select=id,title,body,task,target,tiers,show_from,starts_at,ends_at&order=starts_at&limit=50', { headers: { apikey: SB.key } }).then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { GEVROWS = (rows || []).map(function (e) { e.starts_at = iso(e.starts_at); e.ends_at = iso(e.ends_at); return e; }); if (D) D.gev = GEVROWS; return GEVROWS; }).catch(function () { return []; }); }
+var GEVROWS = []; setInterval(function () { if (typeof S !== 'undefined' && S) S._now = new Date().toISOString(); }, 30000);
+function loadCfg() { loadEvents();
   return fetch(SB.url + '/rest/v1/game_config?select=key,value&limit=200', { headers: { apikey: SB.key } })
     .then(function (r) { return r.ok ? r.json() : []; })
     .then(function (rows) { CFGROWS = rows || []; if (D) MGR.applyCfg(D, CFGROWS); try { applyBg(); } catch (e) {} return CFGROWS; })
@@ -275,7 +290,7 @@ function loadMedia() {
 }
 // Schlüssel „gruppe.name“ → Stelle in den Spieldaten
 function applyMedia(D, rows) {
-  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta'].forEach(function (g) { D.imgs[g] = {}; });
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta', 'gev'].forEach(function (g) { D.imgs[g] = {}; });
   D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
   (rows || []).forEach(function (m) {
     var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);

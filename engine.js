@@ -408,6 +408,7 @@ var MGR = (function () {
     [5, 'missionen', 'Karriere-Missionen', '50 Meilensteine mit großen Belohnungen'],
     [4, 'testspiele', 'Testspiele', 'Testspiele im Kalender vereinbaren'],
     [4, 'kapitaen', 'Aufgaben', 'Kapitän, Elfmeter-, Freistoß- und Eckenschützen bestimmen; Vorbereitung planen'],
+    [10, 'events', 'Events', 'Zeitlich begrenzte Aufgaben mit besonderen Preisen'],
     [12, 'maskottchen', 'Maskottchen', 'Ein Maskottchen mit Spezialeffekt für den Verein'],
     [13, 'lehrgang', 'Lehrgänge', 'Trainerlizenzen und Fortbildungen machen dich zum besseren Trainer'],
     [14, 'scouting', 'Scouting', 'Scouting-Tools liefern jede Woche neue Talente'],
@@ -698,7 +699,7 @@ var MGR = (function () {
   }
   function salDemand0(p, l) { var v = mw(p, true); var s = l >= 5 ? v * 0.0066 + 10 : v * 0.012 + 200; return Math.max(0, nice(s)); }
   // Gehalt je Liga: Standard-Spanne (SALDEF) linear auf die Spanne aus den Vorgaben (SALR) umrechnen
-  function salDemand(p, l) { var s = salDemand0(p, l), r = SALR[l], d = SALDEF[l]; if (r && d && r.length === 2) { s = d[1] > d[0] ? +r[0] + (s - d[0]) * (+r[1] - +r[0]) / (d[1] - d[0]) : (+r[0] + +r[1]) / 2; } return Math.max(0, nice(s)); }
+  function salDemand(p, l) { var s = salDemand0(p, l), r = SALR[l], d = SALDEF[l]; if (r && d && r.length === 2) { s = d[1] > d[0] ? +r[0] + (s - d[0]) * (+r[1] - +r[0]) / (d[1] - d[0]) : (+r[0] + +r[1]) / 2; } if (l <= 5) s *= 1.1; /* Balancing: höhere Ligen etwas teurer */ return Math.max(0, nice(s)); }
   function newPlayer(S, D, o) {
     var age = o.age || genAge(); var tal = o.tal || genTal(o.talBonus);
     var str = o.str != null ? o.str : genStr(D, o.lvl);
@@ -1845,7 +1846,7 @@ var MGR = (function () {
   function adCost(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = (parseInt(wk.replace(/-/g, ''), 10) * 7919) % 233280; return 25 + Math.round(sd / 233280 * 225); } // Werbung: 25–250 € pro Woche
   function flyCost(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = (parseInt(wk.replace(/-/g, ''), 10) * 4271) % 233280; return 10 + Math.round(sd / 233280 * 90); } // Flyer: 10–100 €
   function followStart(S) { var lo = 253 + Math.max(0, 11 - S.lvl) / 10 * 3650; return Math.round(Math.min(4315, lo + rnd(0, 415))); }
-  function followAdd(S, n) { if (S.hollyStar && n > 0) n = n * (1 + S.hollyStar.eff * 1.5); if ((S.mlvl || 1) >= 26 && n > 0) n *= 1.1; n = Math.round(n); S.follow = Math.max(0, (S.follow || 0) + n); S.fwGain = (S.fwGain || 0) + n; }
+  function followAdd(S, n) { if (n > 0) n *= 0.7; /* Balancing: Follower-Zuwachs −30 % */ if (S.hollyStar && n > 0) n = n * (1 + S.hollyStar.eff * 1.5); if ((S.mlvl || 1) >= 26 && n > 0) n *= 1.1; n = Math.round(n); S.follow = Math.max(0, (S.follow || 0) + n); S.fwGain = (S.fwGain || 0) + n; }
   var FMS = [[1000, 'Die ersten 1.000 Follower – lokale Firmen werden neugierig', 0.02], [5000, 'Im Ländchen kennt man euch online – kleine Sponsoren melden sich', 0.04], [10000, 'Sponsoren werden auf euch aufmerksam', 0.06], [50000, 'Überregionale Sponsoren klopfen an', 0.12], [100000, 'Große Firmen wollen mit euch werben – ab jetzt bringen eure Posts Geld', 0.2], [250000, 'Deutschlandweite Marken interessieren sich für euch', 0.3], [500000, 'Ihr seid ein Social-Media-Phänomen – Top-Marken stehen Schlange', 0.45], [1000000, 'EINE MILLION Follower! Ihr seid eine internationale Marke', 0.7]];
   function followF(S) { return 1 + (S.fMs2 || 0) * 0.05 + ((S.fMs2 || 0) >= 6 ? 0.15 : 0) + ((S.fMs2 || 0) >= 8 ? 0.25 : 0); }
   function followMs(S, D) {
@@ -1908,19 +1909,21 @@ var MGR = (function () {
     var xiIds = currentXI(S).map(function (p) { return p ? p.id : null; });
     if (S.captain && xiIds.indexOf(S.captain) >= 0) s += 0.3;
     ['pen', 'fk', 'ck'].forEach(function (k) { if (S[k] && xiIds.indexOf(S[k]) >= 0) s += 0.15; });
-    s += home ? 1.5 + e.heim : e.away;
-    if (S.start && S.season === +S.start.slice(0, 4)) s += 1.3;
+    s += home ? 1.0 + e.heim : e.away;
+    if (S.start && S.season === +S.start.slice(0, 4)) s += 0.5;
     return Math.max(1, s);
   }
 
   // ============================================================ Spiel
-  function svwEdge(S, ms, os, o) { var g = ms - os, lh = (S.hist || [])[(S.hist || []).length - 1], newUp = lh && lh.lvl > S.lvl && o.comp === 'liga'; return (newUp ? -1.2 : 0) + 2 + (o.comp === 'test' ? 3.5 : 0) + (g > 0 ? Math.min(3, g * 0.3) : 0) + ((o.opp.l || S.lvl) > S.lvl ? 1.2 : 0); }
+  // Balancing 11/2026: Gegner +15 %, kein Pauschalvorteil mehr für den eigenen Verein (vorher +2 und bis zu +3 bei Überlegenheit)
+  var OPPF = 1.2; function oppS(t) { return (t && t.s || 0) * OPPF; }
+  function svwEdge(S, ms, os, o) { var lh = (S.hist || [])[(S.hist || []).length - 1], newUp = lh && lh.lvl > S.lvl && o.comp === 'liga'; return (newUp ? -1.2 : 0) + (o.comp === 'test' ? 3.5 : 0) + ((o.opp.l || S.lvl) > S.lvl ? 0.6 : 0); }
   function fastResult(S, D, o) {
-    var xi = currentXI(S); var ms = teamStr(S, D, o.home === true); var os = o.opp.s + gauss() * 1.2 + (o.home === false ? 1.5 : 0) - clamp(((o.opp.l || S.lvl) - S.lvl) * 1.6, -8, 8);
+    var xi = currentXI(S); var ms = teamStr(S, D, o.home === true); var os = oppS(o.opp) + gauss() * 1.2 + (o.home === false ? 1.0 : 0) - clamp(((o.opp.l || S.lvl) - S.lvl) * 1.6, -8, 8);
     os -= svwEdge(S, ms, os, o);
     var st = FSTYLE[S.lineup.form] || [1, 1]; var e = eff(S, D);
     if (o.comp !== 'test' && R() < 0.04) os -= 1.5; var dd = clamp(ms - os, -20, 20); var lf = 1.2 * Math.exp(0.075 * dd) * st[0], la = 1.2 * Math.exp(-0.075 * dd) * st[1];
-    if (o.home === true) { lf *= 1.08; la *= 0.92; } else if (o.home === false) { lf *= 0.92; la *= 1.08; }
+    if (o.home === true) { lf *= 1.05; la *= 0.95; } else if (o.home === false) { lf *= 0.95; la *= 1.05; }
     lf *= 1 + bon(S, 'att') + (o.home === false ? bon(S, 'attAway') : 0); lf += bon(S, 'late') + bon(S, 'early'); la *= Math.max(0.6, 1 - bon(S, 'def') - bon(S, 'gk') - bon(S, 'defLate') * 0.15 - (o.home === true ? bon(S, 'defHome') : 0));
     var gf = poisson(lf), ga = poisson(la); if (gf - ga > 3) gf = ga + 3 + Math.floor((gf - ga - 3) / 2); if (ga - gf > 3) ga = gf + 3 + Math.floor((ga - gf - 3) / 2); var on = xi.filter(Boolean);
     var res = { gf: gf, ga: ga, ms: ms, os: os, scorers: [], played: {}, inj: [], cards: [], pen: null };
@@ -2078,7 +2081,7 @@ var MGR = (function () {
     if (S.pending.length) err('Erst die offenen Entscheidungen treffen.');
     var savedLU = JSON.parse(JSON.stringify(S.lineup)); var wasAuto = !S.lineup.xi; var xi = currentXI(S); S.lineup.xi = xi.map(function (p) { return p ? p.id : null; });
     var o = q.o; var ms = teamStr(S, D, o.home === true); var base = ms - xiAvg(S, D);
-    var L = S.live = { bench: benchIds(S), qid: q.id, label: o.label, comp: o.comp, opp: o.opp.n, home: o.home, ko: !!o.ko, d: o.d, min: 0, half: 1, gf: 0, ga: 0, ev: [], heat: [], subs: 0, maxSubs: o.comp === 'test' ? 9 : 5, wx: wxFor(o.d || S.date, o.opp && o.opp.n), base: base, os: o.opp.s + gauss() * 1.2 + (o.home === false ? 1.5 : 0) - clamp(((o.opp.l || S.lvl) - S.lvl) * 1.6, -8, 8), on: S.lineup.xi.slice(), red: [], st: {}, stop1: rint(1, 3), stop2: rint(2, 4), pause: null, done: false, scorers: [], cards: [], inj: [], wasAuto: wasAuto, xpPen: 0, ss: { pos: 0, n: 0, shF: 0, shA: 0, onF: 0, onA: 0, corF: 0, corA: 0, foulF: 0, foulA: 0, offF: 0, offA: 0 } };
+    var L = S.live = { bench: benchIds(S), qid: q.id, label: o.label, comp: o.comp, opp: o.opp.n, home: o.home, ko: !!o.ko, d: o.d, min: 0, half: 1, gf: 0, ga: 0, ev: [], heat: [], subs: 0, maxSubs: o.comp === 'test' ? 9 : 5, wx: wxFor(o.d || S.date, o.opp && o.opp.n), base: base, os: oppS(o.opp) + gauss() * 1.2 + (o.home === false ? 1.0 : 0) - clamp(((o.opp.l || S.lvl) - S.lvl) * 1.6, -8, 8), on: S.lineup.xi.slice(), red: [], st: {}, stop1: rint(1, 3), stop2: rint(2, 4), pause: null, done: false, scorers: [], cards: [], inj: [], wasAuto: wasAuto, xpPen: 0, ss: { pos: 0, n: 0, shF: 0, shA: 0, onF: 0, onA: 0, corF: 0, corA: 0, foulF: 0, foulA: 0, offF: 0, offA: 0 } };
     L.os -= svwEdge(S, ms, L.os, o); L.savedLU = savedLU;
     xi.forEach(function (p) { if (p) L.st[p.id] = { from: 0, to: null, g: 0, a: 0, sv: 0, gr: 3.5, sub: false }; });
     liveEv(L, 'kick', cm('kick', {}), 50, 50, 1);
@@ -2114,7 +2117,7 @@ var MGR = (function () {
   function liveMinute(S, D) {
     var L = S.live; L.min++;
     var on = liveOn(S); var ms = liveStr(S, D); var os = L.os;
-    var st = FSTYLE[S.lineup.form] || [1, 1]; var hf = L.home === true ? 1.08 : L.home === false ? 0.92 : 1;
+    var st = FSTYLE[S.lineup.form] || [1, 1]; var hf = L.home === true ? 1.05 : L.home === false ? 0.95 : 1;
     var men = on.filter(Boolean).length; var redF = men < 11 ? Math.pow(0.88, 11 - men) : 1; redF /= Math.pow(0.88, L.oppRed || 0);
     var dd = clamp(ms - os, -20, 20); var lf = 1.2 * Math.exp(0.075 * dd) * st[0] * hf * redF / 90, la = 1.2 * Math.exp(-0.075 * dd) * st[1] * (2 - hf) / redF / 90;
     if (L.gf - L.ga >= 3) { lf *= 0.55; la *= 1.15; } else if (L.ga - L.gf >= 3) { la *= 0.55; lf *= 1.15; }
@@ -2461,6 +2464,8 @@ var MGR = (function () {
     if (R() < sc) sponsorOffer(S, D);
   }
   function monthly(S, D) {
+    // Balancing: Zuschuss von Gemeinde & Kreis für kleine Vereine (ab Landesliga abwärts)
+    var zus = [0, 0, 0, 0, 0, 0, 0, 350, 450, 550, 650, 750, 850][S.lvl] || 0; if (zus) book(S, 'Zuschuss Gemeinde & Kreis', zus);
     // Erinnerung: Weihnachtsfeier (Dezember) bzw. Saisonabschlussfeier (ab Mai) noch nicht geplant
     try { var mo0 = mon(S.date), yr0 = S.date.slice(0, 4); [['weihnacht', 12], ['abschluss', 5]].forEach(function (x) { if (mo0 !== x[1]) return; var plan = (S.dayEv || []).some(function (e) { return e.k === x[0] && e.d.slice(0, 4) === yr0; }); if (!plan) infoMail(S, 'Vereinsvorstand', 'Erinnerung: ' + DAYEV[x[0]][0], 'Der Zeitraum für die ' + DAYEV[x[0]][0] + ' hat begonnen – geplant ist aber noch nichts. Leg im Kalender einen Termin fest, das Team und die Helfer freuen sich darauf!', 'info', { go: 'kal' }); }); } catch (e) {}
     if (S.mainSp && S.mainSp.to === S.season && mon(S.date) === 4 && !S.spNeed) { spOffers(S, D, false, S.mainSp.firm); infoMail(S, S.mainSp.firm, 'Vertragsverlängerung Hauptsponsor', 'Unser Vertrag läuft zum 30.06. aus. Wir würden gerne verlängern – auch andere Firmen haben Interesse angemeldet.'); }
@@ -2880,10 +2885,18 @@ var MGR = (function () {
     S.players.forEach(function (p) { if (S.knownIds.indexOf(p.id) < 0) { S.knownIds.push(p.id); if (!p.self) { p.trib = true; p.isNew = true; } } });
     if (S.knownIds.length > 200) S.knownIds = S.knownIds.slice(-150).concat(S.players.map(function (p) { return p.id; })).filter(function (x, i, a) { return a.indexOf(x) === i; });
   }
+  // ---------- Events (im Admin gepflegt, echte Kalenderdaten). D.gev = Liste aus der Tabelle game_events, S._now = Serverzeit
+  var GEV_TASKS = { win: ['mcnt', 'win', 'Siege'], game: ['mcnt', 'game', 'Pflichtspiele'], goal: ['mcnt', 'goal', 'Tore'], csheet: ['mcnt', 'csheet', 'Zu-null-Spiele'], bigwin: ['mcnt', 'bigwin', 'Siege mit 3+ Toren Unterschied'], homewin: ['mcnt', 'homewin', 'Heimsiege'], awaywin: ['mcnt', 'awaywin', 'Auswärtssiege'], scored3: ['mcnt', 'scored3', 'Spiele mit 3+ eigenen Toren'], post: ['mcnt', 'post', 'Posts'], social: ['mcnt', 'social', 'Fan-Posts liken/beantworten'], fan: ['mcnt', 'fan', 'Fan-Aktionen'], train: ['mcnt', 'train', 'Trainings'], dmdone: ['mcnt', 'dmdone', 'Tagesmissionen'], test: ['mcnt', 'test', 'Testspiele'], live: ['mcnt', 'live', 'Spiele in der Live-Simulation'], title: ['mcnt', 'title', 'Meisterschaft'], follow: ['s', 'follow', 'neue Follower'] };
+  function gevNow(S) { return S._now || new Date().toISOString(); }
+  function gevCount(S, task) { var T = GEV_TASKS[task]; if (!T) return 0; return T[0] === 's' ? Math.round(S[T[1]] || 0) : ((S.mcnt || {})[T[1]] || 0); }
+  function gevSync(S, D) { var now = gevNow(S); S.evb = S.evb || {}; (D.gev || []).forEach(function (e) { if (now >= e.starts_at && now < e.ends_at && S.evb[e.id] == null) S.evb[e.id] = gevCount(S, e.task); }); }
+  function gevTiers(e) { var T = (e.tiers || []).filter(function (t) { return t && +t.at > 0; }); return T.length ? T.sort(function (a, b) { return a.at - b.at; }) : [{ at: e.target || 1 }]; }
+  function gevView(S, D) { var now = gevNow(S), cl = S.evc || {}; return (D.gev || []).map(function (e) { var st = now < e.starts_at ? 'soon' : now < e.ends_at ? 'run' : 'over', base = (S.evb || {})[e.id], have = base == null ? 0 : Math.max(0, gevCount(S, e.task) - base), T = gevTiers(e), goal = Math.max(e.target || 0, T[T.length - 1].at);
+      return { id: e.id, title: e.title, body: e.body || '', task: e.task, tname: (GEV_TASKS[e.task] || [0, 0, e.task])[2], target: goal, have: Math.min(have, goal), st: st, starts: e.starts_at, ends: e.ends_at, tiers: T.map(function (t, i) { return { i: i, at: +t.at, xp: +t.xp || 0, cash: +t.cash || 0, jk: +t.jk || 0, hs: +t.hs || 0, fol: +t.fol || 0, done: have >= +t.at, claimed: !!(cl[e.id] && cl[e.id][i]) }; }) }; }); }
   function act(S, D, a, p) {
     migratePos(S); S.weekNeed = null; itPool(S);
     migrate(S);
-    p = p || {}; S.reports = []; var info = null, reveal = null;
+    p = p || {}; S.reports = []; var info = null, reveal = null; try { gevSync(S, D); } catch (eG) {}
     if (S.fired && a !== 'noop') err('Du wurdest entlassen. Starte ein neues Spiel.');
     switch (a) {
       case 'noop': break;
@@ -3152,6 +3165,10 @@ var MGR = (function () {
       case 'livePen': livePen(S, D, p.dir); break;
       case 'liveSub': liveSub(S, D, p.slot, p.pid); break;
       case 'liveGk': gkPick(S, D, p.pid); break;
+      case 'gevClaim': { need(S, 'events'); var GE = gevView(S, D).filter(function (x) { return x.id === +p.id; })[0]; if (!GE) err('Event nicht gefunden.'); var GT = GE.tiers[+p.t | 0]; if (!GT || !GT.done) err('Diese Stufe ist noch nicht geschafft.'); if (GT.claimed) err('Schon abgeholt.'); if (gevNow(S) > addDays(GE.ends.slice(0, 10), 3)) err('Das Event ist vorbei.');
+        S.evc = S.evc || {}; S.evc[GE.id] = S.evc[GE.id] || {}; S.evc[GE.id][GT.i] = 1; var gout = [];
+        if (GT.xp) { xp(S, GT.xp); gout.push('+' + GT.xp + ' XP'); } if (GT.cash) { book(S, 'Event-Prämie', GT.cash); gout.push('+' + euro(GT.cash)); } if (GT.jk) { S.jokers = (S.jokers || 0) + GT.jk; gout.push('+' + GT.jk + ' Joker'); } if (GT.hs) { S.hsPts = (S.hsPts || 0) + GT.hs * 0.5; gout.push('+' + GT.hs + ' halbe Sterne'); } if (GT.fol) { S.follow = (S.follow || 0) + GT.fol; gout.push('+' + GT.fol.toLocaleString('de-DE') + ' Follower'); }
+        info = '🎉 ' + GE.title + ': ' + (gout.join(' · ') || 'geschafft!'); break; }
       case 'liveUndo': liveUndo(S); break;
       case 'instantMatch': { if (S.live && !S.live.done) err('Das Spiel läuft schon.'); liveStart(S, D); liveAutoRun(S, D); break; }
       case 'liveAuto': { liveAutoRun(S, D); break; }
@@ -4013,7 +4030,7 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
     var games = svwGames(S, D); var next = games.filter(function (g) { return g.gf == null && g.d >= S.date; })[0] || null;
     var n = tab.length;
     var teams = S.world.lv[S.lvl];
-    var tabV = tab.map(function (r) { var t = teams[r.i]; var zone = r.rank <= L.up ? 'up' : (L.upRel && r.rank === L.up + 1) ? 'uprel' : r.rank > n - L.down ? 'down' : (L.downRel && r.rank === n - L.down) ? 'downrel' : ''; return { rank: r.rank, n: r.n, svw: r.svw, sp: r.sp, s: r.s, u: r.u, nl: r.nl, tore: r.tf + ':' + r.ta, diff: r.tf - r.ta, pts: r.pts, form: r.form, zone: zone, rating: t.svw ? '' : rating(S, D, S.lvl, t), str: Math.round(t.s) }; });
+    var tabV = tab.map(function (r) { var t = teams[r.i]; var zone = r.rank <= L.up ? 'up' : (L.upRel && r.rank === L.up + 1) ? 'uprel' : r.rank > n - L.down ? 'down' : (L.downRel && r.rank === n - L.down) ? 'downrel' : ''; return { rank: r.rank, n: r.n, svw: r.svw, sp: r.sp, s: r.s, u: r.u, nl: r.nl, tore: r.tf + ':' + r.ta, diff: r.tf - r.ta, pts: r.pts, form: r.form, zone: zone, rating: t.svw ? '' : rating(S, D, S.lvl, t), str: Math.round(t.svw ? (t.s || 0) : oppS(t)) }; });
     var curMd = 0; S.fix.forEach(function (f) { if (f.hg != null) curMd = Math.max(curMd, f.md); });
     var mdShow = Math.max(1, curMd);
     var matchday = function (md) { return S.fix.filter(function (f) { return f.md === md; }).map(function (f) { return { h: teams[f.h].n, a: teams[f.a].n, hg: f.hg, ag: f.ag, d: f.d, svw: !!(teams[f.h].svw || teams[f.a].svw) }; }); };
@@ -4052,7 +4069,7 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
       tplans: TPLANS, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
 
       club: D.club, mgr: S.mgr, date: S.date, dateF: fmtD(S.date), season: S.season + '/' + String(S.season + 1).slice(2), lvl: S.lvl, liga: L.name, ligaShort: L.short,
-      cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, power: S.power == null ? 100 : S.power, jokNew: !!S.jokNew,
+      cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, gev: gevView(S, D), power: S.power == null ? 100 : S.power, jokNew: !!S.jokNew,
       teamStr: Math.round(teamStr(S, D, true) * 10) / 10, xiAvg: Math.round(xiAvg(S, D) * 10) / 10, value: clubValue(S, D), days: diffDays(S.start, S.date), window: inWindow(S.date),
       rank: me ? me.rank : null, pts: me ? me.pts : 0, next: next, games: games, table: tabV, md: { cur: mdShow, max: S.fix.length ? S.fix[S.fix.length - 1].md : 0, list: matchday(mdShow), next: matchday(Math.min(mdShow + 1, S.fix.length ? S.fix[S.fix.length - 1].md : 1)) },
       allMd: (function () { var o = {}; S.fix.forEach(function (f) { (o[f.md] = o[f.md] || []).push({ h: teams[f.h].n, a: teams[f.a].n, hg: f.hg, ag: f.ag, d: f.d, svw: !!(teams[f.h].svw || teams[f.a].svw) }); }); return o; })(),

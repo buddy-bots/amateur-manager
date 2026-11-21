@@ -760,14 +760,14 @@ button.ybt{width:24px!important;height:22px!important;min-width:0!important;padd
 .tkx-stub{position:relative;border-left:2px dashed rgba(0,0,0,.25);padding:14px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.05))}
 .tkx-stub:before,.tkx-stub:after{content:'';position:absolute;left:-10px;width:18px;height:18px;border-radius:50%;background:var(--bg,#0e130c)}.tkx-stub:before{top:-9px}.tkx-stub:after{bottom:-9px}
 .tkx-pr{font-size:17px;font-weight:900;line-height:1.1;white-space:nowrap}.tkx-bc{flex:1;width:100%;display:flex;align-items:center;justify-content:center;min-height:40px}.tkx-bc svg{width:100%;height:46px}.tkx-no{font-size:9px!important;letter-spacing:.05em!important}
-.calben{position:absolute;inset:22px 4px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;pointer-events:none;line-height:1.1}.calben b{font-family:'Permanent Marker','Comic Sans MS',cursive;font-size:19px;color:#6b7280;transform:rotate(-2deg)}.calben span{font-size:11px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pzbox{margin-top:8px}.pzbox canvas{width:100%;height:46px;display:block;border-radius:8px}.pzrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}.pzrow>div{background:rgba(255,255,255,.05);border-radius:8px;padding:5px 4px;text-align:center}.pzrow small{display:block;font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pzrow b{font-size:14px}.cphit.locked{opacity:.5;cursor:not-allowed}@keyframes mGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}#lcdw rect.mnew{transform-box:fill-box;transform-origin:center bottom;animation:mGrow .6s ease-out}#lcdw rect.mnew[y='30']{transform-origin:center top}</style>
+.calben{position:absolute;inset:22px 4px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;pointer-events:none;line-height:1.1}.calben b{font-family:'Permanent Marker','Comic Sans MS',cursive;font-size:19px;color:#6b7280;transform:rotate(-2deg)}.calben span{font-size:11px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pzbox{margin-top:8px}.pzbox canvas{width:100%;height:46px;display:block;border-radius:8px}.pzrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}.pzrow>div{background:rgba(255,255,255,.05);border-radius:8px;padding:5px 4px;text-align:center}.pzrow small{display:block;font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pzrow b{font-size:14px}.cphit.locked{opacity:.5;cursor:not-allowed}@keyframes mGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}#lcdw rect.mnew{transform-box:fill-box;transform-origin:center bottom;animation:mGrow .6s ease-out}#lcdw rect.mnew[y='30']{transform-origin:center top}.evc{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--linie)}.evc.big{grid-template-columns:140px minmax(0,1fr)}.evimg{border-radius:10px;background-size:cover;background-position:center;min-height:72px}.evimg.ph{display:grid;place-items:center;font-size:30px;background:rgba(255,255,255,.06)}.evpr{position:relative;height:16px;border-radius:8px;background:rgba(255,255,255,.08);overflow:hidden;margin:6px 0}.evpr i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8fc852,#3fb39a)}.evpr span{position:relative;display:block;text-align:center;font-size:11px;font-weight:800;line-height:16px}.evtiers{display:flex;flex-direction:column;gap:4px}.evt{display:flex;align-items:center;gap:8px;font-size:12px}.evt small{flex:1;opacity:.75}.evt.ok{color:var(--g)}.evt.cl{opacity:.55}</style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="layer"></div>
 <div id="fxl"></div>
-<script src="engine.js?v=26.16.1"></script>
-<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Betaphase · v26.16.1', ENGVER = '26.16.1', PHASE = 'Betaphase';</script>
+<script src="engine.js?v=26.17.0"></script>
+<script>var HANDOFF = '', TITLEURL = '', PUBURL = '', VERSION = 'Betaphase · v26.17.0', ENGVER = '26.17.0', PHASE = 'Betaphase';</script>
 <script>
 
 var LITE = !!(window.matchMedia && (matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover:hover)').matches))); if (LITE) document.documentElement.classList.add('lite');
@@ -869,10 +869,20 @@ function myProfile() { return rest('profiles?select=*&id=eq.' + SESSION.user.id)
 function loadUser() { return sbFetch('/auth/v1/user').then(function (u) { SESSION.user = u; sessSave(SESSION); return u; }); }
 
 /* ---------- Spiel-Server */
+// ---------- Freundesliga: Nachrichten im Call Up (Willkommen + Wochenergebnis), lokal je Nutzer gespeichert
+function flKey(k) { return 'am_fl_' + k + '_' + ((SESSION && SESSION.user && SESSION.user.id) || ''); }
+function flGet(k, d) { try { var v = localStorage.getItem(flKey(k)); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+function flSet(k, v) { try { localStorage.setItem(flKey(k), JSON.stringify(v)); } catch (e) {} }
+function flStore(r) { var L = flGet('m', []); if (L.some(function (x) { return x.week === r.week; })) return; L.push({ week: r.week, rank: r.rank, n: r.n, xp: r.xp, pts: r.pts, ts: Date.now() }); flSet('m', L.slice(-20)); }
+function flMsgs() { var out = [], w = flGet('w', 0); if (!w) { w = Date.now(); flSet('w', w); } var rd = flGet('r', 0);
+  var tx = (typeof CFGROWS !== 'undefined' && (CFGROWS.filter(function (c) { return c.key === 'flWelcome'; })[0] || {}).value) || '🏆 Willkommen in der Freundesliga! Jede Woche (Montag bis Sonntag) trittst du gegen deine Call-Up-Favoriten an. Punkte gibt es für Siege (3), Unentschieden (1), erledigte Tagesmissionen (2), Karriere-Missionen (5) und +1 je 5 % mehr Follower. Am Montag werden die Sieger gekürt: Platz 1 bekommt 100 XP, Platz 2 60 XP und Platz 3 30 XP. Die aktuelle Tabelle siehst du immer oben in diesem Chat. Viel Erfolg!';
+  out.push({ id: 'flw', ts: w, mine: false, other: 'Freundesliga', text: typeof tx === 'string' ? tx : String(tx), read: rd >= w });
+  flGet('m', []).forEach(function (m) { out.push({ id: 'flm' + m.week, ts: m.ts, mine: false, other: 'Freundesliga', text: (m.rank === 1 ? '🥇 Glückwunsch – du hast die Freundesliga gewonnen!' : m.rank <= 3 ? (m.rank === 2 ? '🥈' : '🥉') + ' Stark – Platz ' + m.rank + ' in der Freundesliga!' : '📊 Die Freundesliga-Woche ist vorbei: Platz ' + m.rank + ' von ' + m.n + '.') + ' (' + m.pts + ' Punkte' + (m.xp ? ', +' + m.xp + ' XP' : '') + ')', read: rd >= m.ts }); });
+  return out; }
 function game(op, body) {
   body = body || {}; body.op = op;
   var pr = sbFetch('/functions/v1/game', { method: 'POST', body: body });
-  if (op === 'init') pr.then(function (r) { if (r && r.profile && r.profile.ready) refTry(); }, function () {});
+  if (op === 'init') pr.then(function (r) { if (r && r.profile && r.profile.ready) refTry(); if (r && r.profile && r.profile.flReward) flStore(r.profile.flReward); }, function () {});
   return pr;
 }
 // Einladungslink: ?ref=CODE merken und nach der Anmeldung einmal dem Einladenden zuordnen
@@ -953,6 +963,7 @@ var API = {
         if (ts > since) out.push({ id: 'fb' + t.id, ts: ts, mine: true, other: DEV_NAME, text: t.message, read: true, ticket: tk });
         if (t.answer) { var at = Date.parse(t.answered_at) || ts + 1000; if (at > since || !t.answer_read_at) out.push({ id: 'fa' + t.id, ts: at, mine: false, other: DEV_NAME, text: t.answer, read: !!t.answer_read_at, ticket: tk }); }
       });
+      flMsgs().forEach(function (m) { if (m.ts > since || !m.read) out.push(m); });
       out.sort(function (x, y) { return x.ts - y.ts; });
       return { ok: true, msgs: out, now: Date.now() };
     });
@@ -1033,7 +1044,11 @@ var MEDIA = [];
 function mediaUrl(path) { return SB.url + '/storage/v1/object/public/media/' + String(path).split('/').map(encodeURIComponent).join('/'); }
 var CFGROWS = [];
 // Vorgaben aus der Admin-Seite (öffentlich lesbar) – überschreiben die Standardwerte der Spielregeln
-function loadCfg() {
+// Events aus dem Admin laden (für die Anzeige im Spiel; gezählt wird auf dem Server)
+function loadEvents() { var iso = function (x) { return new Date(x).toISOString(); };
+  return fetch(SB.url + '/rest/v1/game_events?select=id,title,body,task,target,tiers,show_from,starts_at,ends_at&order=starts_at&limit=50', { headers: { apikey: SB.key } }).then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { GEVROWS = (rows || []).map(function (e) { e.starts_at = iso(e.starts_at); e.ends_at = iso(e.ends_at); return e; }); if (D) D.gev = GEVROWS; return GEVROWS; }).catch(function () { return []; }); }
+var GEVROWS = []; setInterval(function () { if (typeof S !== 'undefined' && S) S._now = new Date().toISOString(); }, 30000);
+function loadCfg() { loadEvents();
   return fetch(SB.url + '/rest/v1/game_config?select=key,value&limit=200', { headers: { apikey: SB.key } })
     .then(function (r) { return r.ok ? r.json() : []; })
     .then(function (rows) { CFGROWS = rows || []; if (D) MGR.applyCfg(D, CFGROWS); try { applyBg(); } catch (e) {} return CFGROWS; })
@@ -1047,7 +1062,7 @@ function loadMedia() {
 }
 // Schlüssel „gruppe.name“ → Stelle in den Spieldaten
 function applyMedia(D, rows) {
-  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta'].forEach(function (g) { D.imgs[g] = {}; });
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta', 'gev'].forEach(function (g) { D.imgs[g] = {}; });
   D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
   (rows || []).forEach(function (m) {
     var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);
@@ -1085,7 +1100,7 @@ var ST = { tab: 'home', boardPage: 0, calMonth: null, ligaLvl: null, md: null, t
 var GROUPS = [
   ['home', 'Übersicht'],
   ['senioren', 'Senioren', [['kader', 'Kader'], ['aufst', 'Aufstellung', 'aufstellung'], ['training', 'Training', 'training']]],
-  ['jugendG', 'Academy', [['jugend', 'Academy', 'academy'], ['partner', 'Partnerverein', 'partner'], ['scout', 'Scouting', 'scouting'], ['jcamps', 'Internationale Camps', 'jcamps']]], ['kal', 'Kalender'], ['liga', 'Liga'], ['pokal', 'Pokal'],
+  ['jugendG', 'Academy', [['jugend', 'Academy', 'academy'], ['partner', 'Partnerverein', 'partner'], ['scout', 'Scouting', 'scouting'], ['jcamps', 'Internationale Camps', 'jcamps']]], ['kal', 'Kalender'], ['liga', 'Liga'], ['pokal', 'Pokal'], ['events', 'Events', null, 'events'],
   ['finanzen', 'Finanzen', [['fin', 'Budget'], ['transfer', 'Transfers', 'transfers'], ['spons', 'Sponsoren', 'sponsor1'], ['ausstatter', 'Ausstatter & Partner', 'ausbau']]],
   ['vereinG', 'Verein', [['verein', 'Verein'], ['fans', 'Fans'], ['erfolge', 'Erfolge'], ['news', 'Nachrichten'], ['masc', 'Maskottchen', 'maskottchen'], ['med', 'Med. Abteilung', 'med']]],
   ['managerG', 'Manager', [['manager', 'Profil'], ['privat', 'Privater Bereich', 'privat'], ['missionen', 'Missionen', 'missionen'], ['psponsor', 'Persönlicher Sponsor', 'psponsor'], ['kurse', 'Lehrgänge', 'lehrgang']]]
@@ -1356,7 +1371,7 @@ function boot() {
   var hc = /[?&]hc=([0-9a-f]{40})/.exec(location.search);
   if (!hc) return boot0();
   history.replaceState(null, '', location.pathname); var code = hc[1], t0 = Date.now(), done = false;
-  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); startScreen();
+  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); D.gev = GEVROWS; startScreen();
   pop('<div style="text-align:center"><div style="font-size:44px">📱</div><h2 style="padding:0">Am PC bestätigen</h2><div class="small" style="line-height:1.6;margin:8px 0 12px">Auf deinem PC erscheint gleich die Frage, ob dieses Handy dein Spiel übernehmen darf. Tippe dort auf <b>Zulassen</b>.</div><div class="xs muted" id="hoffst">Warte auf Bestätigung …</div><button class="sm" style="margin-top:12px" onclick="location.reload()">Abbrechen</button></div>', { lock: true, free: true });
   var finish = function (msg, err) { done = true; closePop(); if (msg) toast(msg, !!err); boot0(); };
   var tick = function () {
@@ -1391,7 +1406,7 @@ function hoffAnswer(ok) {
 }
 function boot0() {
   sessLoad();
-  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); loadCfg();
+  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); D.gev = GEVROWS; loadCfg();
   var back = authFromUrl();
   startScreen();
   loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });
@@ -1988,7 +2003,7 @@ function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catc
 function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {
   stopIg(); var nch = $('.navchips'); if (nch) nch.style.visibility = ST.tab === 'home' ? 'hidden' : '';
-  var f = { privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
+  var f = { events: tEvents, privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
   var fk = tabFeat(ST.tab);
   $('#main').className = ST.tab === 'home' ? 'hvon' : '';
   $('#main').innerHTML = fk && !has(fk) ? lockHTML(fk) : f();
@@ -2635,11 +2650,28 @@ function cupExcerpt(n) {
 // Joker & Sterne: groß hinter der Box „Wettbewerbe“, ragen oben aus der Spalte heraus; mehrere stapeln sich
 function symHang() { var j = V.jokers || 0, st = V.hsPts || 0, nS = Math.ceil(st), stack = function (n, html, cls) { var k = Math.max(1, Math.min(n, 5)), o = ''; for (var i = 0; i < k; i++) o += '<span class="symc ' + cls + '" style="--i:' + i + ';--k:' + k + '">' + html + '</span>'; return o; };
   return '<div class="symlay"><span class="sym' + (j ? '' : ' zero') + '" title="Joker: Direkt nach einem Spiel kannst du die Zeit zurückdrehen und das Spiel wiederholen." onclick="if(V.jokers)jokerUse();else toast(\'Noch keine Joker – die gibt es für viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen.\', false, \'🃏 Joker\')">' + stack(j, '🃏', 'jk') + (j > 5 ? '<b class="sbadge">' + j + '</b>' : '') + '</span><span class="sym' + (st ? '' : ' zero') + '" title="Halbe Sterne: am Saisonende Talent deiner Spieler erhöhen." onclick="if(V.starPop)starPop();else toast(\'Die heben wir uns für den Saisonabschluss auf.\', false, \'★ Sterne\')">' + stack(nS, '★', 'stc') + (nS > 5 || st % 1 ? '<b class="sbadge">' + String(st).replace('.', ',') + '</b>' : '') + '</span></div>'; }
+// ---------- Events: Übersicht-Box und eigene Seite
+function evFmtD(iso) { var d = new Date(iso); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); }
+function evLeft(iso) { var ms = new Date(iso) - Date.now(); if (ms <= 0) return 'vorbei'; var d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5); return d ? 'noch ' + d + ' T. ' + h + ' Std.' : 'noch ' + h + ' Std.'; }
+function evRw(t) { var o = []; if (t.xp) o.push('+' + t.xp + ' XP'); if (t.cash) o.push('+' + eur(t.cash)); if (t.jk) o.push('🃏 ' + t.jk); if (t.hs) o.push('★ ' + String(t.hs * 0.5).replace('.', ',')); if (t.fol) o.push('+' + num(t.fol) + ' Follower'); return o.join(' · ') || '–'; }
+function evCard(e, big) { var img = imgOf('gev', String(e.id)), pc = Math.round(e.have / Math.max(1, e.target) * 100);
+  return '<div class="evc' + (big ? ' big' : '') + '">' + (img ? '<div class="evimg" style="background-image:url(\'' + img + '\')"></div>' : '<div class="evimg ph">🎪</div>') + '<div class="evbd"><div class="row sp"><b>' + esc(e.title) + '</b><span class="pill ' + (e.st === 'run' ? 'g' : e.st === 'soon' ? 'y' : '') + '">' + (e.st === 'run' ? evLeft(e.ends) : e.st === 'soon' ? 'ab ' + evFmtD(e.starts) : 'beendet') + '</span></div>' + (big && e.body ? '<div class="small" style="margin:4px 0 6px">' + esc(e.body) + '</div>' : '') +
+    '<div class="xs muted">Aufgabe: ' + esc(e.task === 'title' ? 'Werde in diesem Zeitraum Meister' : e.target + ' ' + e.tname) + '</div><div class="evpr"><i style="width:' + pc + '%"></i><span>' + e.have + ' / ' + e.target + '</span></div>' +
+    '<div class="evtiers">' + e.tiers.map(function (t) { return '<div class="evt' + (t.claimed ? ' cl' : t.done ? ' ok' : '') + '"><span>' + (t.claimed ? '✅' : t.done ? '🎁' : '🔒') + ' ' + t.at + '</span><small>' + evRw(t) + '</small>' + (t.done && !t.claimed && e.st !== 'soon' ? '<button class="lbtn pri" onclick="act(\'gevClaim\',{id:' + e.id + ',t:' + t.i + '})">Abholen</button>' : '') + '</div>'; }).join('') + '</div></div></div>'; }
+function flBox() { if (!TOKEN) return ''; if (!WA.flT && !WA.flL) { WA.flL = 1; rpc('fl_table', {}).then(function (L) { WA.flT = L || []; var el = $('#flbox'); if (el) el.outerHTML = flBox(); }).catch(function () {}); } var L = WA.flT || [], i = -1; L.forEach(function (r, k) { if (r.me) i = k; });
+  var txt = !WA.flT ? 'lädt …' : L.length < 2 ? 'Füge im Call Up Favoriten hinzu – dann spielt ihr jede Woche gegeneinander.' : 'Du bist <b>' + (i + 1) + '.</b> von ' + L.length + ' · ' + (L[i] ? L[i].pts : 0) + ' Punkte' + (i > 0 ? ' · ' + (L[i - 1].pts - L[i].pts) + ' bis Platz ' + i : '');
+  return '<div class="box" id="flbox" style="cursor:pointer" onclick="waOpen(WA_FL)"><div class="row sp"><b>🏆 Freundesliga</b><span class="xs muted">Mo–So</span></div><div class="small" style="margin-top:4px">' + txt + '</div></div>'; }
+function evBox() { var lk = !has('events'), E = (V.gev || []).filter(function (e) { return e.st !== 'over' || e.tiers.some(function (t) { return t.done && !t.claimed; }); });
+  if (lk) return '<div class="box"><h3>🎪 Events</h3><div class="muted small">🔒 Ab Manager-Level ' + MGR.featLvl('events') + ' – zeitlich begrenzte Aufgaben mit besonderen Preisen.</div></div>';
+  return '<div class="box"><div class="row sp"><h3 style="margin:0">🎪 Events</h3><a class="xs" style="cursor:pointer;color:var(--g)" onclick="go(\'events\')">alle</a></div>' + (E.length ? E.slice(0, 2).map(function (e) { return evCard(e, false); }).join('') : '<div class="muted small" style="margin-top:6px">Gerade läuft kein Event – schau bald wieder vorbei!</div>') + '</div>'; }
+function tEvents() { var E = V.gev || [], run = E.filter(function (e) { return e.st === 'run'; }), soon = E.filter(function (e) { return e.st === 'soon'; }), over = E.filter(function (e) { return e.st === 'over'; });
+  var sec = function (t, L) { return L.length ? '<div class="box"><h3>' + t + '</h3>' + L.map(function (e) { return evCard(e, true); }).join('') + '</div>' : ''; };
+  return '<div style="max-width:900px;margin:0 auto">' + (sec('🔥 Läuft gerade', run) + sec('⏳ Demnächst', soon) + sec('🏁 Beendet', over) || '<div class="box"><h3>🎪 Events</h3><div class="muted">Gerade gibt es keine Events. Neue Events werden hier rechtzeitig angekündigt.</div></div>') + '</div>'; }
 function tHome() {
   var n = V.next;
   var played = V.games.filter(function (g) { return g.gf != null; }).slice(-5).reverse();
   var c1 = '<div class="symwrap">' + symHang() + compBox() + '</div>' + topBox1('lt', '⭐ Leistungsträger') + topBox1('tore', '⚽ Torschützen') + topBox1('vorl', '👟 Vorlagengeber') + injBox() + loanBox() + contractBox1();
-  var c2 = partnerBox() + '<div style="margin-bottom:12px">' + ticketHTML(n) + '</div>' + (n && n.comp !== 'liga' && n.comp !== 'test' && n.comp !== 'rel' ? cupExcerpt(n) : tableExcerpt()) + '<div class="box"><h3>📅 Letzte Spiele</h3>' + (played.length ? played.map(gameLine).join('') : '<div class="muted small">Noch keine Spiele in dieser Saison.</div>') + '</div>';
+  var c2 = partnerBox() + '<div style="margin-bottom:12px">' + ticketHTML(n) + '</div>' + (n && n.comp !== 'liga' && n.comp !== 'test' && n.comp !== 'rel' ? cupExcerpt(n) : tableExcerpt()) + '<div class="box"><h3>📅 Letzte Spiele</h3>' + (played.length ? played.map(gameLine).join('') : '<div class="muted small">Noch keine Spiele in dieser Saison.</div>') + '</div>' + evBox() + flBox();
   var c3 = mailsBox() + feedBox();
   return L4(c1, S2(c2, c3), mgrSide() + misBox() + clubSide() + buildBox());
 }
@@ -4522,13 +4554,17 @@ function waSync(cb) {
 }
 function waReqN() { return (WA.fr || []).filter(function (f) { return f.st === 'pending' && !f.out; }).length; }
 function waBadge() { var n = waUnread() + waReqN(); var b = document.querySelector('#tabs button[data-g="managerG"]'); if (!b) return; var e = b.querySelector('.wab'); if (n) { if (!e) { e = document.createElement('span'); e.className = 'wab'; b.appendChild(e); } e.textContent = n > 99 ? '99+' : n; } else if (e) e.remove(); }
-function waReadOpen() { var has0 = Object.keys(WA.msgs).some(function (k) { var m = WA.msgs[k]; return m.other === WA.open && !m.mine && !m.read; }); if (!has0) return; Object.keys(WA.msgs).forEach(function (k) { var m = WA.msgs[k]; if (m.other === WA.open && !m.mine) m.read = true; }); call('apiWaRead', TOKEN, WA.open).catch(function () {}); waBadge(); }
+function waReadOpen() { if (WA.open === WA_FL) { flSet('r', Date.now()); Object.keys(WA.msgs).forEach(function (k) { var m = WA.msgs[k]; if (m.other === WA_FL) m.read = true; }); waBadge(); return; } var has0 = Object.keys(WA.msgs).some(function (k) { var m = WA.msgs[k]; return m.other === WA.open && !m.mine && !m.read; }); if (!has0) return; Object.keys(WA.msgs).forEach(function (k) { var m = WA.msgs[k]; if (m.other === WA.open && !m.mine) m.read = true; }); call('apiWaRead', TOKEN, WA.open).catch(function () {}); waBadge(); }
 function waBox() { return '<div class="box wa" style="margin:0"><div class="wahd"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="#fff" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 6.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm5 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm5 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/></svg><b>Call Up</b></div><div id="wabody"><div class="small muted" style="padding:12px">Lädt …</div></div></div>'; }
 function waLoadContacts() { if (WA.contacts || !TOKEN || WA.cl) return; WA.cl = true; call('apiWaContacts', TOKEN).then(function (r) { WA.cl = false; if (r && r.ok) { WA.contacts = r.list; WA.me = r.me; try { drawSalary(); } catch (e) {} } else WA.contacts = []; waFrLoad(); waDraw(); }).catch(function () { WA.cl = false; WA.contacts = []; waDraw(); }); }
 var WA_DEV = 'Entwickler';
 function devAv(sz) { var u = imgOf('bg', 'entwickler'); return u ? '<span class="waav" style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;overflow:hidden;display:inline-block;flex:0 0 auto;background:#fff"><img src="' + u + '" style="width:100%;height:100%;object-fit:cover"></span>' : '<span class="waav" style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;display:inline-grid;place-items:center;flex:0 0 auto;background:linear-gradient(135deg,#1e88e5,#43a047);color:#fff;font-size:' + Math.round(sz * 0.5) + 'px">🛠</span>'; }
-function waNm(n) { return esc(n) + (n === WA_DEV ? ' <span class="wavf" title="Offizieller Kontakt">✔</span>' : ''); }
-function waAv(n, sz) { if (n === WA_DEV) return devAv(sz); var c = (WA.contacts || []).filter(function (x) { return x.name === n; })[0]; return c ? avatarHTML(c.avatar, c.pic, sz) : avatarHTML(0, '', sz); }
+function waNm(n) { return esc(n) + (n === WA_DEV || n === WA_FL ? ' <span class="wavf" title="Offizieller Kontakt">✔</span>' : ''); }
+var WA_FL = 'Freundesliga';
+function flAv(sz) { var u = imgOf('bg', 'freundesliga'); return '<span class="waav" style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;overflow:hidden;display:inline-grid;place-items:center;flex:0 0 auto;background:linear-gradient(135deg,#f0c24b,#e8944f);font-size:' + Math.round(sz * 0.55) + 'px">' + (u ? '<img src="' + u + '" style="width:100%;height:100%;object-fit:cover">' : '🏆') + '</span>'; }
+function flTable() { if (!TOKEN || !SESSION) return; rpc('fl_table', {}).then(function (L) { WA.flT = L || []; var el = $('#fltab'); if (el) el.innerHTML = flTableHTML(); }).catch(function () {}); }
+function flTableHTML() { var L = WA.flT; if (!L) return '<div class="xs" style="color:#667">Tabelle lädt …</div>'; if (L.length < 2) return '<div class="xs" style="color:#667">Noch keine Gegner: Füge unter „Spieler suchen“ Favoriten hinzu – sie spielen dann automatisch mit.</div>'; return '<b class="xs">Diese Woche</b>' + L.map(function (r, i) { return '<div class="row sp xs" style="padding:3px 0;' + (r.me ? 'font-weight:800;color:#2f7d32' : '') + '"><span>' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + esc(r.name) + '</span><b>' + r.pts + ' P.</b></div>'; }).join(''); }
+function waAv(n, sz) { if (n === WA_DEV) return devAv(sz); if (n === WA_FL) return flAv(sz); var c = (WA.contacts || []).filter(function (x) { return x.name === n; })[0]; return c ? avatarHTML(c.avatar, c.pic, sz) : avatarHTML(0, '', sz); }
 function waTime(ts) { var d = new Date(ts), now = new Date(); var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); return d.toDateString() === now.toDateString() ? hm : ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '. ' + hm; }
 function waDraw() {
   var el = $('#wabody'); if (!el) return; if (!TOKEN) { el.innerHTML = '<div class="small muted" style="padding:12px">Nur mit Login verfügbar.</div>'; return; }
@@ -4537,6 +4573,7 @@ function waDraw() {
     var ex = el.querySelector('.wachat'); if (ex && ex.getAttribute('data-w') === WA.open) { var mm0 = $('#wamsgs'); if (mm0) { var atB = mm0.scrollTop + mm0.clientHeight >= mm0.scrollHeight - 30; mm0.innerHTML = waMsgsHTML(); if (atB) mm0.scrollTop = mm0.scrollHeight; } waReadOpen(); return; }
     var ms = Object.keys(WA.msgs).map(function (k) { return WA.msgs[k]; }).filter(function (m) { return m.other === WA.open; }).sort(function (a, b) { return a.ts - b.ts; });
     el.innerHTML = '<div class="wachat" data-w="' + esc(WA.open) + '"><div class="row" style="gap:8px;padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.08)"><button class="sm" onclick="WA.open=null;waDraw()">◀</button>' + waAv(WA.open, 30) + '<b class="small" style="flex:1">' + waNm(WA.open) + '</b><button class="sm" title="Favorit" onclick="waFav(\'' + esc(WA.open).replace(/'/g, '') + '\')">' + (waIsFav(WA.open) ? '★' : '☆') + '</button></div><div class="wamsgs" id="wamsgs">' + waMsgsHTML() + '</div><div class="waemo">' + WAEMO.map(function (e) { return '<button type="button" onmousedown="event.preventDefault()" onclick="waEmo(\'' + e + '\')">' + e + '</button>'; }).join('') + '</div><div class="wain"><input id="watx" maxlength="500" placeholder="Nachricht" onkeydown="if(event.key===\'Enter\')waSend()"><button class="pri" onclick="waSend()">➤</button></div></div>';
+    if (WA.open === WA_FL) { var tx0 = $('#watx'); if (tx0 && tx0.parentNode) tx0.parentNode.style.display = 'none'; var em0 = el.querySelector('.waemo'); if (em0) em0.style.display = 'none'; var fb0 = el.querySelector('button[title="Favorit"]'); if (fb0) fb0.style.display = 'none'; }
     var mm = $('#wamsgs'); if (mm) mm.scrollTop = mm.scrollHeight; waReadOpen(); return;
   }
   var tabs = '<div class="row" style="gap:4px;padding:8px 10px 0">' + [['chats', 'Chats'], ['fav', 'Favoriten' + (waReqN() ? ' <span class="waun">' + waReqN() + '</span>' : '')], ['find', '🔎<span class="wtx"> Spieler suchen</span>']].map(function (t) { return '<button class="sm watab ' + (WA.tab === t[0] ? 'on' : '') + '" onclick="WA.tab=\'' + t[0] + '\';waDraw()">' + t[1] + '</button>'; }).join('') + '</div>';
@@ -4544,7 +4581,7 @@ function waDraw() {
   if (WA.tab === 'chats') {
     var last = {}, hid = waHidden(); Object.keys(WA.msgs).forEach(function (k) { var m = WA.msgs[k]; if (hid[m.other] && m.ts <= hid[m.other]) return; if (!last[m.other] || last[m.other].ts < m.ts) last[m.other] = m; });
     if (!last[WA_DEV]) last[WA_DEV] = { ts: 0, text: 'Feedback, Ideen oder Fehler? Schreib mir hier!', mine: false, read: true, pin: true };
-    list = Object.keys(last).sort(function (a, b) { return (b === WA_DEV) - (a === WA_DEV) || last[b].ts - last[a].ts; }).map(function (n) { var un = Object.keys(WA.msgs).filter(function (k) { var m = WA.msgs[k]; return m.other === n && !m.mine && !m.read; }).length; return '<div class="wac" onclick="waOpen(\'' + esc(n).replace(/'/g, '') + '\')">' + waAv(n, 38) + '<div style="flex:1;min-width:0"><div class="row sp"><b class="small">' + esc(n) + '</b><span class="xs" style="color:' + (un ? '#25d366' : '#889') + '">' + waTime(last[n].ts) + '</span></div><div class="row sp"><span class="xs" style="color:#667;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (last[n].mine ? '✓✓ ' : '') + esc(last[n].text) + '</span>' + (un ? '<span class="waun">' + un + '</span>' : '') + '</div></div><button class="watr" title="Chat löschen" onclick="event.stopPropagation();waDel(\'' + esc(n).replace(/'/g, '') + '\')">🗑️</button></div>'; });
+    list = Object.keys(last).sort(function (a, b) { return (b === WA_DEV) - (a === WA_DEV) || (b === WA_FL) - (a === WA_FL) || last[b].ts - last[a].ts; }).map(function (n) { var un = Object.keys(WA.msgs).filter(function (k) { var m = WA.msgs[k]; return m.other === n && !m.mine && !m.read; }).length; return '<div class="wac" onclick="waOpen(\'' + esc(n).replace(/'/g, '') + '\')">' + waAv(n, 38) + '<div style="flex:1;min-width:0"><div class="row sp"><b class="small">' + esc(n) + '</b><span class="xs" style="color:' + (un ? '#25d366' : '#889') + '">' + waTime(last[n].ts) + '</span></div><div class="row sp"><span class="xs" style="color:#667;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (last[n].mine ? '✓✓ ' : '') + esc(last[n].text) + '</span>' + (un ? '<span class="waun">' + un + '</span>' : '') + '</div></div><button class="watr" title="Chat löschen" onclick="event.stopPropagation();waDel(\'' + esc(n).replace(/'/g, '') + '\')">🗑️</button></div>'; });
     if (!list.length) list = ['<div class="xs" style="padding:16px;color:#667;text-align:center">Noch keine Chats. Schreib einem deiner Favoriten!</div>'];
   } else {
     if (WA.tab === 'find') { el.innerHTML = tabs + '<div class="wafind"><input id="waq" placeholder="Benutzername oder E-Mail" autocomplete="off" oninput="waFind(this.value)"></div><div class="walist" id="wafound"></div>'; waFoundDraw(); var qi = $('#waq'); if (qi) qi.focus(); return; }
@@ -4553,7 +4590,7 @@ function waDraw() {
       var inc = FR.filter(function (f) { return f.st === 'pending' && !f.out; }), out = FR.filter(function (f) { return f.st === 'pending' && f.out; }), ok = FR.filter(function (f) { return f.st === 'ok'; });
       var line = function (f, right, click) { return '<div class="wac"' + (click ? ' onclick="waOpen(\'' + esc(f.name).replace(/'/g, '') + '\')"' : ' style="cursor:default"') + '>' + avatarHTML(seedOf(f.id), f.pic, 38) + '<div style="flex:1;min-width:0"><b class="small">' + esc(f.name) + '</b><div class="xs" style="color:#667">' + esc(f.club ? f.club + (f.liga ? ' · ' + lsh(f.liga) : '') : 'noch kein Verein') + '</div></div>' + right + '</div>'; };
       var nm = function (f) { return esc(f.name).replace(/'/g, ''); };
-      list = ['<div class="wac" onclick="waOpen(WA_DEV)">' + devAv(38) + '<div style="flex:1;min-width:0"><b class="small">' + waNm(WA_DEV) + '</b><div class="xs" style="color:#667">Feedback & Fragen</div></div></div>'];
+      list = ['<div class="wac" onclick="waOpen(WA_DEV)">' + devAv(38) + '<div style="flex:1;min-width:0"><b class="small">' + waNm(WA_DEV) + '</b><div class="xs" style="color:#667">Feedback & Fragen</div></div></div>', '<div class="wac" onclick="waOpen(WA_FL)">' + flAv(38) + '<div style="flex:1;min-width:0"><b class="small">' + waNm(WA_FL) + '</b><div class="xs" style="color:#667">Wochenwertung mit deinen Favoriten</div></div></div>'];
       if (inc.length) list.push('<div class="wasec">Anfragen</div>'); inc.forEach(function (f) { list.push(line(f, '<button class="sm pri" onclick="waFrOk(\'' + f.id + '\',\'' + nm(f) + '\')">Annehmen</button><button class="sm" title="Ablehnen" onclick="waFrDel(\'' + f.id + '\')">✕</button>')); });
       if (ok.length) list.push('<div class="wasec">Favoriten</div>'); ok.forEach(function (f) { list.push(line(f, '<button class="watr" title="Entfernen" onclick="event.stopPropagation();waFrDel(\'' + f.id + '\',\'' + nm(f) + '\',\'' + nm(f) + ' aus den Favoriten entfernen?\')">✕</button>', true)); });
       if (out.length) list.push('<div class="wasec">Gesendete Anfragen</div>'); out.forEach(function (f) { list.push(line(f, '<span class="xs" style="color:#667">wartet …</span><button class="watr" title="Zurückziehen" onclick="waFrDel(\'' + f.id + '\')">✕</button>')); });
@@ -4564,10 +4601,10 @@ function waDraw() {
 }
 var WAEMO = ['😀', '😂', '😉', '😎', '🤔', '😅', '😡', '😭', '👍', '👎', '👏', '🙏', '💪', '🔥', '⚽', '🏆', '🥅', '🍺', '❤️', '💚', '😏', '🤝'];
 function waEmo(e) { var i = $('#watx'); if (!i) return; var p = i.selectionStart != null ? i.selectionStart : i.value.length; i.value = i.value.slice(0, p) + e + i.value.slice(p); i.focus(); try { i.setSelectionRange(p + e.length, p + e.length); } catch (x) {} }
-function waMsgsHTML() { var hd = waHidden()[WA.open] || 0; var ms = Object.keys(WA.msgs).map(function (k) { return WA.msgs[k]; }).filter(function (m) { return m.other === WA.open && m.ts > hd; }).sort(function (a, b) { return a.ts - b.ts; }); var intro = WA.open === WA_DEV ? '<div class="wam" style="max-width:90%">👋 Hallo! Hier kannst du direkt Feedback geben – Fehler, Ideen, Wünsche. Jede Nachricht ist ein eigenes Ticket, die Antwort kommt hier in den Chat.<span class="wt">Entwickler</span></div>' : ''; return (ms.length || intro) ? intro + ms.map(function (m) { return '<div class="wam ' + (m.mine ? 'me' : '') + '">' + (m.ticket && m.mine ? '<span class="xs" style="opacity:.6;display:block">Ticket ' + esc(m.ticket) + '</span>' : '') + esc(m.text) + '<span class="wt">' + waTime(m.ts) + (m.mine ? (m.pending ? ' 🕓' : ' ✓✓') : '') + '</span></div>'; }).join('') : '<div class="xs" style="text-align:center;color:#667;margin-top:30px">Noch keine Nachrichten – sag Hallo! 👋</div>'; }
+function waMsgsHTML() { var hd = waHidden()[WA.open] || 0; var ms = Object.keys(WA.msgs).map(function (k) { return WA.msgs[k]; }).filter(function (m) { return m.other === WA.open && m.ts > hd; }).sort(function (a, b) { return a.ts - b.ts; }); var intro = WA.open === WA_FL ? '<div class="wam flcard" style="max-width:94%" id="fltab">' + flTableHTML() + '</div>' : WA.open === WA_DEV ? '<div class="wam" style="max-width:90%">👋 Hallo! Hier kannst du direkt Feedback geben – Fehler, Ideen, Wünsche. Jede Nachricht ist ein eigenes Ticket, die Antwort kommt hier in den Chat.<span class="wt">Entwickler</span></div>' : ''; return (ms.length || intro) ? intro + ms.map(function (m) { return '<div class="wam ' + (m.mine ? 'me' : '') + '">' + (m.ticket && m.mine ? '<span class="xs" style="opacity:.6;display:block">Ticket ' + esc(m.ticket) + '</span>' : '') + esc(m.text) + '<span class="wt">' + waTime(m.ts) + (m.mine ? (m.pending ? ' 🕓' : ' ✓✓') : '') + '</span></div>'; }).join('') : '<div class="xs" style="text-align:center;color:#667;margin-top:30px">Noch keine Nachrichten – sag Hallo! 👋</div>'; }
 function waHidden() { return (V && V.waHide) || {}; }
 function waDel(n) { act('waHide', { n: n, ts: Date.now() }, { quiet: true, norender: true }); toast('Chat mit ' + n + ' gelöscht.'); waDraw(); }
-function waOpen(n) { WA.open = n; if (ST.tab !== 'manager') { go('manager'); } waDraw(); setTimeout(function () { var w = $('.wa'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'center' }); var i = $('#watx'); if (i) i.focus(); }, 200); }
+function waOpen(n) { WA.open = n; if (n === WA_FL) flTable(); if (ST.tab !== 'manager') { go('manager'); } waDraw(); setTimeout(function () { var w = $('.wa'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'center' }); var i = $('#watx'); if (i) i.focus(); }, 200); }
 function waSend() {
   var i = $('#watx'); if (!i) return; var t = i.value.trim(); if (!t) return; i.value = ''; var to = WA.open, tmp = 'tmp' + Date.now();
   WA.msgs[tmp] = { id: tmp, ts: Date.now(), mine: true, other: to, text: t, read: true, pending: true }; waDraw(); i.focus();

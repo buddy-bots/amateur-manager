@@ -20,7 +20,7 @@ var ST = { tab: 'home', boardPage: 0, calMonth: null, ligaLvl: null, md: null, t
 var GROUPS = [
   ['home', 'Übersicht'],
   ['senioren', 'Senioren', [['kader', 'Kader'], ['aufst', 'Aufstellung', 'aufstellung'], ['training', 'Training', 'training']]],
-  ['jugendG', 'Academy', [['jugend', 'Academy', 'academy'], ['partner', 'Partnerverein', 'partner'], ['scout', 'Scouting', 'scouting'], ['jcamps', 'Internationale Camps', 'jcamps']]], ['kal', 'Kalender'], ['liga', 'Liga'], ['pokal', 'Pokal'],
+  ['jugendG', 'Academy', [['jugend', 'Academy', 'academy'], ['partner', 'Partnerverein', 'partner'], ['scout', 'Scouting', 'scouting'], ['jcamps', 'Internationale Camps', 'jcamps']]], ['kal', 'Kalender'], ['liga', 'Liga'], ['pokal', 'Pokal'], ['events', 'Events', null, 'events'],
   ['finanzen', 'Finanzen', [['fin', 'Budget'], ['transfer', 'Transfers', 'transfers'], ['spons', 'Sponsoren', 'sponsor1'], ['ausstatter', 'Ausstatter & Partner', 'ausbau']]],
   ['vereinG', 'Verein', [['verein', 'Verein'], ['fans', 'Fans'], ['erfolge', 'Erfolge'], ['news', 'Nachrichten'], ['masc', 'Maskottchen', 'maskottchen'], ['med', 'Med. Abteilung', 'med']]],
   ['managerG', 'Manager', [['manager', 'Profil'], ['privat', 'Privater Bereich', 'privat'], ['missionen', 'Missionen', 'missionen'], ['psponsor', 'Persönlicher Sponsor', 'psponsor'], ['kurse', 'Lehrgänge', 'lehrgang']]]
@@ -291,7 +291,7 @@ function boot() {
   var hc = /[?&]hc=([0-9a-f]{40})/.exec(location.search);
   if (!hc) return boot0();
   history.replaceState(null, '', location.pathname); var code = hc[1], t0 = Date.now(), done = false;
-  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); startScreen();
+  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); D.gev = GEVROWS; startScreen();
   pop('<div style="text-align:center"><div style="font-size:44px">📱</div><h2 style="padding:0">Am PC bestätigen</h2><div class="small" style="line-height:1.6;margin:8px 0 12px">Auf deinem PC erscheint gleich die Frage, ob dieses Handy dein Spiel übernehmen darf. Tippe dort auf <b>Zulassen</b>.</div><div class="xs muted" id="hoffst">Warte auf Bestätigung …</div><button class="sm" style="margin-top:12px" onclick="location.reload()">Abbrechen</button></div>', { lock: true, free: true });
   var finish = function (msg, err) { done = true; closePop(); if (msg) toast(msg, !!err); boot0(); };
   var tick = function () {
@@ -326,7 +326,7 @@ function hoffAnswer(ok) {
 }
 function boot0() {
   sessLoad();
-  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); loadCfg();
+  D = MGR.normalize(defaultRaw()); MGR.applyCfg(D, CFGROWS); D.gev = GEVROWS; loadCfg();
   var back = authFromUrl();
   startScreen();
   loadMedia().then(function () { MEDIA_OK = true; preloadBg(); var u = imgOf('bg', 'titel'); try { if (u) localStorage.setItem('am_titel', u); else localStorage.removeItem('am_titel'); } catch (e) {} var t = document.querySelector('.titleimg'); if (t && ST.screen === 'start') { var want = u || TITLEIMG, ph = t.classList.contains('ph'); t.classList.remove('ph'); if (t.getAttribute('src') !== want) t.src = want; else if (ph) t.style.opacity = 1; } });

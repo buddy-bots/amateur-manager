@@ -2,13 +2,13 @@
 var BG = [['titel', 'Titelbild Startseite (ganze Breite)'], ['publisher', 'Publisher-Logo oben rechts'], ['entwickler', 'Profilbild „Entwickler“ im Chat'],
   ['saisonziel', 'Popup Saisonziel'], ['hauptsponsor', 'Popup Hauptsponsor'], ['ausstatter', 'Popup Ausstatter'], ['budget', 'Popup Saisonbudget'], ['presse', 'Popup Pressekonferenz'], ['vorbereitung', 'Popup Saisonvorbereitung'], ['vorbereitung_winter', 'Titelbild Wintervorbereitung'],
   ['aufstieg', 'Saisonabschluss Aufstieg'], ['klassenerhalt', 'Saisonabschluss Klassenerhalt'], ['abstieg', 'Saisonabschluss Abstieg'], ['wahl', 'Saisonende: Wahl & Auszählung'], ['ligen', 'Saisonende: Ligenübersicht'], ['bestenliste', 'Saisonende: Bestenlisten'], ['vorstand', 'Saisonende: Vorstandsbewertung'], ['neue_saison', 'Saisonstart: Ladebildschirm'], ['entlassung', 'Entlassung'], ['talent', 'Popup Neues Talent / Sterne'],
-  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'],
+  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'], ['vertrag_verl', 'Ersatzbild Vertragsverlängerung'],
   ['krypto_gewinn', 'Fazit Krypto mit Gewinn'], ['krypto_verlust', 'Fazit Krypto mit Verlust'], ['aktie_gewinn', 'Fazit Aktie mit Gewinn'], ['aktie_verlust', 'Fazit Aktie mit Verlust'],
   ['karte_academy', 'Hintergrund Karte Academy-Campus'], ['karte_verein', 'Hintergrund Karte Vereinsgelände'], ['karte_med', 'Hintergrund Karte Med-Abteilung']];
 var SCOUT = [['region', 'Regionales Scout-Netzwerk'], ['video', 'Video-Analyse-Software'], ['daten', 'Talent-Datenbank'], ['sichtung', 'Leistungsdiagnostik & Sichtungstage'], ['tw', 'Torwart-Spezialscout'], ['abwehr', 'Abwehr-Scout'], ['sturm', 'Offensiv-Scout'], ['intl', 'Internationales Scouting']];
 var MASC = [['adler', 'Adler'], ['baer', 'Bär'], ['fuchs', 'Fuchs'], ['eule', 'Eule'], ['pferd', 'Pferd'], ['panther', 'Panther'], ['katze', 'Katze'], ['krake', 'Krake'], ['gorilla', 'Gorilla'], ['schildkroete', 'Schildkröte'], ['nashorn', 'Nashorn'], ['elefant', 'Elefant'], ['stier', 'Stier'], ['wolf', 'Wolf'], ['dachs', 'Dachs'], ['gepard', 'Gepard'], ['loewe', 'Löwe'], ['hai', 'Hai'], ['falke', 'Falke'], ['tiger', 'Tiger']];
 var FANS = [['autogramm', 'Autogrammstunde'], ['training', 'Öffentliches Training'], ['umfrage', 'Fan-Umfrage'], ['fanclub', 'Fanclub-Besuch'], ['stammtisch', 'Fan-Stammtisch'], ['social', 'Social-Media-Gewinnspiel'], ['freibier', 'Freibier-Runde'], ['bus', 'Fanbus Auswärtsspiel'], ['schal', 'Schal-Aktion'], ['camp', 'Kinder-Fußballcamp']];
-var LISTS = [['hintergrund', 'Hintergrundbilder (Auswahl in den Einstellungen)'], ['kauf', 'Spielerkauf (zufällig)'], ['verkauf', 'Spielerverkauf (zufällig)'], ['gif', 'Clips im Livestream (GIF)'], ['rel', 'Partnerbilder (Privatleben)']];
+var LISTS = [['hintergrund', 'Hintergrundbilder (Auswahl in den Einstellungen)'], ['kauf', 'Spielerkauf (zufällig)'], ['verkauf', 'Spielerverkauf (zufällig)'], ['verl', 'Vertragsverlängerung (zufällig)'], ['gif', 'Clips im Livestream (GIF)'], ['rel', 'Partnerbilder (Privatleben)']];
 var D0 = null, MAP = {}, SECTION = 'over';
 
 function $(s) { return document.querySelector(s); }
@@ -114,7 +114,7 @@ document.addEventListener('drop', function (e) {
 });
 window.addEventListener('dragover', function (e) { e.preventDefault(); }); window.addEventListener('drop', function (e) { e.preventDefault(); });
 // Verkleinern (GIFs bleiben unverändert, damit die Animation erhalten bleibt)
-function maxFor(key) { return /^(bg|hintergrund|kauf|verkauf|rel)\./.test(key) ? 1920 : 900; }
+function maxFor(key) { return /^(bg|hintergrund|kauf|verkauf|verl|rel)\./.test(key) ? 1920 : 900; }
 function optimizeAll() {
   var ks = Object.keys(MAP).filter(function (k) { return !/\.(webp|gif|jpe?g)$/i.test(MAP[k].path); }), i = 0, b = $('#optb'); if (!ks.length) return;
   if (b) b.disabled = true;

@@ -488,6 +488,8 @@ async function handle(req: Request, userId: string, body: any) {
     let credit: any = null;
     if (action === 'bonusRedeem') { credit = (profile.bonus || {}).cr || {}; if (!(credit.j > 0 || credit.h > 0)) throw new HttpError(422, 'Kein Bonus-Guthaben vorhanden.'); params._srv = { j: credit.j | 0, h: credit.h | 0 }; }
     let r: any;
+    // Neuer Kalendertag, während das Spiel offen ist: Tagesmissionen (und Login-Bonus) auch ohne Neuladen erneuern
+    if (action !== 'dailyCheck' && S.dm && S.dm.day && S.dm.day !== berlinDay()) { try { MGR.act(S, D, 'dailyCheck', { today: berlinDay() }); } catch (_e) { /* optional */ } }
     if (/^dev[A-Z]/.test(action)) {
       // Entwicklermodus-Aktionen – serverseitig geprüft
       if (!profile.devOk) throw new HttpError(403, 'Der Entwicklermodus ist für dein Profil nicht freigeschaltet.');

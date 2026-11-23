@@ -291,7 +291,7 @@ function loadMedia() {
 // Schlüssel „gruppe.name“ → Stelle in den Spieldaten
 function applyMedia(D, rows) {
   D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta', 'gev'].forEach(function (g) { D.imgs[g] = {}; });
-  D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], hintergrund: [] };
+  D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], verl: [], hintergrund: [] };
   (rows || []).forEach(function (m) {
     var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);
     if (D.imgs[g]) D.imgs[g][k] = u;

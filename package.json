@@ -2,7 +2,7 @@
   "name": "amateur-manager",
   "private": true,
   "type": "module",
-  "engineVersion": "26.19.0",
+  "engineVersion": "26.20.0",
   "scripts": {
     "build:engine": "node tools/build-engine.mjs",
     "test": "node tools/test-engine.mjs"

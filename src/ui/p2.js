@@ -51,10 +51,10 @@ function cal7Update(anim) {
 }
 function simRowHTML() {
   if (V.fired) return '';
-  if (V.matchToday) return '<button class="md" onclick="matchDay()">⚽ MatchDay</button>' + icBar();
+  if (V.matchToday) return devBtnHTML() + '<button class="md" onclick="matchDay()">⚽ MatchDay</button>' + icBar();
   var bl = V.blockMails ? '<button class="btn-r" title="' + V.blockMails + ' Nachricht' + (V.blockMails > 1 ? 'en' : '') + ' beantworten" onclick="mailJump()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><svg width="20" height="15" viewBox="0 0 20 15"><rect x="1" y="1" width="18" height="13" rx="2" fill="#fff"/><path d="M1.5 2 L10 8.5 L18.5 2" fill="none" stroke="#e25c5c" stroke-width="2"/></svg><b>' + V.blockMails + '</b></button>' : '';
   var tr = V.trainToday ? '<button class="btn-r" onclick="trainPop()">🏃 Training festlegen</button>' : '';
-  return bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button>' + icBar();
+  return bl + tr + devBtnHTML() + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button>' + icBar();
 }
 function navHTML(extra) {
   var grp = groupOf(ST.tab);
@@ -75,8 +75,8 @@ function render(keepScroll) {
   if (V.fired) h += '<div class="deci" style="background:rgba(226,92,92,.15);margin-top:10px"><h2>Du wurdest am ' + dFull(V.firedOn) + ' entlassen.</h2><div class="small muted">Deine Bilanz bleibt in der Bestenliste, dein Level bleibt sowieso.</div><div class="row" style="margin-top:10px"><button class="pri" onclick="newGameSetup()">Neues Spiel</button></div></div>';
   h += '<div class="kpis" id="kpis">' + kpiHTML() + '</div><div class="cal7" id="cal7">' + cal7HTML() + '</div>';
   h += '<div class="simrow" id="simrow">' + simRowHTML() + '</div>';
-  var navX = ('<span class="starchip jokchip' + (V.jokers ? '' : ' zero') + '" title="Joker: Direkt nach einem Spiel (zurück in der Übersicht) kannst du damit die Zeit zurückdrehen und das Spiel wiederholen. 1 Joker = 1 Wiederholung. Du bekommst max. einen pro Saison für viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen." onclick="if(V.jokers)jokerUse()">🃏 ' + (V.jokers || 0) + '</span>') + ('<span class="starchip stchip' + (V.hsPts ? '' : ' zero') + '" title="Halbe Sterne zum Verteilen: Du bekommst sie für Meisterschaft, Aufstieg und Pokalsiege. Am Saisonende kannst du damit das Talent deiner Spieler erhöhen (½ Stern pro Spieler und Saison, ab 4 Sternen teurer)." onclick="if(V.starPop)starPop();else toast(\'Die heben wir uns für den Saisonabschluss auf – dann verbesserst du damit das Talent deiner Spieler.\', false, \'★ \' + String(V.hsPts || 0).replace(\'.\', \',\') + \' Sterne\')">★ ' + String(V.hsPts || 0).replace('.', ',') + '</span>');
-  h += '<div class="navL4"><div></div>' + navHTML('') + '<div class="navchips"><span class="njok">' + navX + '</span>' + devBtnHTML() + '</div></div><div id="main"></div>';
+  // Joker & Sterne hängen auf allen Seiten wie in der Übersicht über Spalte 1; das Menü darf bis in Spalte 4 laufen
+  h += '<div class="navL4"><div class="symwrap navsym" id="navsym">' + symHang() + '</div>' + navHTML('') + '</div><div id="main"></div>';
   $('#app').innerHTML = h;
   try { waBadge(); if (TOKEN && !WA.timer) setTimeout(function () { waSync(); }, 1500); } catch (e0) {}
   $('#tabs').onclick = function (e) { var b = e.target.closest('button[data-g]'); if (b) navClick(b.getAttribute('data-g'), b); };
@@ -127,7 +127,7 @@ function sheen() {
 function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catch(function () { }); }
 function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {
-  stopIg(); var nch = $('.navchips'); if (nch) { var hm = ST.tab === 'home'; nch.classList.toggle('onhome', hm); nch.style.visibility = hm && !V.devOk ? 'hidden' : ''; var db = $('#devbtn'); if (db) db.outerHTML = devBtnHTML(); }
+  stopIg(); try { pileClear(); } catch (e) {} var nsy = $('#navsym'); if (nsy) { nsy.innerHTML = symHang(); nsy.classList.toggle('onhome', ST.tab === 'home'); }
   var f = { events: tEvents, privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
   var fk = tabFeat(ST.tab);
   $('#main').className = ST.tab === 'home' ? 'hvon' : '';
@@ -145,7 +145,7 @@ window.addEventListener('resize', function () { if (ST.tab === 'home') fitPartne
 // Offene Entscheidung direkt wieder anzeigen (falls ihr Fenster von einem anderen verdrängt wurde)
 function pendShow() { if (!V.pending) return; if (V.pending.type === 'goal') goalPop(); else decisionPop(); }
 // ---------- Entwicklermodus (nur für freigeschaltete Profile – der Server prüft jede Aktion)
-function devBtnHTML() { if (!V || !V.devOk) return '<span id="devbtn"></span>'; return '<button id="devbtn" class="devbtn' + (V.dev ? ' on' : '') + '" onclick="devPop()">🛠️ Entwicklermodus <b>' + (V.dev ? 'AN' : 'AUS') + '</b></button>'; }
+function devBtnHTML() { if (!V || !V.devOk) return ''; return '<button class="icbtn devic' + (V.dev ? ' on' : '') + '" title="Entwicklermodus ' + (V.dev ? 'AN' : 'AUS') + '" onclick="devPop()">' + ICO.dev + '</button>'; }
 function devPop() {
   if (!V.devOk) return;
   pop('<div class="ptitle"><span>🛠️</span><h2>Entwicklermodus</h2></div><div class="small muted" style="margin-bottom:12px">Nur für dich sichtbar. Alle Aktionen werden vom Server geprüft.</div>' +

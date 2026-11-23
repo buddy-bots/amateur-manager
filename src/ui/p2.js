@@ -1,6 +1,6 @@
 
 /* ===================================================================== Spiel-Rahmen */
-function has(k) { if (k === 'aufstellung' && V && V.testsDone >= 2) return true; return (V ? V.mlvl : 1) >= MGR.featLvl(k); }
+function has(k) { if (V && V.dev) return true; if (k === 'aufstellung' && V && V.testsDone >= 2) return true; return (V ? V.mlvl : 1) >= MGR.featLvl(k); }
 function featName(k) { var f = MGR.FEATURES.filter(function (x) { return x[1] === k; })[0]; return f ? f[2] : k; }
 function lockHTML(k) { return '<div class="box lockbox"><div class="ic">🔒</div><h2 style="margin:6px 0">' + esc(featName(k)) + '</h2><div class="muted">Wird ab <b style="color:var(--t)">Manager-Level ' + MGR.featLvl(k) + '</b> freigeschaltet. Du bist Level ' + V.mlvl + '.</div><div class="hint" style="display:inline-block;margin-top:12px">XP gibt es für Spiele, Siege, Entscheidungen, Nachrichten, Likes und Erfolge.</div><div style="margin-top:12px"><button onclick="levelPop()">Levelstruktur ansehen</button></div></div>'; }
 function headHTML() {
@@ -76,7 +76,7 @@ function render(keepScroll) {
   h += '<div class="kpis" id="kpis">' + kpiHTML() + '</div><div class="cal7" id="cal7">' + cal7HTML() + '</div>';
   h += '<div class="simrow" id="simrow">' + simRowHTML() + '</div>';
   var navX = ('<span class="starchip jokchip' + (V.jokers ? '' : ' zero') + '" title="Joker: Direkt nach einem Spiel (zurück in der Übersicht) kannst du damit die Zeit zurückdrehen und das Spiel wiederholen. 1 Joker = 1 Wiederholung. Du bekommst max. einen pro Saison für viel Social Media, Kidsday, Fan-Tag und Fan-Aktionen." onclick="if(V.jokers)jokerUse()">🃏 ' + (V.jokers || 0) + '</span>') + ('<span class="starchip stchip' + (V.hsPts ? '' : ' zero') + '" title="Halbe Sterne zum Verteilen: Du bekommst sie für Meisterschaft, Aufstieg und Pokalsiege. Am Saisonende kannst du damit das Talent deiner Spieler erhöhen (½ Stern pro Spieler und Saison, ab 4 Sternen teurer)." onclick="if(V.starPop)starPop();else toast(\'Die heben wir uns für den Saisonabschluss auf – dann verbesserst du damit das Talent deiner Spieler.\', false, \'★ \' + String(V.hsPts || 0).replace(\'.\', \',\') + \' Sterne\')">★ ' + String(V.hsPts || 0).replace('.', ',') + '</span>');
-  h += '<div class="navL4"><div></div>' + navHTML('') + '<div class="navchips">' + navX + '</div></div><div id="main"></div>';
+  h += '<div class="navL4"><div></div>' + navHTML('') + '<div class="navchips"><span class="njok">' + navX + '</span>' + devBtnHTML() + '</div></div><div id="main"></div>';
   $('#app').innerHTML = h;
   try { waBadge(); if (TOKEN && !WA.timer) setTimeout(function () { waSync(); }, 1500); } catch (e0) {}
   $('#tabs').onclick = function (e) { var b = e.target.closest('button[data-g]'); if (b) navClick(b.getAttribute('data-g'), b); };
@@ -127,7 +127,7 @@ function sheen() {
 function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catch(function () { }); }
 function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {
-  stopIg(); var nch = $('.navchips'); if (nch) nch.style.visibility = ST.tab === 'home' ? 'hidden' : '';
+  stopIg(); var nch = $('.navchips'); if (nch) { var hm = ST.tab === 'home'; nch.classList.toggle('onhome', hm); nch.style.visibility = hm && !V.devOk ? 'hidden' : ''; var db = $('#devbtn'); if (db) db.outerHTML = devBtnHTML(); }
   var f = { events: tEvents, privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
   var fk = tabFeat(ST.tab);
   $('#main').className = ST.tab === 'home' ? 'hvon' : '';
@@ -144,6 +144,16 @@ function fitPartner() {
 window.addEventListener('resize', function () { if (ST.tab === 'home') fitPartner(); });
 // Offene Entscheidung direkt wieder anzeigen (falls ihr Fenster von einem anderen verdrängt wurde)
 function pendShow() { if (!V.pending) return; if (V.pending.type === 'goal') goalPop(); else decisionPop(); }
+// ---------- Entwicklermodus (nur für freigeschaltete Profile – der Server prüft jede Aktion)
+function devBtnHTML() { if (!V || !V.devOk) return '<span id="devbtn"></span>'; return '<button id="devbtn" class="devbtn' + (V.dev ? ' on' : '') + '" onclick="devPop()">🛠️ Entwicklermodus <b>' + (V.dev ? 'AN' : 'AUS') + '</b></button>'; }
+function devPop() {
+  if (!V.devOk) return;
+  pop('<div class="ptitle"><span>🛠️</span><h2>Entwicklermodus</h2></div><div class="small muted" style="margin-bottom:12px">Nur für dich sichtbar. Alle Aktionen werden vom Server geprüft.</div>' +
+    '<div class="devrow"><div><b>Alle Bereiche freischalten</b><div class="xs muted">Keine Level-Sperren mehr – du kannst alles nutzen, auch wenn dein Manager-Level niedriger ist.</div></div><button class="' + (V.dev ? 'pri' : '') + '" onclick="act(\'devToggle\').then(function(){closePop();devPop();})">' + (V.dev ? '✅ AN' : 'AUS') + '</button></div>' +
+    '<div class="devrow"><div><b>Manager-Level zurücksetzen</b><div class="xs muted">Alle XP auf 0 – du startest wieder bei Level 1 und spielst ganz normal weiter (gilt für alle Spielstände).</div></div><button onclick="devReset()">🔄 Zurücksetzen</button></div>' +
+    '<div class="devrow"><div><b>10.000.000 € gutschreiben</b><div class="xs muted">Je 10 Mio. € für den Verein und dein Privatvermögen – beliebig oft.</div></div><button onclick="act(\'devMoney\')">💶 +10 Mio.</button></div>', { wide: false });
+}
+function devReset() { if (!confirm('Manager-Level wirklich auf Level 1 (0 XP) zurücksetzen?')) return; act('devXpReset').then(function () { if (typeof ME !== 'undefined' && ME) ME.xp = 0; closePop(); render(true); }); }
 function decisionPop() {
   var p = V.pending, ic = { event: '❓', offer: '💰', sponsor: '🤝' }[p.type] || '❓';
   pop('<div id="deci" class="evw"><div class="row" style="gap:10px;align-items:center"><span style="font-size:30px">' + ic + '</span><h2 style="padding:0;margin:0;flex:1">' + esc(p.title) + '</h2>' + (V.pendingCount > 1 ? '<span class="pill">noch ' + (V.pendingCount - 1) + ' weitere</span>' : '') + '</div><div style="line-height:1.55;margin:10px 0 12px">' + esc(p.text) + '</div>' + (p.vet ? extCard(p.vet) : p.pid != null && /abwerb/i.test(p.title) ? abwCard(p.pid) : p.pid != null && (PCARD_RX.test(p.title + ' ' + p.text) || p.type === 'offer') ? pCard(p.pid, true) : '') + '<div class="evbtns">' +

@@ -235,9 +235,9 @@ function showKeys() {
   }).catch(function (e) { $('#main').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }
 /* ---------- Affiliate: ich oben als Leiste, meine Eingeladenen aufklappbar mit Markierungen; darunter Entwicklerteam, Seller, Spieletester */
-var AFFK = [['dev', '🛠️ Entwicklerteam'], ['seller', '🧑‍💼 Seller'], ['tester', '🎮 Spieletester']];
-function affFlag(id, k, v) { var row = (window.AFFL || []).filter(function (x) { return x.id === id; })[0]; var f = Object.assign({ dev: false, seller: false, tester: false }, row ? row.f : {}); f[k] = !!v; if (row) row.f = f;
-  rest('team_flags', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: { user_id: id, dev: f.dev, seller: f.seller, tester: f.tester, updated_at: new Date().toISOString() } }).then(function () { toast(AFFK.filter(function (x) { return x[0] === k; })[0][1] + (v ? ' gesetzt ✓' : ' entfernt')); affBoxes(); }).catch(function (e) { toast(e.message, true); }); }
+var AFFK = [['dev', '🛠️ Entwicklerteam'], ['seller', '🧑‍💼 Seller'], ['tester', '🎮 Spieletester'], ['devmode', '🧪 Entwicklermodus']];
+function affFlag(id, k, v) { var row = (window.AFFL || []).filter(function (x) { return x.id === id; })[0]; var f = Object.assign({ dev: false, seller: false, tester: false, devmode: false }, row ? row.f : {}); f[k] = !!v; if (row) row.f = f;
+  rest('team_flags', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: { user_id: id, dev: f.dev, seller: f.seller, tester: f.tester, devmode: !!f.devmode, updated_at: new Date().toISOString() } }).then(function () { toast(AFFK.filter(function (x) { return x[0] === k; })[0][1] + (v ? ' gesetzt ✓' : ' entfernt')); affBoxes(); }).catch(function (e) { toast(e.message, true); }); }
 function affBoxes() { var L = window.AFFL || [], el = $('#affboxes'); if (!el) return;
   el.innerHTML = AFFK.map(function (K) { var M = L.filter(function (x) { return x.f && x.f[K[0]]; }); return '<div class="card"><h3>' + K[1] + ' <span class="pill">' + M.length + '</span></h3>' + (M.length ? '<table><tr><th>Wer</th><th>seit</th><th class="r">Saisons</th><th class="r">eingeladen</th></tr>' + M.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td>' + new Date(x.at).toLocaleDateString('de-DE') + '</td><td class="r">' + x.s + '</td><td class="r">' + x.sub + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">Noch niemand markiert – Häkchen oben bei deinen Eingeladenen setzen.</p>') + '</div>'; }).join(''); }
 function showInv() {

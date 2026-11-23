@@ -141,7 +141,7 @@ var MGR = (function () {
   var XPLV = [0, 300, 750, 1400, 2250, 3400, 4750, 6500, 8500, 10750, 13250, 16250, 19500, 23250, 27500, 32250, 37500, 43250, 49500, 56250, 63750, 72000, 81000, 90750, 101250, 112500, 125000, 138750, 153750, 170000];
   function levelOf(xp) { var l = 1; for (var i = 0; i < XPLV.length; i++) if (xp >= XPLV[i]) l = i + 1; var cur = XPLV[l - 1], nx = XPLV[l] || (cur + 2500); return { lvl: l, cur: cur, next: nx, pct: Math.round(clamp((xp - cur) / (nx - cur), 0, 1) * 100) }; }
   function featLvl(k) { for (var i = 0; i < FEATURES.length; i++) if (FEATURES[i][1] === k) return FEATURES[i][0]; return 1; }
-  function has(S, k) { if (k === 'aufstellung' && S.aufstOk) return true; return (S.mlvl || 1) >= featLvl(k); }
+  function has(S, k) { if (S._dev) return true; if (k === 'aufstellung' && S.aufstOk) return true; return (S.mlvl || 1) >= featLvl(k); }
   function need(S, k) { if (!has(S, k)) { var f = FEATURES.filter(function (x) { return x[1] === k; })[0]; throw new Error('Ab Manager-Level ' + f[0] + ' freigeschaltet: ' + f[2]); } }
   function itemFeat(it) { if (it.id === 'internat' || it.id === 'scout') return it.id === 'scout' ? 'personal' : 'akademie'; if (/^u1[579]$/.test(it.id)) return 'jugend'; if (it.cat === 'Personal') return 'personal'; return 'ausbau'; }
   function campFeat(c) { return c.ort.indexOf('(') >= 0 ? 'ausland' : 'trainingslager'; }
@@ -655,7 +655,7 @@ var MGR = (function () {
     var reg = clamp(18 + (11 - l) * 8 + (S.fans - 50) * 0.3 + tit * 2, 3, 100), nat = l <= 4 ? clamp((5 - l) * 18 + (l <= 3 ? 10 : 0) + tit * 2 + (S.fans - 60) * 0.2, 2, 100) : l === 5 ? 1 : 0, intl = l === 1 && rank <= 5 ? clamp(40 + (6 - rank) * 10 + tit, 5, 100) : (l === 1 ? 4 : 0);
     return { reg: Math.round(reg), nat: Math.round(nat), intl: Math.round(intl) }; }
   function scLimit(S) { var n = S.scout ? SCOUTT.filter(function (t) { return S.scout.tools[t[0]]; }).length : 0; return n ? 1 + Math.floor((n - 1) / 2) : 0; }
-  function scLock(S, t) { var f = t[4]; if (f.ml && (S.mlvl || 1) < f.ml) return 'ab Manager-Level ' + f.ml; if (f.lg && S.lvl > f.lg) return 'ab ' + ((D0LV[f.lg]) || ('Liga ' + f.lg)); return ''; }
+  function scLock(S, t) { if (S._dev) return ''; var f = t[4]; if (f.ml && (S.mlvl || 1) < f.ml) return 'ab Manager-Level ' + f.ml; if (f.lg && S.lvl > f.lg) return 'ab ' + ((D0LV[f.lg]) || ('Liga ' + f.lg)); return ''; }
   var D0LV = { 4: 'Regionalliga', 6: 'Landesliga' };
   function scoutGen(S, D) { var SC = S.scout; if (!SC) return; var act = SCOUTT.filter(function (t) { return SC.tools[t[0]]; }); if (!act.length) { SC.pool = []; return; } SC.pool = [];
     var nP = 5 + act.length - 1 + (has(S, 'netzwerk') ? 1 : 0), seq = []; for (var q = 0; q < nP; q++) seq.push(act[q % act.length]); seq.sort(function () { return R() - 0.5; });
@@ -1466,7 +1466,7 @@ var MGR = (function () {
     S.dm = { day: today, ids: ids, base: JSON.parse(JSON.stringify(S.mcnt || {})), got: {} };
   }
   function misView(S, D) {
-    var lv = S.mlvl || 1, mc = S.mcnt || {}, out = { dailyOn: lv >= featLvl('tagesmissionen'), careerOn: lv >= featLvl('missionen'), daily: [], career: [] };
+    var lv = S.mlvl || 1, mc = S.mcnt || {}, out = { dailyOn: has(S, 'tagesmissionen'), careerOn: has(S, 'missionen'), daily: [], career: [] };
     if (S.dm) out.daily = S.dm.ids.map(function (id) { var m = DMISS.filter(function (x) { return x.id === id; })[0]; if (!m) return null; var have = Math.min(m.n, (mc[m.k] || 0) + (mc['t_' + m.k] || 0) - (S.dm.base[m.k] || 0) - (S.dm.base['t_' + m.k] || 0)); return { id: 'd:' + id, t: m.t, n: m.n, have: Math.max(0, have), st: S.dm.got[id] ? 'claimed' : have >= m.n ? 'done' : 'open', rw: dmRw(S, D, m) }; }).filter(Boolean);
     cmInit(S); var ci = S.cmi || 0, stg = S.cms;
     out.cmi = ci; out.dmTotal = (S.mcnt || {}).dmdone || 0; out.stage = stg + 1; out.stages = Math.ceil(CMISS.length / 10);
@@ -3798,7 +3798,7 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
       youthTeams: ['u15', 'u17', 'u19'].filter(function (k) { return S.built[k]; }),
       achv: S.achv || [], achDef: ACH, spons: SPONS, sponsorsAll: S.sponsors, captain: S.captain, pen: S.pen, loanInfo: S.loan, fcs: S.fcs || [], fcNext: (S.fcs || []).length < FC_STEPS.length ? { pct: FC_STEPS[(S.fcs || []).length][1], need: FC_STEPS[(S.fcs || []).length][3] } : null, dk: S.dk ? { price: S.dk.price, hist: S.dk.hist, canSet: (S.hist || []).length > 0 && S.dk.setS !== S.season, fair: DK_FAIR[S.lvl] || 50 } : null, sellPop: S.sellPop || null, matchWx: S.mq && S.mq.length ? wxFor(S.mq[0].o.d || S.date, S.mq[0].o.opp && S.mq[0].o.opp.n) : null, talkOpts: talkOpts(S), hollyOn: hollyOn(S), holly: S.holly ? S.holly.list.filter(function (x) { return x.exp >= S.date; }) : [], hollyStar: S.hollyStar || null, streamFol: S.streamFol || 0, inhPop: S.inhPop || null, socUsed: socUsed(S), certPop: S.certPop || null, courseSpent: S.courseSpent || 0, qualF: qualF(S), tipPop: S.tipPop || null, daily: S.daily ? { streak: S.daily.streak, open: !!S.daily.open } : null, dailyLast: S.dailyLast || null, jokIntro: S.jokIntro === 1 && !S.live, starIntro: S.starIntro === 1 && !S.live && S.jokIntro !== 1, ag: S.ag || null, agWhy: S.ag ? [] : agCheck(S, D), agBase: agBase(S, D), bond: S.bond || null, bondOffer: S.bondOffer || null, bondAskDone: S.bondAskW === wkStart(S), credMax: nice(L.budget * 0.6), stadion: S.stadion, jersey: S.jersey,
       top: top, out: { inj: S.players.filter(function (p) { return p.inj > 0; }).map(pub), ban: S.players.filter(function (p) { return p.ban > 0; }).map(pub), loanOut: S.players.filter(function (p) { return p.loan && p.loan.to; }).map(pub), loanIn: S.players.filter(function (p) { return p.loan && p.loan.from; }).map(pub) },
-      tplans: TPLANS, potVis: potVis(S), scoutScore2: S.scout ? Math.round(S.scout.score || 0) : 0, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
+      tplans: TPLANS, dev: !!S._dev, devOk: !!S._devOk, potVis: potVis(S), scoutScore2: S.scout ? Math.round(S.scout.score || 0) : 0, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
 
       club: D.club, mgr: S.mgr, date: S.date, dateF: fmtD(S.date), season: S.season + '/' + String(S.season + 1).slice(2), lvl: S.lvl, liga: L.name, ligaShort: L.short,
       cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, gev: gevView(S, D), power: S.power == null ? 100 : S.power, jokNew: !!S.jokNew,

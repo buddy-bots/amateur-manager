@@ -231,7 +231,7 @@ async function refAdmin(add: string, label: string, me = '') {
   const { data: inv2 } = await admin.from('invites').select('invitee, inviter').limit(20000);
   const sub: Record<string, number> = {}; (inv2 || []).forEach((x: any) => { if (x.inviter) sub[x.inviter] = (sub[x.inviter] || 0) + 1; });
   const ids = mine.map((x: any) => x.invitee); const nm: Record<string, string> = {};
-  const tf: Record<string, any> = {}; { const { data: tfl } = await admin.from('team_flags').select('user_id, dev, seller, tester').limit(5000); (tfl || []).forEach((t: any) => { tf[t.user_id] = { dev: t.dev, seller: t.seller, tester: t.tester }; }); }
+  const tf: Record<string, any> = {}; { const { data: tfl } = await admin.from('team_flags').select('user_id, dev, seller, tester, devmode').limit(5000); (tfl || []).forEach((t: any) => { tf[t.user_id] = { dev: t.dev, seller: t.seller, tester: t.tester, devmode: t.devmode }; }); }
   for (let i = 0; i < ids.length; i += 200) { const { data } = await admin.from('profiles').select('id, display_name, access_at').in('id', ids.slice(i, i + 200)); (data || []).forEach((p: any) => { nm[p.id] = p.display_name + (p.access_at ? '' : ' (ohne Code)'); }); }
   const dev = { n: mine.length, sub: mine.reduce((a: number, x: any) => a + (sub[x.invitee] || 0), 0), list: mine.map((x: any) => ({ id: x.invitee, name: nm[x.invitee] || '?', at: x.created_at, s: ss[x.invitee] || 0, sub: sub[x.invitee] || 0, f: tf[x.invitee] || {} })) };
   return { rows, dev };
@@ -273,6 +273,7 @@ async function loadSave(userId: string, saveId: string) {
 
 function prepare(S: any, profile: any) {
   S.xp = Number(profile.xp) || 0; S._now = new Date().toISOString();
+  S._devOk = !!profile.devOk; S._dev = S._devOk && !!S.devOn; if (!S._devOk) S.devOn = false;
   const l = MGR.levelOf(S.xp).lvl;
   if (l > (S.mlvl || 1)) S.mlvl = l;
   return S;
@@ -365,6 +366,8 @@ async function handle(req: Request, userId: string, body: any) {
   try { await refreshCfg(body && body.op === 'cfgReload'); } catch (_e) { /* Vorgaben sind optional */ }
   const { data: profile } = await admin.from('profiles').select('id, display_name, xp, terms_accepted_at, patch_note_accepted_at, is_admin, bonus, created_at, access_at, access_until, birth_year').eq('id', userId).single();
   if (!profile) throw new HttpError(403, 'Profil fehlt.');
+  // Entwicklermodus: nur Admin oder im Admin markierte Spieler (team_flags.devmode)
+  { let dm = !!profile.is_admin; if (!dm) { const { data: tfx } = await admin.from('team_flags').select('devmode').eq('user_id', userId).maybeSingle(); dm = !!(tfx && tfx.devmode); } (profile as any).devOk = dm; }
   const ready = !!(profile.terms_accepted_at && profile.patch_note_accepted_at);
   const op = String(body.op || '');
 
@@ -485,6 +488,19 @@ async function handle(req: Request, userId: string, body: any) {
     let credit: any = null;
     if (action === 'bonusRedeem') { credit = (profile.bonus || {}).cr || {}; if (!(credit.j > 0 || credit.h > 0)) throw new HttpError(422, 'Kein Bonus-Guthaben vorhanden.'); params._srv = { j: credit.j | 0, h: credit.h | 0 }; }
     let r: any;
+    if (/^dev[A-Z]/.test(action)) {
+      // Entwicklermodus-Aktionen – serverseitig geprüft
+      if (!profile.devOk) throw new HttpError(403, 'Der Entwicklermodus ist für dein Profil nicht freigeschaltet.');
+      if (action === 'devToggle') { S.devOn = !S.devOn; S._dev = S.devOn; r = { info: S.devOn ? '🛠️ Entwicklermodus an – alle Bereiche sind freigeschaltet.' : 'Entwicklermodus aus.' }; }
+      else if (action === 'devMoney') { S.cash = (S.cash || 0) + 10000000; S.priv = S.priv || { cash: 0, owned: {}, rent: null, log: [] }; S.priv.cash = (S.priv.cash || 0) + 10000000; r = { info: '💶 +10.000.000 € für den Verein und +10.000.000 € Privatvermögen.' }; }
+      else if (action === 'devXpReset') {
+        await admin.from('profiles').update({ xp: 0 }).eq('id', userId); profile.xp = 0;
+        S.mlvl = 1; S.xp = 0; delete S.featSeen;
+        const { data: others } = await admin.from('saves').select('id, state, version').eq('user_id', userId).neq('id', saveId).limit(50);
+        for (const o of (others || [])) { const st = o.state || {}; st.mlvl = 1; delete st.featSeen; await admin.from('saves').update({ state: st, version: o.version + 1 }).eq('id', o.id).eq('version', o.version); }
+        r = { info: '🔄 Manager-Level zurückgesetzt – du startest wieder bei Level 1 (0 XP).' };
+      } else throw new HttpError(400, 'Unbekannte Entwickler-Aktion.');
+    } else
     try { r = action === 'run' ? runSim(S, String((body.params || {}).mode || 'day'))    : MGR.act(S, D, action, params); }
     catch (e) { throw new HttpError(422, (e as Error).message || String(e)); }
     if (!extra.joker_snap && sv.joker_date && sv.joker_date !== S.date) { extra.joker_snap = null; extra.joker_date = null; }

@@ -342,10 +342,10 @@ async function flReward(userId: string, profile: any) {
     const d = new Date(); d.setDate(d.getDate() - 7); const last = flWeek(d);
     const { data: mine } = await admin.from('fl_week').select('pts, rewarded').eq('user_id', userId).eq('week', last).maybeSingle();
     if (!mine || mine.rewarded) return null;
-    const { data: favs } = await admin.from('wa_favorites').select('contact').eq('user_id', userId).limit(200);
-    const names = (favs || []).map((f: any) => f.contact);
+    const { data: frs } = await admin.from('friends').select('user_id, friend_id').eq('status', 'ok').or('user_id.eq.' + userId + ',friend_id.eq.' + userId).limit(300);
+    const ids = (frs || []).map((f: any) => f.user_id === userId ? f.friend_id : f.user_id).filter((x: string) => x && x !== userId);
     let others: any[] = [];
-    if (names.length) { const { data: ps } = await admin.from('profiles').select('id, display_name').in('display_name', names).limit(200); const ids = (ps || []).map((p: any) => p.id).filter((x: string) => x !== userId); if (ids.length) { const { data: ws } = await admin.from('fl_week').select('user_id, pts').eq('week', last).in('user_id', ids); others = ws || []; } }
+    if (ids.length) { const { data: ws } = await admin.from('fl_week').select('user_id, pts').eq('week', last).in('user_id', ids); others = ws || []; }
     if (!others.length) { await admin.from('fl_week').update({ rewarded: true }).eq('user_id', userId).eq('week', last); return null; }
     const rank = 1 + others.filter((o: any) => o.pts > mine.pts).length, n = others.length + 1, xp = [0, 100, 60, 30][rank] || 0;
     await admin.from('fl_week').update({ rewarded: true, rank }).eq('user_id', userId).eq('week', last);

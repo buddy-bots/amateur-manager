@@ -54,7 +54,7 @@ function simRowHTML() {
   if (V.matchToday) return devBtnHTML() + '<button class="md" onclick="matchDay()">⚽ MatchDay</button>' + icBar();
   var bl = V.blockMails ? '<button class="btn-r" title="' + V.blockMails + ' Nachricht' + (V.blockMails > 1 ? 'en' : '') + ' beantworten" onclick="mailJump()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><svg width="20" height="15" viewBox="0 0 20 15"><rect x="1" y="1" width="18" height="13" rx="2" fill="#fff"/><path d="M1.5 2 L10 8.5 L18.5 2" fill="none" stroke="#e25c5c" stroke-width="2"/></svg><b>' + V.blockMails + '</b></button>' : '';
   var tr = V.trainToday ? '<button class="btn-r" onclick="trainPop()">🏃 Training festlegen</button>' : '';
-  return bl + tr + devBtnHTML() + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button>' + icBar();
+  return devBtnHTML() + bl + tr + '<button class="btn-o" onclick="sim(\'day\')">+1 Tag</button><button class="btn-g" onclick="sim(\'match\')">Bis zum nächsten Spiel</button><button class="btn-y" onclick="sim(\'event\')">Bis zum nächsten Ereignis</button>' + icBar();
 }
 function navHTML(extra) {
   var grp = groupOf(ST.tab);
@@ -128,7 +128,7 @@ function uiFlag(k, v) { if (S && SAVEID) serverAct('uiSet', { k: k, v: v }).catc
 function go(t, keep) { var fk = tabFeat(t); if (fk && S && featNew(fk)) { S.featSeen[fk] = 1; uiFlag('featSeen', S.featSeen); } if (t !== ST.tab) { ST.newTab = null; ST.newShow = []; ST.calMonth = null; ST.ligaLvl = null; ST.md = null; ST.mdLvl = null; } var dd0 = $('.dd'); if (dd0) dd0.remove(); ST.tab = t; render(true); if (!keep) { var m = $('#tabs'); if (m && m.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.scrollY - 10)); } }
 function renderTab() {
   stopIg(); try { pileClear(); } catch (e) {} var nsy = $('#navsym'); if (nsy) { nsy.innerHTML = symHang(); nsy.classList.toggle('onhome', ST.tab === 'home'); }
-  var f = { events: tEvents, privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
+  var f = { skills: tSkills, stadion: tStadion, events: tEvents, privat: tPriv, home: tHome, kader: tKader, aufst: tAufst, training: tTraining, jugend: tJugend, kal: tKal, liga: tLiga, pokal: tPokal, transfer: tTransfer, fin: tFin, spons: tSpons, verein: tVerein, fans: tFans, partner: tPartner, med: tMed, psponsor: tPsponsor, jcamps: tJcamps, scout: tScout, masc: tMasc, kurse: tKurse, ausstatter: tAusstatter, manager: tManager, erfolge: tErfolge, news: tNews, missionen: tMissionen }[ST.tab] || tHome;
   var fk = tabFeat(ST.tab);
   $('#main').className = ST.tab === 'home' ? 'hvon' : '';
   $('#main').innerHTML = fk && !has(fk) ? lockHTML(fk) : f();
@@ -145,7 +145,7 @@ window.addEventListener('resize', function () { if (ST.tab === 'home') fitPartne
 // Offene Entscheidung direkt wieder anzeigen (falls ihr Fenster von einem anderen verdrängt wurde)
 function pendShow() { if (!V.pending) return; if (V.pending.type === 'goal') goalPop(); else decisionPop(); }
 // ---------- Entwicklermodus (nur für freigeschaltete Profile – der Server prüft jede Aktion)
-function devBtnHTML() { if (!V || !V.devOk) return ''; return '<button class="icbtn devic' + (V.dev ? ' on' : '') + '" title="Entwicklermodus ' + (V.dev ? 'AN' : 'AUS') + '" onclick="devPop()">' + ICO.dev + '</button>'; }
+function devBtnHTML() { if (!V || !V.devOk) return ''; return '<button class="icbtn devic" title="Entwicklermodus ' + (V.dev ? 'AN' : 'AUS') + '" onclick="devPop()">' + ICO.dev + '</button>'; }
 function devPop() {
   if (!V.devOk) return;
   pop('<div class="ptitle"><span>🛠️</span><h2>Entwicklermodus</h2></div><div class="small muted" style="margin-bottom:12px">Nur für dich sichtbar. Alle Aktionen werden vom Server geprüft.</div>' +

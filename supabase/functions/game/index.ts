@@ -275,7 +275,7 @@ function prepare(S: any, profile: any) {
   S.xp = Number(profile.xp) || 0; S._now = new Date().toISOString();
   S._devOk = !!profile.devOk; S._dev = S._devOk && !!S.devOn; if (!S._devOk) S.devOn = false;
   const l = MGR.levelOf(S.xp).lvl;
-  if (l > (S.mlvl || 1)) S.mlvl = l;
+  if (l > (S.mlvl || 1)) { S.skc = (S.skc || 0) + (l - (S.mlvl || 1)); (S.skcLog = S.skcLog || []).unshift([S.date, 'Manager-Level ' + l, l - (S.mlvl || 1)]); S.mlvl = l; }
   return S;
 }
 
@@ -490,6 +490,8 @@ async function handle(req: Request, userId: string, body: any) {
     let r: any;
     // Neuer Kalendertag, während das Spiel offen ist: Tagesmissionen (und Login-Bonus) auch ohne Neuladen erneuern
     if (action !== 'dailyCheck' && S.dm && S.dm.day && S.dm.day !== berlinDay()) { try { MGR.act(S, D, 'dailyCheck', { today: berlinDay() }); } catch (_e) { /* optional */ } }
+    // Freundesliga-Platz 1–3 der Vorwoche: Manager Coins (einmal je Woche)
+    if (action === 'dailyCheck') { try { const d7 = new Date(); d7.setDate(d7.getDate() - 7); const lw = flWeek(d7); if (S.flcw !== lw) { const { data: fr } = await admin.from('fl_week').select('rank, rewarded').eq('user_id', userId).eq('week', lw).maybeSingle(); if (fr && fr.rewarded) { S.flcw = lw; const cn = [0, 2, 1, 1][fr.rank || 0] || 0; if (cn) { S.skc = (S.skc || 0) + cn; (S.skcLog = S.skcLog || []).unshift([S.date, 'Freundesliga Platz ' + fr.rank, cn]); } } } } catch (_e) { /* optional */ } }
     if (/^dev[A-Z]/.test(action)) {
       // Entwicklermodus-Aktionen – serverseitig geprüft
       if (!profile.devOk) throw new HttpError(403, 'Der Entwicklermodus ist für dein Profil nicht freigeschaltet.');

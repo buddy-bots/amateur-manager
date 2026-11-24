@@ -107,6 +107,121 @@ function tVerein() {
   });
   return L4(C1, h, C4);
 }
+/* ===================================================================== Stadion: interaktive Karte, Info, Einnahmen, Pokalfinal-Bewerbung */
+var STADIDS = ['steh500', 'stehtrib', 'sitztrib', 'ueberdach', 'vip', 'videowand', 'flutlicht2', 'flutlicht3', 'parkplatz', 'kasse', 'naturrasen', 'rasenheizung', 'ausbau5k', 'ausbau10k', 'arena', 'gastro', 'fanshop1'];
+function stItem(id) { return (V.infra.items || []).filter(function (x) { return x.id === id; })[0] || null; }
+function stadMapSVG() {
+  var I = V.infra, P = I.pitch, natur = P.type === 'natur', st = function (id) { return stItem(id) ? itemSt(id) : 'none'; }, fl = (V.stad && V.stad.flut) || 1, sel = ST.stSel;
+  var o = '<defs><pattern id="sthatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#5a4a16"/><rect width="4" height="8" fill="#e6c02e" opacity=".55"/></pattern><radialGradient id="stglow"><stop offset="0" stop-color="#fff6c8" stop-opacity=".55"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></radialGradient></defs>';
+  o += '<rect width="800" height="500" rx="16" fill="#1a2a1c"/>';
+  for (var t = 0; t < 22; t++) o += '<circle cx="' + ((t * 137) % 800) + '" cy="' + ((t * 71) % 500) + '" r="' + (6 + t % 5) + '" fill="#22361f" opacity=".7"/>';
+  // Hotspot-Helfer: gebaut = farbig, im Bau = schraffiert, möglich = gestrichelt mit +, gesperrt = grau mit Schloss
+  var hs = function (id, shape, lbl, lx, ly, col) {
+    var s0 = st(id); if (s0 === 'none') return ''; var on = s0 === 'on', bl = s0 === 'bld', lk = s0 === 'lk', isSel = sel === id;
+    var fill = on ? col : bl ? 'url(#sthatch)' : lk ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.07)', stroke = isSel ? '#fff' : on ? 'rgba(0,0,0,.35)' : bl ? '#e6c02e' : lk ? 'rgba(255,255,255,.18)' : 'rgba(143,200,82,.75)';
+    var sh = shape.replace('{F}', fill).replace('{S}', stroke).replace('{D}', on || bl ? '' : 'stroke-dasharray="6 5"').replace('{W}', isSel ? 3 : 2);
+    var tag = '<g transform="translate(' + lx + ',' + ly + ')"><rect x="-50" y="-11" width="100" height="22" rx="11" fill="rgba(10,14,12,.78)"/><text x="0" y="4" text-anchor="middle" font-size="11" font-weight="700" fill="' + (on ? '#fff' : lk ? '#8a908a' : '#bfe39a') + '" font-family="Montserrat,sans-serif">' + (on ? '' : bl ? '🏗️ ' : lk ? '🔒 ' : '＋ ') + lbl + '</text></g>';
+    return '<g class="sthot' + (isSel ? ' sel' : '') + '" data-id="' + id + '" onclick="stadSel(\'' + id + '\')" style="cursor:pointer">' + sh + tag + '</g>';
+  };
+  var cx = 400, cy = 250;
+  // Außenring (Stadionausbau / Arena)
+  var ar = st('arena') === 'on' ? 3 : st('ausbau10k') === 'on' ? 2 : st('ausbau5k') === 'on' ? 1 : 0;
+  o += hs(ar >= 2 || st('ausbau10k') === 'off' || st('ausbau10k') === 'bld' ? (ar >= 2 ? 'arena' : 'ausbau10k') : 'ausbau5k', '<rect x="95" y="35" width="610" height="330" rx="70" fill="{F}" stroke="{S}" stroke-width="{W}" {D} opacity=".55"/>', ar === 3 ? 'Arena' : ar === 2 ? 'Ausbau Stufe 2' : ar === 1 ? 'Ausbau Stufe 1' : 'Stadionausbau', 400, 52, '#3b4656');
+  // Spielfeld
+  var px = 230, py = 120, pw = 340, ph = 200;
+  o += '<g class="sthot' + (sel === 'naturrasen' || sel === 'rasenheizung' ? ' sel' : '') + '" onclick="stadSel(\'' + (natur ? (stItem('rasenheizung') ? 'rasenheizung' : 'naturrasen') : 'naturrasen') + '\')" style="cursor:pointer"><rect x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" fill="' + (natur ? '#3c8a33' : '#2f8a3a') + '" stroke="' + (sel === 'naturrasen' || sel === 'rasenheizung' ? '#fff' : 'none') + '" stroke-width="3"/>';
+  for (var i = 0; i < 10; i++) o += '<rect x="' + (px + i * 34) + '" y="' + py + '" width="17" height="' + ph + '" fill="' + (natur ? '#45983b' : '#36964a') + '"/>';
+  if (!natur) for (var k = 0; k < 120; k++) o += '<circle cx="' + (px + (k * 53) % pw) + '" cy="' + (py + (k * 29) % ph) + '" r=".9" fill="#111" opacity=".3"/>';
+  if (st('rasenheizung') === 'on') for (var hz = 0; hz < 6; hz++) o += '<line x1="' + (px + 10) + '" y1="' + (py + 20 + hz * 32) + '" x2="' + (px + pw - 10) + '" y2="' + (py + 20 + hz * 32) + '" stroke="#ff8a4a" stroke-opacity=".28" stroke-width="2" stroke-dasharray="3 6"/>';
+  o += '<g fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"><rect x="' + (px + 6) + '" y="' + (py + 6) + '" width="' + (pw - 12) + '" height="' + (ph - 12) + '"/><line x1="' + cx + '" y1="' + (py + 6) + '" x2="' + cx + '" y2="' + (py + ph - 6) + '"/><circle cx="' + cx + '" cy="' + (py + ph / 2) + '" r="24"/><rect x="' + (px + 6) + '" y="' + (py + 55) + '" width="44" height="90"/><rect x="' + (px + pw - 50) + '" y="' + (py + 55) + '" width="44" height="90"/></g>';
+  o += '<g transform="translate(' + cx + ',' + (py + ph / 2 + 44) + ')"><rect x="-62" y="-11" width="124" height="22" rx="11" fill="rgba(10,14,12,.78)"/><text x="0" y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" font-family="Montserrat,sans-serif">' + (natur ? '🌱 Naturrasen' + (st('rasenheizung') === 'on' ? ' + Heizung' : '') : '🟩 Kunstrasen ' + P.cond + ' %') + '</text></g></g>';
+  // Tribünen
+  o += hs('sitztrib', '<rect x="225" y="70" width="350" height="44" rx="8" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Sitzplatztribüne', 400, 92, '#2f5d8a');
+  if (st('sitztrib') === 'on') for (var sr = 0; sr < 3; sr++) for (var sc = 0; sc < 28; sc++) o += '<rect x="' + (236 + sc * 12) + '" y="' + (76 + sr * 12) + '" width="8" height="7" rx="1.5" fill="#4b8bc4" opacity=".75" pointer-events="none"/>';
+  o += hs('vip', '<rect x="340" y="52" width="120" height="16" rx="5" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'VIP-Logen', 400, 30, '#c9a227');
+  o += hs('stehtrib', '<rect x="225" y="326" width="350" height="44" rx="8" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Stehtribüne', 400, 348, '#8a2d3a');
+  if (st('stehtrib') === 'on') for (var tr = 0; tr < 3; tr++) o += '<line x1="232" y1="' + (334 + tr * 12) + '" x2="568" y2="' + (334 + tr * 12) + '" stroke="#e8a0a8" stroke-opacity=".45" stroke-width="3" pointer-events="none"/>';
+  o += hs('steh500', '<path d="M182 120 L222 120 L222 320 L182 320 Q160 220 182 120Z" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Stehwall', 160, 220, '#6a7a3a');
+  o += hs('videowand', '<rect x="586" y="160" width="26" height="120" rx="4" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Videowand', 650, 220, '#20262e');
+  if (st('videowand') === 'on') o += '<rect x="590" y="166" width="18" height="108" rx="2" fill="#3fc1c9" opacity=".55" pointer-events="none"/>';
+  if (st('ueberdach') === 'on') o += '<rect x="220" y="64" width="360" height="54" rx="10" fill="#cfd8e3" opacity=".18" pointer-events="none"/><rect x="220" y="322" width="360" height="54" rx="10" fill="#cfd8e3" opacity=".18" pointer-events="none"/>';
+  else o += hs('ueberdach', '<path d="M220 64 h360 v6 h-360z M220 370 h360 v6 h-360z" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Überdachung', 655, 120, '#cfd8e3');
+  // Flutlicht (Stufe 1 = Training, 2 = Spiel, 3 = TV)
+  var fid = stItem('flutlicht2') && !stItem('flutlicht2').built ? 'flutlicht2' : stItem('flutlicht3') && !stItem('flutlicht3').built ? 'flutlicht3' : 'flutlicht3';
+  [[205, 95], [595, 95], [205, 345], [595, 345]].forEach(function (c, i) {
+    if (fl >= 2) o += '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + (fl >= 3 ? 70 : 48) + '" fill="url(#stglow)" pointer-events="none"/>';
+    o += '<g class="sthot' + (sel === fid ? ' sel' : '') + '" onclick="stadSel(\'' + fid + '\')" style="cursor:pointer"><circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + (fl >= 3 ? 11 : fl >= 2 ? 9 : 6) + '" fill="' + (fl >= 2 ? '#fff8d8' : '#9aa39a') + '" stroke="' + (sel === fid ? '#fff' : '#333') + '" stroke-width="2"/></g>';
+  });
+  o += '<g transform="translate(150,70)"><rect x="-46" y="-11" width="92" height="22" rx="11" fill="rgba(10,14,12,.78)"/><text x="0" y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" font-family="Montserrat,sans-serif">💡 ' + ['', 'Training', 'Spiel', 'TV'][fl] + '</text></g>';
+  // Außenanlagen
+  o += hs('parkplatz', '<rect x="30" y="395" width="210" height="88" rx="10" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Parkplätze', 135, 439, '#3a3f48');
+  if (st('parkplatz') === 'on') for (var pk = 0; pk < 9; pk++) o += '<line x1="' + (48 + pk * 22) + '" y1="405" x2="' + (48 + pk * 22) + '" y2="440" stroke="#fff" stroke-opacity=".5" stroke-width="2" pointer-events="none"/>';
+  o += hs('kasse', '<rect x="355" y="400" width="90" height="40" rx="8" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Kasse', 400, 460, '#6a3d8a');
+  o += hs('gastro', '<rect x="520" y="400" width="100" height="56" rx="10" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Gastronomie', 570, 428, '#8a5a2d');
+  o += hs('fanshop1', '<rect x="640" y="400" width="120" height="56" rx="10" fill="{F}" stroke="{S}" stroke-width="{W}" {D}/>', 'Fanshop', 700, 428, '#2d6a3e');
+  // Zuschauer-Punkte je nach Kapazität
+  for (var f = 0; f < Math.min(160, I.cap / 25); f++) { var side = f % 4, pos = (f * 37) % 330; var fx = side < 2 ? 235 + pos : side === 2 ? 196 + (f % 3) * 7 : 620 + (f % 3) * 7, fy = side === 0 ? 62 + (f % 2) * 4 : side === 1 ? 378 + (f % 2) * 4 : 130 + (pos % 180); o += '<circle cx="' + fx + '" cy="' + fy + '" r="2" fill="' + (f % 3 ? '#8fc852' : '#fff') + '" opacity=".75" pointer-events="none"/>'; }
+  return '<svg class="stadmap" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">' + o + '</svg>';
+}
+function stadSel(id) { ST.stSel = id; var m = $('#stadmapw'); if (m) m.innerHTML = stadMapSVG(); var el = $('#stadinfo'); if (el) el.innerHTML = stadInfoHTML(); }
+function stadInfoHTML() {
+  var it = ST.stSel ? stItem(ST.stSel) : null;
+  if (!it) return '<div class="small muted">👆 Tippe auf einen Bereich im Stadion – gestrichelt = kann gebaut werden, schraffiert = im Bau, 🔒 = später freischaltbar.</div>';
+  return '<div class="stinfo">' + itemCard(it, it.cat) + '</div>';
+}
+function stadDonut(p) { var r = 46, C = 2 * Math.PI * r; return '<svg viewBox="0 0 110 110" width="110" height="110"><circle cx="55" cy="55" r="' + r + '" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="12"/><circle cx="55" cy="55" r="' + r + '" fill="none" stroke="var(--g)" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + (C * p / 100).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 55 55)"/><text x="55" y="53" text-anchor="middle" font-size="22" font-weight="800" fill="#fff" font-family="Montserrat,sans-serif">' + p + '%</text><text x="55" y="70" text-anchor="middle" font-size="9" fill="#9aa39a" font-family="Montserrat,sans-serif">ausgebaut</text></svg>'; }
+function cupBidCard(q) {
+  var SD = V.stad, bid = (SD.bids || []).filter(function (b) { return b.c === q.k && b.s === V.seasonNum; })[0], host = SD.host && SD.host.c === q.k && !SD.host.paid ? SD.host : null;
+  var chk = function (ok, t) { return '<div class="xs" style="padding:2px 0;color:' + (ok ? '#8fc852' : '#e2734f') + '">' + (ok ? '✔' : '✘') + ' ' + t + '</div>'; };
+  var reqs = chk(V.infra.cap >= q.cap, 'mind. ' + num(q.cap) + ' Plätze (' + num(V.infra.cap) + ')') + chk(SD.flut >= 2, 'Spielflutlicht') + (q.natur ? chk(V.infra.pitch.type === 'natur', 'Naturrasen') : '') + q.items.map(function (n) { return chk(q.miss.indexOf(n) < 0, n); }).join('');
+  var st = host ? '<div class="pill g" style="display:block;text-align:center">🏆 Zuschlag! Finale ' + host.s + '/' + String(host.s + 1).slice(2) + ' bei uns</div>' : bid ? '<div class="pill ' + (bid.st === 'lost' ? 'r' : 'y') + '" style="display:block;text-align:center">' + (bid.st === 'open' ? '📨 Beworben – Entscheidung 15. April' : bid.st === 'won' ? '🏆 Zuschlag erhalten' : '✘ Diesmal abgesagt') + '</div>'
+    : '<button class="sm ' + (!q.miss.length && SD.win ? 'pri' : '') + '" style="width:100%" ' + (q.miss.length || !SD.win || V.pots.cash < q.fee ? 'disabled' : '') + ' onclick="act(\'cupBid\',{c:\'' + q.k + '\'})">Bewerben · ' + eur(q.fee) + '</button>' + (!SD.win ? '<div class="xs muted" style="margin-top:4px">Bewerbung von August bis März möglich.</div>' : '');
+  return '<div class="cbcard"><div class="row sp"><b>🏆 ' + esc(q.n) + '-Finale</b><span class="xs muted">für ' + (V.seasonNum + 1) + '/' + String(V.seasonNum + 2).slice(2) + '</span></div><div class="xs muted" style="margin:3px 0 6px">Belohnung: <b style="color:var(--g)">' + eur(q.cash) + '</b> · +' + num(q.fol) + ' Follower · +' + q.xp + ' XP · Ansehen</div>' + reqs + '<div style="margin-top:8px">' + st + '</div></div>';
+}
+function tStadion() {
+  var I = V.infra, SD = V.stad || { inc: {}, req: [], bids: [] }, ids = STADIDS.filter(function (id) { return stItem(id); }), done = ids.filter(function (id) { return stItem(id).built; }).length, pct = ids.length ? Math.round(done / ids.length * 100) : 0;
+  var C1 = buildBox() + licPlan();
+  var mid = '<div class="box"><div class="row sp"><h3 style="margin:0">🏟️ ' + esc(V.stadion) + '</h3><span class="xs muted">Bereich antippen für Details & Ausbau</span></div><div id="stadmapw" style="margin-top:10px">' + stadMapSVG() + '</div><div id="stadinfo" style="margin-top:10px">' + stadInfoHTML() + '</div></div>' +
+    '<div class="box"><h3>🔧 Ausbaustufen</h3><div class="grid g3">' + ids.map(function (id) { var it = stItem(id); return itemCard(it, it.cat); }).join('') + '</div></div>';
+  var inc = SD.inc || {}, pv = inc.prev, per = inc.n ? Math.round((inc.t + inc.f) / inc.n) : 0;
+  var C4 = '<div class="box"><h3>ℹ️ Stadion</h3><div class="row" style="gap:14px;align-items:center">' + stadDonut(pct) + '<div style="flex:1;min-width:0">' + kv('Name', esc(V.stadion)) + kv('Erbaut', SD.built) + kv('Kapazität', num(I.cap) + ' Plätze') + kv('Ausbau', done + ' / ' + ids.length) + '</div></div>' + kv('Flutlicht', ['', 'Training', 'Spielflutlicht', 'TV-Flutlicht'][SD.flut] || '–') + kv('Platz', I.pitch.type === 'natur' ? 'Naturrasen' : 'Kunstrasen (' + I.pitch.cond + ' %)') + kv('Zuschauerschnitt', SD.avgAtt ? num(SD.avgAtt) : '–') + capBar(I) + '</div>' +
+    '<div class="box"><h3>💶 Einnahmen durchs Stadion</h3><div class="xs muted" style="margin:-4px 0 8px">Saison ' + inc.s + '/' + String((inc.s || 0) + 1).slice(2) + ' · ' + (inc.n || 0) + ' Heimspiel' + (inc.n === 1 ? '' : 'e') + '</div>' + kv('🎟️ Eintritt', eur(inc.t || 0)) + kv('🍺 Speisen & Getränke', eur(inc.f || 0)) + '<div class="row sp" style="padding:6px 0;border-top:1px solid var(--linie);margin-top:4px"><b>Gesamt</b><b style="color:var(--g)">' + eur((inc.t || 0) + (inc.f || 0)) + '</b></div>' + kv('Ø pro Heimspiel', per ? eur(per) : '–') + kv('Ticketpreis', eur(SD.ticket || 0)) + (pv ? kv('Letzte Saison', eur(pv.t + pv.f)) : '') + '<div class="xs muted" style="margin-top:6px">Mehr Plätze, Tribünen, Gastronomie, Kasse und VIP-Logen steigern die Einnahmen pro Spiel.</div></div>' +
+    '<div class="box"><h3>🏆 Pokalfinale ausrichten</h3><div class="xs muted" style="margin:-4px 0 8px">Bewirb dich als Austragungsort für die nächste Saison. Die Chance auf den Zuschlag ist nicht hoch – der Landespokal hat höhere Vorgaben, bringt aber deutlich mehr.</div>' + (SD.req || []).map(cupBidCard).join('') + '</div>';
+  return L4(C1, mid, C4);
+}
+/* ===================================================================== Fähigkeitsbaum */
+var SKCOL = { tk: '#4fa3e0', tr: '#8fc852', tf: '#c77dff', sp: '#f0c24b', fm: '#ef5f5f', mg: '#3fc1c9' };
+var SKTYPE = { tk: 'Taktikfuchs', tr: 'Talentschmied', tf: 'Transferexperte', sp: 'Finanzgenie', fm: 'Publikumsliebling', mg: 'Karrieremensch' };
+function skTitle(K) { var tot = K.trees.reduce(function (a, t) { return a + t.lv; }, 0), pc = tot / 150, top = K.trees.slice().sort(function (a, b) { return b.lv - a.lv; })[0];
+  if (pc >= 1) return ['Fußballgott', 'Alle 150 Fähigkeiten gemeistert']; if (pc >= 0.75) return ['Star-Trainer', 'Fast der komplette Baum']; if (pc >= 0.45) return ['Top-' + SKTYPE[top.k], 'Stark in ' + top.n]; if (tot >= 8) return [SKTYPE[top.k], 'Schwerpunkt ' + top.n]; return ['Anfänger', 'Gerade erst losgelegt']; }
+function skPieSVG(K) {
+  var tot = K.trees.reduce(function (a, t) { return a + t.lv; }, 0), R = 62, c = 74, o = '<svg viewBox="0 0 148 148" width="148" height="148"><circle cx="74" cy="74" r="' + R + '" fill="rgba(255,255,255,.06)"/>';
+  if (tot) { var a0 = -Math.PI / 2; K.trees.forEach(function (t) { if (!t.lv) return; var a1 = a0 + t.lv / 150 * Math.PI * 2, lg = a1 - a0 > Math.PI ? 1 : 0; o += '<path d="M74 74 L' + (c + R * Math.cos(a0)).toFixed(1) + ' ' + (c + R * Math.sin(a0)).toFixed(1) + ' A' + R + ' ' + R + ' 0 ' + lg + ' 1 ' + (c + R * Math.cos(a1)).toFixed(1) + ' ' + (c + R * Math.sin(a1)).toFixed(1) + 'Z" fill="' + SKCOL[t.k] + '" stroke="#14181a" stroke-width="1.5"/>'; a0 = a1; }); }
+  var T = skTitle(K); o += '<circle cx="74" cy="74" r="38" fill="#14181a"/><text x="74" y="70" text-anchor="middle" font-size="20" font-weight="800" fill="#fff" font-family="Montserrat,sans-serif">' + Math.round(tot / 150 * 100) + '%</text><text x="74" y="86" text-anchor="middle" font-size="9" fill="#9aa39a" font-family="Montserrat,sans-serif">' + tot + ' / 150</text></svg>';
+  return '<div style="text-align:center">' + o + '<div style="font-size:18px;font-weight:800;margin-top:6px">' + esc(T[0]) + '</div><div class="xs muted">' + esc(T[1]) + '</div><div class="sklg">' + K.trees.map(function (t) { return '<span><i style="background:' + SKCOL[t.k] + '"></i>' + t.ic + ' ' + t.lv + '</span>'; }).join('') + '</div></div>';
+}
+function skUp(k, ev) { var x = ev && ev.pageX, y = ev && ev.pageY; act('skUp', { k: k }, { quiet: true }).then(function (r) { if (!r) return; toast(r.info, false, '🪙 Fähigkeit'); try { rewardFx(x, y); } catch (e) {} }); }
+function skNodePop(k, i) { var t = V.skill.trees.filter(function (x) { return x.k === k; })[0], s = t && t.steps[i]; if (!s) return;
+  pop('<div class="ptitle"><span>' + t.ic + '</span><h2>' + esc(s.n) + '</h2></div><div class="small" style="margin-bottom:8px">' + esc(s.fx) + '</div>' + kv('Rubrik', esc(t.n)) + kv('Stufe', (i + 1) + ' / 25') + kv('Kosten', '🪙 ' + s.c) + kv('ab Manager-Level', s.lvl) +
+    '<div style="margin-top:10px">' + (s.st === 'on' ? '<div class="pill g" style="display:block;text-align:center">✓ freigeschaltet</div>' : s.st === 'next' ? '<button class="pri" style="width:100%" onclick="closePop();skUp(\'' + k + '\',event)">Freischalten · 🪙 ' + s.c + '</button>' : '<div class="pill" style="display:block;text-align:center">' + (s.st === 'lvl' ? '🔒 ab Manager-Level ' + s.lvl : s.st === 'coin' ? '🪙 ' + s.c + ' Coins nötig' : '🔒 Erst die vorherigen Stufen') + '</div>') + '</div>');
+}
+function skTreeCard(t) {
+  var nx = t.steps[t.lv], col = SKCOL[t.k];
+  var nodes = '<div class="sknodes">' + t.steps.map(function (s) { return '<button class="skn ' + s.st + (s.ms ? ' ms' : '') + (s.i === 24 ? ' mst' : '') + '" style="--c:' + col + '" title="' + esc(s.n + ' – ' + s.fx) + '" onclick="skNodePop(\'' + t.k + '\',' + s.i + ')">' + (s.i === 24 ? '★' : s.st === 'on' ? '✓' : s.i + 1) + '</button>'; }).join('') + '</div>';
+  var next = !nx ? '<div class="pill g" style="display:block;text-align:center;margin-top:8px">👑 Meisterfähigkeit: ' + esc(t.master || '') + '</div>' : '<div class="sknext"><div style="min-width:0"><b class="small">' + esc(nx.n) + '</b><div class="xs muted">' + esc(nx.fx) + '</div></div>' + (nx.st === 'next' ? '<button class="sm pri" onclick="skUp(\'' + t.k + '\',event)">🪙 ' + nx.c + '</button>' : '<span class="xs muted" style="white-space:nowrap">' + (nx.st === 'lvl' ? '🔒 Level ' + nx.lvl : '🪙 ' + nx.c + ' nötig') + '</span>') + '</div>';
+  return '<div class="box sktree" style="--c:' + col + '"><div class="row sp"><h3 style="margin:0">' + t.ic + ' ' + esc(t.n) + '</h3><b style="color:' + col + '">' + t.lv + '/25</b></div><div class="psbar" style="margin:8px 0"><i style="width:' + (t.lv / 25 * 100) + '%;background:' + col + '"></i></div>' + nodes + next +
+    (t.sum.length ? '<div class="xs" style="margin-top:8px;color:var(--m)">Aktiv: ' + t.sum.map(esc).join(' · ') + '</div>' : '') + '</div>';
+}
+function tSkills() {
+  var K = V.skill; if (!K) return '<div class="box">Lädt …</div>';
+  var c1 = '<div class="box"><h3>🪙 Manager Coins</h3><div class="row" style="gap:10px;align-items:center"><div class="skcoin">🪙</div><div><div style="font-size:30px;font-weight:800;line-height:1">' + K.coins + '</div><div class="xs muted">verfügbar · ' + K.spent + ' von ' + K.tot + ' eingesetzt</div></div></div>' +
+    '<div class="xs muted" style="margin-top:10px;line-height:1.7"><b style="color:var(--t)">So bekommst du Coins</b><br>Start eines Spiels +3 · jedes Manager-Level +1 · alle 3 Tagesmissionen eines Tages +1 · Saisonende +2 · Aufstieg/Meister +5 · Klassenerhalt +1 · Pokalsieg +3 · Karriere-Stufe +2 · Freundesliga Platz 1/2/3 +2/+1/+1 · Event-Preise</div>' +
+    (K.log.length ? '<div style="margin-top:10px">' + K.log.map(function (l) { return '<div class="row sp xs" style="padding:4px 0;border-top:1px solid var(--linie)"><span>' + (l[0] ? dFull(l[0]) + ' · ' : '') + esc(l[1]) + '</span><b class="pos">+' + l[2] + '</b></div>'; }).join('') + '</div>' : '') + '</div>' +
+    '<div class="box"><h3>ℹ️ So funktioniert’s</h3><div class="xs muted" style="line-height:1.6">6 Rubriken mit je 25 Fähigkeiten – immer der Reihe nach. Stufen 1–8 kosten 1 Coin, 9–16 kosten 2, 17–22 kosten 3, 23–25 kosten 5. Manche Stufen gibt es erst ab einem höheren Manager-Level (alles spätestens ab Level 15). Jede 5. Stufe ist ein größerer Meilenstein, Stufe 25 die Meisterfähigkeit. Bei einem neuen Spiel startet der Baum wieder bei 0.</div></div>';
+  var c4 = '<div class="box"><h3>🎯 Dein Können</h3>' + skPieSVG(K) + '</div>';
+  var mid = '<div class="skgrid2">' + K.trees.map(skTreeCard).join('') + '</div>';
+  return L4(c1, mid, c4);
+}
 /* ---------- Fans */
 function fcBox() {
   var F = V.fcs || [], N = V.fcNext, tot = F.reduce(function (a, f) { return a + f.pct; }, 0);
@@ -220,7 +335,8 @@ function ycSel(k) { ST.ycSel = k; var p = YCPOS[k]; if (p) YG.tl = [-p[0], Math.
 function ycPop(k) {
   var c = (V.ycamps || []).filter(function (x) { return x.k === k; })[0]; if (!c) return;
   var st = !c.lvl ? '<button class="pri" style="width:100%" ' + (V.pots.cash < c.cost ? 'disabled' : '') + ' onclick="closePop();act(\'ycBuild\',{k:\'' + c.k + '\'})">Camp bauen · ' + eur(c.cost) + '</button>' : c.done > V.date ? '<div class="pill y" style="display:block;text-align:center">🏗️ Fertig am ' + dFull(c.done) + '</div>' : c.lvl < 3 ? '<button class="pri" style="width:100%" onclick="closePop();act(\'ycUp\',{k:\'' + c.k + '\'})">⬆ Auf Stufe ' + (c.lvl + 1) + ' · ' + eur(c.up) + '</button>' : '<div class="pill g" style="display:block;text-align:center">★ Höchste Stufe erreicht</div>';
-  pop('<div style="text-align:center"><div style="font-size:42px;line-height:1">' + flagOf(c.k) + '</div><h2 style="padding:4px 0 0">' + esc(c.n) + '</h2><div class="xs muted">' + esc(c.c) + '</div></div>' +
+  var cimg = imgOf('ycamp', c.k);
+  pop((cimg ? '<div class="popban" style="height:170px;background-image:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.75)),url(&quot;' + cimg + '&quot;)"><div><div style="font-size:30px;line-height:1">' + flagOf(c.k) + '</div><h2 style="padding:4px 0 0;margin:0;color:#fff">' + esc(c.n) + '</h2><div class="xs" style="color:#ddd">' + esc(c.c) + '</div></div></div>' : '<div style="text-align:center"><div style="font-size:42px;line-height:1">' + flagOf(c.k) + '</div><h2 style="padding:4px 0 0">' + esc(c.n) + '</h2><div class="xs muted">' + esc(c.c) + '</div></div>') +
     '<div style="margin:12px 0;display:grid;gap:6px">' + kv('Talent-Qualität', stars(c.stars)) + kv('Stufe', c.lvl ? c.lvl + ' / 3' : 'noch kein Camp') + (!c.lvl ? kv('Bauzeit', Math.round(c.days / 30) + ' Monate') : '') + '</div>' +
     '<div class="xs muted" style="margin-bottom:10px">Jedes Camp schickt dir jeden Monat Talente aus diesem Land – je höher die Stufe, desto mehr und besser.</div>' + st, { nav: true });
 }
@@ -775,7 +891,7 @@ function preMatch() {
   var lockA = !has('aufstellung'); var sub = function (T) { if (I.ranks) return (T === O ? I.ranks.own : I.ranks.opp) + '. Platz · ' + esc(T.liga); return esc(T.liga); };
   $('#app').innerHTML = '<div class="livewrap prew"><div class="livetk"><div style="transform:rotate(-3deg)">' + ticketHTML({ d: V.matchToday.d, comp: I.comp, label: I.label, opp: P.n, home: I.home, oppLvl: V.matchToday.oppLvl }) + '</div></div>' +
     '<div class="L4" style="margin-bottom:14px"><div class="c1"><div class="box" style="margin:0"><h2 style="text-align:center">Vorschau</h2><div class="row sp small" style="font-weight:800;margin:6px 0;align-items:flex-start"><div><span class="tn">' + crest(L.n) + '<span class="n">' + esc(L.n) + '</span></span><div class="xs muted" style="margin:2px 0 0 26px;font-weight:600">' + sub(L) + '</div></div><div style="text-align:right"><span class="tn"><span class="n" style="margin-right:6px">' + esc(Rr.n) + '</span>' + crest(Rr.n) + '</span><div class="xs muted" style="margin:2px 26px 0 0;font-weight:600">' + sub(Rr) + '</div></div></div>' +
-    cmp('Teamstärke', L.s, Rr.s, true, home && V.talk ? tkBadge(V.talk.b) : '', !home && V.talk ? tkBadge(V.talk.b) : '') + cmp('Ø Talent', L.tal, Rr.tal, true) +
+    cmp('Teamstärke', L.s, Rr.s, true, home && V.talk ? tkBadge(V.talk.b) : '', !home && V.talk ? tkBadge(V.talk.b) : '') + cmp('Ø Talent', L.tal, Rr.tal, true) + xgCmp(L, Rr) +
     '<div class="grid g2 pvs" style="gap:8px;margin-top:10px;font-size:12px"><div>⭐ Starspieler<br><b>' + (starOf(L) ? esc(starOf(L).n) : '–') + '</b><div class="pvsg"></div>⚽ Bester Torschütze<br><b>' + (L.best ? esc(L.best.n) + ' (' + L.best.g + ')' : '–') + '</b><div class="pvsg"></div>👟 Beste Vorlagen<br><b>' + (L.ast ? esc(L.ast.n) + ' (' + L.ast.a + ')' : '–') + '</b></div><div style="text-align:right">⭐ Starspieler<br><b>' + (starOf(Rr) ? esc(starOf(Rr).n) : '–') + '</b><div class="pvsg"></div>⚽ Bester Torschütze<br><b>' + (Rr.best ? esc(Rr.best.n) + ' (' + Rr.best.g + ')' : '–') + '</b><div class="pvsg"></div>👟 Beste Vorlagen<br><b>' + (Rr.ast ? esc(Rr.ast.n) + ' (' + Rr.ast.a + ')' : '–') + '</b></div></div>' +
     '</div>' + talkBox(home) +
     '</div><div class="cm"><div class="s2"><div>' + xiCol(O, true) + '</div><div>' + xiCol(P, false) + '</div></div>' + mdBtns(lockA) + '</div><div class="c4">' + wxBox(V.matchWx, I.home) + oppStats(I, P) + '</div></div></div>';
@@ -976,6 +1092,16 @@ function heatDraw0(pts, goals) {
   o.putImageData(d, 0, 0); x.save(); x.filter = 'blur(' + Math.round(3 * k) + 'px)'; x.drawImage(off, 0, 0); x.restore();
   (goals || []).forEach(function (g) { var gx = g[2] ? W - 22 * k - (100 - g[0]) * 0.6 * k : 22 * k + g[0] * 0.6 * k, gy = g[1] / 100 * H; x.save(); var rr2 = 7 * k; x.lineCap = 'round'; [[x.lineWidth = 7 * k, 'rgba(255,255,255,.95)'], [4 * k, g[2] ? '#3fbf3f' : '#e03a3a']].forEach(function (st) { x.lineWidth = st[0]; x.strokeStyle = st[1]; x.beginPath(); x.moveTo(gx - rr2, gy - rr2); x.lineTo(gx + rr2, gy + rr2); x.moveTo(gx + rr2, gy - rr2); x.lineTo(gx - rr2, gy + rr2); x.stroke(); }); x.restore(); });
 }
+// Expected Goals: Vorschau aus den Teamstärken (Heimteam leicht im Vorteil), live aus den Torchancen des Spielverlaufs
+function xgPre(sH, sA) { var d = Math.max(-20, Math.min(20, (+sH || 0) - (+sA || 0))); return [1.2 * Math.exp(0.075 * d) * 1.05, 1.2 * Math.exp(-0.075 * d) * 0.95]; }
+function xgFmt(v) { return (Math.round(v * 100) / 100).toFixed(2).replace('.', ','); }
+function xgCmp(L, Rr) { var x = xgPre(L.s, Rr.s), t = x[0] + x[1]; return '<div class="stt" title="Erwartete Tore anhand der Teamstärken"><b style="' + (x[0] > x[1] ? 'color:var(--g)' : '') + '">' + xgFmt(x[0]) + '</b><div><div class="nm">Expected Goals (xG)</div><div class="bb"><i style="width:' + (x[0] / t * 100) + '%;background:' + teamColor(L.n) + '"></i><i style="width:' + (x[1] / t * 100) + '%;background:' + teamColor(Rr.n) + ';opacity:.7"></i></div></div><b style="' + (x[1] > x[0] ? 'color:var(--g)' : '') + '">' + xgFmt(x[1]) + '</b></div>'; }
+function xgLive(L) {
+  var W = { chance: [0.08, 0.3], goal: [0.2, 0.6], miss: [0.05, 0.2], pen: [0.76, 0.76], chanceA: [0.08, 0.3], goalA: [0.2, 0.6], save: [0.08, 0.35], penA: [0.76, 0.76], play: [0.01, 0.04] }, f = 0, a = 0;
+  (L.ev || []).forEach(function (e, i) { var w = W[e.k]; if (!w) return; var h = ((String(e.t || e.txt || '').length * 31 + i * 17 + String(e.m || "").length * 7) % 100) / 100, v = w[0] + (w[1] - w[0]) * h; if (/A$/.test(e.k) || e.k === 'save') a += v; else if (e.k === 'play') { f += v * 0.5; a += v * 0.3; } else f += v; });
+  var mn = Math.min(90, L.min || 0), own = V.liveS ? V.liveS.own : 30, opp = V.liveS ? V.liveS.opp : 30, b = xgPre(L.home === false ? opp : own, L.home === false ? own : opp), bo = L.home === false ? b[1] : b[0], ba = L.home === false ? b[0] : b[1];
+  f += bo * 0.25 * mn / 90; a += ba * 0.25 * mn / 90; return [f, a];
+}
 function liveStats(L) {
   var c = function (ks) { return L.ev.filter(function (e) { return ks.indexOf(e.k) >= 0; }).length; }, own = V.liveS ? V.liveS.own : 30, opp = V.liveS ? V.liveS.opp : 30;
   var chO = c(['chance', 'goal', 'miss', 'pen']), chA = c(['chanceA', 'goalA', 'save', 'penA']), sd = (L.d || '').length * 7 + (L.opp || '').length;
@@ -990,7 +1116,8 @@ function scAsBox(L) {
 function statBox(L) {
   var X = liveStats(L), hn = L.home === false ? L.opp : V.club, an = L.home === false ? V.club : L.opp, sw = function (a) { return L.home === false ? [a[1], a[0]] : a; };
   var row = function (lb, a, suf) { a = sw(a); var t = (a[0] + a[1]) || 1, p = Math.round(a[0] / t * 100); return '<div style="padding:6px 0"><div class="row sp xs"><b>' + a[0] + (suf || '') + '</b><span class="muted">' + lb + '</span><b>' + a[1] + (suf || '') + '</b></div><div class="stb"><i style="width:' + p + '%"></i></div></div>'; };
-  return '<div class="box lstat"><h3>📊 Statistik</h3><div class="row sp xs" style="margin-bottom:4px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%">' + esc(hn) + '</b><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%;text-align:right">' + esc(an) + '</b></div>' + row('Ballbesitz', X.poss, ' %') + row('Passquote', X.pass, ' %') + row('Torchancen', X.ch) + row('Schüsse', X.shots) + row('Ecken', X.corners) + row('Fouls', X.fouls) + row('Karten', X.cards) + '</div>';
+  var xg = sw(xgLive(L)), xt = (xg[0] + xg[1]) || 1, xgRow = '<div style="padding:6px 0 8px"><div class="row sp"><b style="font-size:18px">' + xgFmt(xg[0]) + '</b><span class="xs muted" title="Erwartete Tore – steigt mit jeder Torchance">Expected Goals (xG)</span><b style="font-size:18px">' + xgFmt(xg[1]) + '</b></div><div class="stb"><i style="width:' + Math.round(xg[0] / xt * 100) + '%"></i></div></div>';
+  return '<div class="box lstat"><h3>📊 Statistik</h3><div class="row sp xs" style="margin-bottom:4px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%">' + esc(hn) + '</b><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%;text-align:right">' + esc(an) + '</b></div>' + xgRow + row('Ballbesitz', X.poss, ' %') + row('Passquote', X.pass, ' %') + row('Torchancen', X.ch) + row('Schüsse', X.shots) + row('Ecken', X.corners) + row('Fouls', X.fouls) + row('Karten', X.cards) + '</div>';
 }
 function sumBox(L) {
   var R0 = L.rep || {}, ev = L.ev.filter(function (e) { return /^(goal|goalA|pen|penA|red|redA|yellow|yellowA|pens)$/.test(e.k); });

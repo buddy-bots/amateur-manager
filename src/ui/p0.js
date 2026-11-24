@@ -102,7 +102,10 @@ function flKey(k) { return 'am_fl_' + k + '_' + ((SESSION && SESSION.user && SES
 function flGet(k, d) { try { var v = localStorage.getItem(flKey(k)); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function flSet(k, v) { try { localStorage.setItem(flKey(k), JSON.stringify(v)); } catch (e) {} }
 function flStore(r) { var L = flGet('m', []); if (L.some(function (x) { return x.week === r.week; })) return; L.push({ week: r.week, rank: r.rank, n: r.n, xp: r.xp, pts: r.pts, ts: Date.now() }); flSet('m', L.slice(-20)); }
-function flMsgs() { var out = [], w = flGet('w', 0); if (!w) { w = Date.now(); flSet('w', w); } var rd = flGet('r', 0);
+function flMsgs() { var out = [], sid = SAVEID || 'x', w = flGet('w_' + sid, 0); if (!w) { w = Date.now(); flSet('w_' + sid, w); } var rd = flGet('r', 0);
+  // Neue Saison ohne Favoriten: einmal erinnern (sonst keine weitere Nachricht)
+  try { var cs = (typeof S !== 'undefined' && S && S.season) || null, ls = flGet('s_' + sid, null); if (cs && ls == null) flSet('s_' + sid, cs); else if (cs && ls !== cs && typeof WA !== 'undefined' && WA.flT) { flSet('s_' + sid, cs); if (WA.flT.length < 2) { var nm = flGet('n_' + sid, []); nm.push({ ts: Date.now(), s: cs }); flSet('n_' + sid, nm.slice(-5)); } }
+    flGet('n_' + sid, []).forEach(function (n) { out.push({ id: 'fln' + n.s, ts: n.ts, mine: false, other: 'Freundesliga', text: '📅 Neue Saison ' + n.s + ' – du hast noch keine Favoriten im Call Up. Füge Manager unter „Spieler suchen“ als Favoriten hinzu, dann spielt ihr automatisch jede Woche in der Freundesliga gegeneinander.', read: rd >= n.ts }); }); } catch (e) {}
   var tx = (typeof CFGROWS !== 'undefined' && (CFGROWS.filter(function (c) { return c.key === 'flWelcome'; })[0] || {}).value) || '🏆 Willkommen in der Freundesliga! Jede Woche (Montag bis Sonntag) trittst du gegen deine Call-Up-Favoriten an. Punkte gibt es für Siege (3), Unentschieden (1), erledigte Tagesmissionen (2), Karriere-Missionen (5) und +1 je 5 % mehr Follower. Am Montag werden die Sieger gekürt: Platz 1 bekommt 100 XP, Platz 2 60 XP und Platz 3 30 XP – dazu gibt es jeweils ein Pokal-Abzeichen. Die aktuelle Tabelle siehst du immer oben in diesem Chat. Viel Erfolg!';
   out.push({ id: 'flw', ts: w, mine: false, other: 'Freundesliga', text: typeof tx === 'string' ? tx : String(tx), read: rd >= w });
   flGet('m', []).forEach(function (m) { out.push({ id: 'flm' + m.week, ts: m.ts, mine: false, other: 'Freundesliga', text: (m.rank === 1 ? '🥇 Glückwunsch – du hast die Freundesliga gewonnen!' : m.rank <= 3 ? (m.rank === 2 ? '🥈' : '🥉') + ' Stark – Platz ' + m.rank + ' in der Freundesliga!' : '📊 Die Freundesliga-Woche ist vorbei: Platz ' + m.rank + ' von ' + m.n + '.') + ' (' + m.pts + ' Punkte' + (m.xp ? ', +' + m.xp + ' XP' : '') + ')', read: rd >= m.ts }); });
@@ -290,7 +293,7 @@ function loadMedia() {
 }
 // Schlüssel „gruppe.name“ → Stelle in den Spieldaten
 function applyMedia(D, rows) {
-  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta', 'gev'].forEach(function (g) { D.imgs[g] = {}; });
+  D.imgs = D.imgs || {}; ['bg', 'scout', 'masc', 'fans', 'stad', 'insta', 'gev', 'ycamp'].forEach(function (g) { D.imgs[g] = {}; });
   D.privImg = {}; D.relImgs = []; D.media = { gif: [], kauf: [], verkauf: [], verl: [], hintergrund: [] };
   (rows || []).forEach(function (m) {
     var i = m.key.indexOf('.'); if (i < 1) return; var g = m.key.slice(0, i), k = m.key.slice(i + 1), u = mediaUrl(m.path);

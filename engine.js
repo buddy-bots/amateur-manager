@@ -369,6 +369,7 @@ var MGR = (function () {
     S.players.forEach(ensureDp); (S.youth || []).forEach(ensureDp);
     if (S.market) { (S.market.list || []).forEach(ensureDp); (S.market.loans || []).forEach(ensureDp); }
     (S.watch || []).forEach(function (w) { ensureDp(w); if (!w.wd) w.wd = S.date; });
+    if (!S.skt) { S.skt = {}; S.skc = (S.skc || 0) + 3; S.skcLog = [[S.date, 'Start Fähigkeitsbaum', 3]]; }
     if (!FORMS[S.lineup.form]) { S.lineup.form = '4-4-2'; S.lineup.xi = null; }
     if (!S.mq) S.mq = [];
   }
@@ -445,7 +446,7 @@ var MGR = (function () {
   function need(S, k) { if (!has(S, k)) { var f = FEATURES.filter(function (x) { return x[1] === k; })[0]; throw new Error('Ab Manager-Level ' + f[0] + ' freigeschaltet: ' + f[2]); } }
   function itemFeat(it) { if (it.id === 'internat' || it.id === 'scout') return it.id === 'scout' ? 'personal' : 'akademie'; if (/^u1[579]$/.test(it.id)) return 'jugend'; if (it.cat === 'Personal') return 'personal'; return 'ausbau'; }
   function campFeat(c) { return c.ort.indexOf('(') >= 0 ? 'ausland' : 'trainingslager'; }
-  function xp(S, n) { if ((S.mlvl || 1) >= 30 && n > 0) n = Math.round(n * 1.1); S.xp = (S.xp || 0) + n; S.xpGame = (S.xpGame || 0) + n; }
+  function xp(S, n) { if ((S.mlvl || 1) >= 30 && n > 0) n = Math.round(n * 1.1); if (n > 0 && S.skt) n = Math.round(n * (1 + skv(S, 'xp'))); S.xp = (S.xp || 0) + n; S.xpGame = (S.xpGame || 0) + n; }
   var ACH = {
     meister: ['Meisterschaft', 'schale', 150, 'Titel'], aufstieg: ['Aufstieg', 'pfeil', 100, 'Titel'], ungeschlagen: ['Ungeschlagene Saison', 'schild', 120, 'Titel'], saisonziel: ['Saisonziel erreicht', 'medaille', 40, 'Titel'], klassenerhalt: ['Klassenerhalt gesichert', 'schild', 25, 'Titel'],
     pokal_kp: ['Kreispokalsieg', 'pokal', 80, 'Pokal'], pokal_mrp: ['Landespokalsieg', 'pokal', 120, 'Pokal'], pokal_dfb: ['PRO-Pokalsieg', 'pokal', 300, 'Pokal'], sensation: ['Pokalsensation', 'blitz', 60, 'Pokal'], pokal_finale: ['Pokalfinale erreicht', 'pokal', 40, 'Pokal'],
@@ -949,7 +950,7 @@ var MGR = (function () {
   ];
   var BENEFIZ = { 1: ['Bayer 04 Leverkusen', 'Borussia Mönchengladbach', 'Borussia Dortmund', 'Eintracht Frankfurt', 'VfL Wolfsburg', 'SC Freiburg', 'VfB Stuttgart', 'TSG Hoffenheim', '1. FSV Mainz 05', 'Werder Bremen', 'FC Augsburg', 'Union Berlin'], 2: ['Fortuna Düsseldorf', 'FC Schalke 04', 'Hertha BSC', 'Hannover 96', '1. FC Kaiserslautern', 'Karlsruher SC', 'SC Paderborn', 'VfL Bochum', 'Hamburger SV', '1. FC Nürnberg', 'SV Darmstadt 98', 'Holstein Kiel'], 3: ['Alemannia Aachen', 'MSV Duisburg', 'Rot-Weiss Essen', 'Viktoria Köln', 'SC Verl', 'Energie Cottbus', 'Rot-Weiß Oberhausen', 'Wuppertaler SV', 'SC Preußen Münster', 'Arminia Bielefeld', 'VfL Osnabrück', 'Dynamo Dresden'] };
   function benPick(S, tier) { var used = S.benUsed || [], pool = BENEFIZ[tier].filter(function (n) { return used.indexOf(n) < 0; }); if (!pool.length) pool = BENEFIZ[tier]; var n = pick(pool); S.benUsed = used.concat([n]).slice(-8); return n; }
-  function bon(S, k) { var v = 0; if (k === 'late' && S.built && S.built.athletik) v += 0.03; if (k === 'late' && S.built && S.built.indoor) v += 0.01; var m = S.masc && MASC.filter(function (x) { return x[0] === S.masc; })[0]; if (m && m[6][k]) v += m[6][k] * (0.4 + 0.6 * (((S.mascBond || {})[S.masc] || 0) / 100)); (S.courses || []).forEach(function (c) { var C = COURSES.filter(function (x) { return x[0] === c; })[0]; if (C && C[7][k]) v += C[7][k]; }); return v; }
+  function bon(S, k) { var v = (k === 'att' || k === 'def' || k === 'late' || k === 'ydev') ? skv(S, k) : 0; if (k === 'late' && S.built && S.built.athletik) v += 0.03; if (k === 'late' && S.built && S.built.indoor) v += 0.01; var m = S.masc && MASC.filter(function (x) { return x[0] === S.masc; })[0]; if (m && m[6][k]) v += m[6][k] * (0.4 + 0.6 * (((S.mascBond || {})[S.masc] || 0) / 100)); (S.courses || []).forEach(function (c) { var C = COURSES.filter(function (x) { return x[0] === c; })[0]; if (C && C[7][k]) v += C[7][k]; }); return v; }
   function mgrRep(S, D) { var g = (S.wins || 0) + (S.draws || 0) + (S.losses || 0), ppg = g ? (3 * (S.wins || 0) + (S.draws || 0)) / g : 1.3; var tit = (S.achv || []).filter(function (a) { return /meister|aufstieg|pokal/.test(a.k); }).length; return Math.round(clamp(ppg / 3 * 40 + (11 - S.lvl) * 4.2 + tit * 2.5 + Math.min(10, (S.courses || []).length * 1.2) + Math.min(6, g / 40) + Math.min(8, S.shopRep || 0), 0, 100)); }
   function clubRep(S, D) { var l = S.lvl, tit = (S.achv || []).filter(function (a) { return /meister|aufstieg|pokal/.test(a.k); }).length; var me = null; try { me = table(S).filter(function (r) { return r.svw; })[0]; } catch (e) { } var rank = me ? me.rank : 9;
     var reg = clamp(18 + (11 - l) * 8 + (S.fans - 50) * 0.3 + tit * 2, 3, 100), nat = l <= 4 ? clamp((5 - l) * 18 + (l <= 3 ? 10 : 0) + tit * 2 + (S.fans - 60) * 0.2, 2, 100) : l === 5 ? 1 : 0, intl = l === 1 && rank <= 5 ? clamp(40 + (6 - rank) * 10 + tit, 5, 100) : (l === 1 ? 4 : 0);
@@ -1026,6 +1027,7 @@ var MGR = (function () {
     Object.keys(MEDIT).forEach(function (k) { var lv = medActive(S, k); if (!lv) return; var it = MEDIT[k]; Object.keys(it[4]).forEach(function (fk) { e[fk] = (e[fk] || 0) + it[4][fk] * lv; }); });
     var fcp = fcPct(S); if (fcp) { e.ticket = (e.ticket || 0) + fcp; e.zus = (e.zus || 0) + fcp; e.merch = (e.merch || 1) * (1 + fcp / 100); }
     if (S.hollyStar) { var hf = S.hollyStar.eff; e.merch = (e.merch || 1) * (1 + hf * 0.6); e.spons = (e.spons || 0) + hf * 20; e.ticket = (e.ticket || 0) + hf * 10; e.zus = (e.zus || 0) + hf * 15; }
+    if (S.skt) { e.taktik += skv(S, 'str'); e.dev += skv(S, 'dev'); e.inj += skv(S, 'inj'); e.rec = (e.rec || 0) + skv(S, 'rec'); e.spons = (e.spons || 0) + skv(S, 'spons'); e.zus = (e.zus || 0) + skv(S, 'zus'); e.ticket = (e.ticket || 0) + skv(S, 'ticket'); e.food = (e.food || 0) + skv(S, 'food'); }
     return e;
   }
   function itemMonthly(S, D, it) { return (it.cat === 'Personal' || it.cat === 'Mannschaften') ? nice(it.monthly * Math.max(0.3, Math.pow(moneyScale(S, D), 0.7))) : Math.round(it.monthly * (1 + (((S.upg || {})[it.id] || 1) - 1) * 0.08)); }
@@ -1319,7 +1321,7 @@ var MGR = (function () {
       camp: null, chem: null, built: {}, building: [], pitch: { type: 'kunst', age: rnd(2, 7) + 0.3, life: 0 },
       sponsors: [], tmp: { zus: null, sponsors: [] }, betrieb: 0, fix: [], cups: [], qual: {}, tests: [], market: { list: [], loans: [] },
       inbox: [], pending: [], mails: [], mq: [], watch: [], nego: [], dayEv: [], spons: 60, live: null, feed: [], achv: [], fin: { cur: null, hist: [] }, hist: [], evCd: {}, fired: false, days: 0, nextId: 1, reports: [], lastRank: null, peak: D.startLvl,
-      xp: o.xp || 0, xpGame: 0, ptsTotal: 0, wins: 0, captain: null, pen: null, loan: null, stadion: 'Waldstadion', jersey: null
+      xp: o.xp || 0, xpGame: 0, ptsTotal: 0, wins: 0, captain: null, pen: null, loan: null, stadion: 'Waldstadion', jersey: null, skc: 3, skt: {}, skcLog: [['', 'Start in ein neues Spiel', 3]]
     };
     S.pitch.life = Math.max(rnd(15, 20), S.pitch.age + rnd(2, 4));
     var reserve = Math.max(D.reserve, nice((L0.budget || 0) * 0.06)) * ((S.mlvl >= featLvl('legende')) ? 1.15 : 1);
@@ -1469,6 +1471,14 @@ var MGR = (function () {
   function bookPot(S, key, amount, pot) { finRec(S, key, amount); S[pot] += amount; }
   function book(S, key, amount) {
     if (!amount) return;
+    if (S.skt) { // Fähigkeitsbaum wirkt direkt auf Buchungen
+      if (amount > 0 && key === 'Transfererlöse') amount = Math.round(amount * (1 + skv(S, 'sell')));
+      else if (amount > 0 && (key === 'Pokalprämien' || key === 'Meisterprämie' || key === 'TV-Gelder')) amount = Math.round(amount * (1 + skv(S, 'prize')));
+      else if (amount > 0 && key === 'Merchandise & Trikots') amount = Math.round(amount * (1 + skv(S, 'merch')));
+      else if (amount < 0 && /^(Investitionen|Stadion: \+|Camp-Ausbau|Med\. Abteilung: )/.test(key)) amount = Math.round(amount * (1 - skv(S, 'build')));
+      else if (amount < 0 && key === 'Gehälter') amount = Math.round(amount * (1 - skv(S, 'sal')));
+      else if (amount < 0 && key === 'Ablösezahlungen') { if (skv(S, 'tfM') && S.tfMs !== S.season) { S.tfMs = S.season; msg(S, 'transfer', '🎩 Transfercoup: Diesmal keine Ablöse – ' + euro(-amount) + ' gespart!'); return; } amount = Math.round(amount * (1 - skv(S, 'fee'))); }
+    }
     if (TBKEYS[key]) return bookPot(S, key, amount, 'tb');
     if (amount < 0) return bookPot(S, key, amount, 'cash');
     finRec(S, key, amount);
@@ -1487,6 +1497,7 @@ var MGR = (function () {
   // Spielertrainer: immer mit Abstand der Beste der Liga (5 Sterne, wächst mit jeder Liga mit)
   function selfBoost(S, D) { var L = D.lv[S.lvl]; if (!L) return; S.players.forEach(function (p) { if (!p.self) return; var best = Math.max.apply(null, S.players.filter(function (q) { return !q.self; }).map(function (q) { return q.str; }).concat([L.hi])); p.str = Math.min(99, Math.max(p.str, best + 8, L.hi + 10)); p.tal = 5; p.pot = 99; if (p.ce < S.season + 1) p.ce = S.season + 10; }); }
   function startSeason(S, D, first) { selfBoost(S, D);
+    if (!first && S.skt) { if (skv(S, 'trM')) { try { var wy = newYouth(S, D, false); wy.tal = 5; wy.pot = Math.max(wy.pot || 0, wy.str + 25); if (youthAdd(S, wy)) msg(S, 'jugend', '🌟 Wunderkind: ' + wy.n + ' (5 Sterne) wechselt in deine Academy!'); } catch (e0) {} } var jkS = Math.floor(skv(S, 'jk')); if (jkS) { S.jokers = (S.jokers || 0) + jkS; msg(S, 'erfolg', '🃏 Fähigkeiten: +' + jkS + ' Joker zum Saisonstart.'); } }
     if (!first) kidsToAcademy(S, D);
     S.season = seasonOf(S.date);
     var L = D.lv[S.lvl];
@@ -1534,6 +1545,20 @@ var MGR = (function () {
     var sug = myR <= Math.max(1, L.up) + 1 ? 'aufstieg' : myR <= n / 3 ? 'oben' : myR <= n * 2 / 3 ? 'mitte' : 'erhalt';
     S.goal = sug;
     pend(S, { type: 'goal', title: 'Saisonziel ' + S.season + '/' + String(S.season + 1).slice(2), text: 'Der Vorstand schätzt den Kader auf Platz ' + myR + ' von ' + n + ' ein und schlägt „' + GOALS[sug] + '“ vor. Ein höheres Ziel bringt mehr Geld und Fan-Begeisterung, aber der Druck steigt.', opts: Object.keys(GOALS).map(function (k) { return { k: k, label: GOALS[k] + (k === sug ? ' (Vorschlag)' : '') }; }) });
+  }
+  // Pokalfinale ausrichten: Vorgaben, Gebühr, Chance, Belohnung
+  var CUPBID = { kp: { n: 'Kreispokal', fee: 500, cap: 800, flut: 2, natur: false, items: [], ch: 0.22, cash: 12000, fol: 250, fans: 3, xp: 40 },
+    mrp: { n: 'Landespokal', fee: 2500, cap: 3000, flut: 2, natur: true, items: ['sitztrib', 'parkplatz'], ch: 0.12, cash: 55000, fol: 1200, fans: 5, xp: 120 } };
+  function cupBidMiss(S, D, k) { var B = CUPBID[k], e = eff(S, D), m = [], cap = capacity(S, D); if (cap < B.cap) m.push('mind. ' + B.cap + ' Plätze'); if ((e.flut || 1) < B.flut) m.push('Spielflutlicht');
+    if (B.natur && S.pitch.type !== 'natur') m.push('Naturrasen'); if (!B.natur && S.pitch.type === 'kunst' && pitchCond(S) < 0.5) m.push('Platz in gutem Zustand');
+    B.items.forEach(function (id) { if (!(S.built || {})[id]) m.push(D.items[id] ? D.items[id].name : id); }); return m; }
+  function cupBidDay(S, D) {
+    var md = S.date.slice(5);
+    if (md === '04-15') (S.cupBids || []).forEach(function (b) { if (b.st !== 'open' || b.s !== S.season) return; var B = CUPBID[b.c], cap = capacity(S, D), ch = clamp(B.ch + Math.max(0, cap - B.cap) / 1000 * 0.005 + (S.fans - 50) / 1000, 0.05, b.c === 'kp' ? 0.35 : 0.25);
+      if (R() < ch) { b.st = 'won'; S.cupHost = { c: b.c, s: S.season + 1, paid: false }; infoMail(S, 'Fußballverband', '🏆 Zuschlag: ' + cupName(S, b.c) + '-Finale bei uns!', 'Glückwunsch! Das ' + cupName(S, b.c) + '-Finale der Saison ' + (S.season + 1) + '/' + String(S.season + 2).slice(2) + ' wird in unserem Stadion ausgetragen. Das bringt Geld, Follower und Ansehen.'); }
+      else { b.st = 'lost'; infoMail(S, 'Fußballverband', 'Absage: ' + cupName(S, b.c) + '-Finale', 'Leider hat diesmal ein anderer Verein den Zuschlag für das ' + cupName(S, b.c) + '-Finale bekommen. Nächste Saison kannst du dich erneut bewerben.'); } });
+    var H = S.cupHost; if (H && !H.paid && H.s === S.season && md === CUPS[H.c].dates[5]) { var B2 = CUPBID[H.c]; H.paid = true; book(S, 'Ausrichtung Pokalfinale', B2.cash); followAdd(S, B2.fol); S.fans = clamp(S.fans + B2.fans, 0, 100); xp(S, B2.xp);
+      msg(S, 'verein', '🏆 Heute war das ' + cupName(S, H.c) + '-Finale bei uns zu Gast – volles Haus, ' + euro(B2.cash) + ' Einnahmen, +' + B2.fol + ' Follower und jede Menge Ansehen!'); }
   }
   function cupName(S, k) { var c = CUPS[k]; if (!S.reg) return c.name; if (k === 'kp') return 'Kreispokal'; return c.name; }
   function newCup(S, k) { var c = CUPS[k]; return { k: k, name: cupName(S, k), alive: true, rn: 0, games: [], next: null, field: null, hist: [], ties: [], dates: c.dates.map(function (x, i) { var d = sd(S.season, x); return (i === 5 || (k === 'dfb' && i === 0)) ? toDow(d, 6) : toDow(d, 3); }) }; }
@@ -1643,6 +1668,7 @@ var MGR = (function () {
     // Bilanz
     var n = tab.length; var goalOk = goalReached(S, D, me.rank, n, L, oldLvl);
     var result = S.lvl < oldLvl ? 'Aufstieg' : S.lvl > oldLvl ? 'Abstieg' : 'Klassenerhalt';
+    skCoin(S, 2 + Math.floor(skv(S, 'coinS')), 'Saisonende'); if (result === 'Aufstieg' || me.rank === 1) skCoin(S, 5, me.rank === 1 ? 'Meisterschaft' : 'Aufstieg'); else if (result === 'Klassenerhalt') skCoin(S, 1, 'Klassenerhalt');
     mgrSeasonEnd(S, D, result);
     var cupBest = S.cups.map(function (c) { return c.name + ': ' + (c.won ? 'Sieger' : RNAMES[Math.min(5, c.rn)]); }).join(' · ');
     S.hist.push({ season: S.season, lvl: oldLvl, liga: L.name, rank: me.rank, pts: me.pts, tore: me.tf + ':' + me.ta, result: result, goal: GOALS[S.goal], goalOk: goalOk, cups: cupBest, cash: Math.round(S.cash + (S.tb || 0)) });
@@ -1846,7 +1872,7 @@ var MGR = (function () {
   function adCost(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = (parseInt(wk.replace(/-/g, ''), 10) * 7919) % 233280; return 25 + Math.round(sd / 233280 * 225); } // Werbung: 25–250 € pro Woche
   function flyCost(S) { var wk = addDays(S.date, -((dow(S.date) + 6) % 7)); var sd = (parseInt(wk.replace(/-/g, ''), 10) * 4271) % 233280; return 10 + Math.round(sd / 233280 * 90); } // Flyer: 10–100 €
   function followStart(S) { var lo = 253 + Math.max(0, 11 - S.lvl) / 10 * 3650; return Math.round(Math.min(4315, lo + rnd(0, 415))); }
-  function followAdd(S, n) { if (n > 0) n *= 0.7; /* Balancing: Follower-Zuwachs −30 % */ if (S.hollyStar && n > 0) n = n * (1 + S.hollyStar.eff * 1.5); if ((S.mlvl || 1) >= 26 && n > 0) n *= 1.1; n = Math.round(n); S.follow = Math.max(0, (S.follow || 0) + n); S.fwGain = (S.fwGain || 0) + n; }
+  function followAdd(S, n) { if (n > 0) n *= 0.7 * (1 + skv(S, 'fol')); /* Balancing: Follower-Zuwachs −30 % */ if (S.hollyStar && n > 0) n = n * (1 + S.hollyStar.eff * 1.5); if ((S.mlvl || 1) >= 26 && n > 0) n *= 1.1; n = Math.round(n); S.follow = Math.max(0, (S.follow || 0) + n); S.fwGain = (S.fwGain || 0) + n; }
   var FMS = [[1000, 'Die ersten 1.000 Follower – lokale Firmen werden neugierig', 0.02], [5000, 'Im Ländchen kennt man euch online – kleine Sponsoren melden sich', 0.04], [10000, 'Sponsoren werden auf euch aufmerksam', 0.06], [50000, 'Überregionale Sponsoren klopfen an', 0.12], [100000, 'Große Firmen wollen mit euch werben – ab jetzt bringen eure Posts Geld', 0.2], [250000, 'Deutschlandweite Marken interessieren sich für euch', 0.3], [500000, 'Ihr seid ein Social-Media-Phänomen – Top-Marken stehen Schlange', 0.45], [1000000, 'EINE MILLION Follower! Ihr seid eine internationale Marke', 0.7]];
   function followF(S) { return 1 + (S.fMs2 || 0) * 0.05 + ((S.fMs2 || 0) >= 6 ? 0.15 : 0) + ((S.fMs2 || 0) >= 8 ? 0.25 : 0); }
   function followMs(S, D) {
@@ -1960,6 +1986,7 @@ var MGR = (function () {
   }
   function playMatch(S, D, o, res) {
     if (!res) res = fastResult(S, D, o); S.trainBoost = 0;
+    if (o.comp === 'liga' && res.ga - res.gf === 1 && skv(S, 'tkM') && S.tkMs !== S.season) { S.tkMs = S.season; res.ga = res.gf; msg(S, 'erfolg', '🧠 Meistertaktiker: Ein Gegentor wurde nach Videobeweis zurückgenommen – aus der Niederlage wird ein Unentschieden!'); }
     var e = eff(S, D); var gf = res.gf, ga = res.ga, pen = res.pen, scorers = res.scorers;
     var win = gf > ga || pen === 'n.E. gewonnen', draw = gf === ga && !pen;
     var injuries = [], cards = [], grades = [], devMsgs = [], rf = S._rf != null ? S._rf : 1; S._rf = null; // rf: Belohnungsfaktor (Power/Sofortergebnis)
@@ -2032,7 +2059,7 @@ var MGR = (function () {
         var cf = concF(S), food = att * foodBase(S.lvl) * (1 + e.food / 100) * attract * 0.6 * cf, drinks = att * foodBase(S.lvl) * (1 + e.food / 100) * attract * 0.55 * cf;
         if (o.comp === 'mrp' && o.home !== false && /Achtelfinale|Viertelfinale|Halbfinale|Finale/.test(o.label || '')) { var mb = /Halbfinale|Finale/.test(o.label) ? 3.2 : 2.4; t *= mb; food *= mb * 0.8; drinks *= mb * 0.8; }
         if (o.home === null) { t *= 0.5; food = 0; drinks = 0; }
-        t *= rf; food *= rf; drinks *= rf; book(S, 'Zuschauereinnahmen', Math.round(t)); book(S, 'Speisen', Math.round(food)); book(S, 'Getränke', Math.round(drinks)); S.lastGate = { d: S.date, amt: Math.round(t + food + drinks), t: Math.round(t), f: Math.round(food + drinks), opp: o.opp.n, fx: true };
+        t *= rf; food *= rf; drinks *= rf; book(S, 'Zuschauereinnahmen', Math.round(t)); book(S, 'Speisen', Math.round(food)); book(S, 'Getränke', Math.round(drinks)); if (!S.stadInc || S.stadInc.s !== S.season) S.stadInc = { s: S.season, t: 0, f: 0, n: 0, prev: S.stadInc && S.stadInc.s === S.season - 1 ? { t: S.stadInc.t, f: S.stadInc.f, n: S.stadInc.n } : null }; if (o.home !== false) { S.stadInc.t += Math.round(t); S.stadInc.f += Math.round(food + drinks); S.stadInc.n++; } S.lastGate = { d: S.date, amt: Math.round(t + food + drinks), t: Math.round(t), f: Math.round(food + drinks), opp: o.opp.n, fx: true };
       }
     }
     if (!test) book(S, 'Schiri & Fahrtkosten', -nice(D.lv[S.lvl].admin * 0.3 + 60));
@@ -2284,7 +2311,7 @@ var MGR = (function () {
         c.rn++;
         if (c.k === 'kp' && c.rn === 5) { S.qual.mrp = true; S.cupPop = { t: 'qual', n: c.name }; msg(S, 'pokal', 'Finale im ' + c.name + ' erreicht – damit spielen wir nächste Saison zusätzlich im ' + (S.reg ? cupName(S, 'mrp') : 'Bitburger-Pokal (Mittelrheinpokal)') + '!'); }
         xp(S, 10);
-        if (c.rn >= 6) { mcAdd(S, 'cuptitle'); S.cupPop = { t: 'win', n: c.name, mrp: c.k === 'kp' }; hypeUp(S, 1.5); ownPost(S, '🏆 POKALSIEGER! ' + svwN() + ' holt den ' + c.name + '! Rot-Grün feiert! 🔴🟢🍾', 'pokal'); S.hsSeason = (S.hsSeason || 0) + 0.5; (S.hsWhy = S.hsWhy || []).push(c.name + ' gewonnen (½ ★)'); S.hsAnim = (S.hsAnim || 0) + 1; c.won = true; c.alive = false; c.next = null; xp(S, 100); ach(S, 'pokal_' + c.k, c.name); S.fans = clamp(S.fans + 8, 0, 100); S.board = clamp(S.board + 8, 0, 100); msg(S, 'pokal', '🏆 POKALSIEG im ' + c.name + '!' + (c.k === 'mrp' ? ' Nächste Saison spielen wir im PRO Pokal!' : '')); if (c.k === 'mrp') S.qual.dfb = true; }
+        if (c.rn >= 6) { mcAdd(S, 'cuptitle'); skCoin(S, 3, c.name + '-Sieg'); S.cupPop = { t: 'win', n: c.name, mrp: c.k === 'kp' }; hypeUp(S, 1.5); ownPost(S, '🏆 POKALSIEGER! ' + svwN() + ' holt den ' + c.name + '! Rot-Grün feiert! 🔴🟢🍾', 'pokal'); S.hsSeason = (S.hsSeason || 0) + 0.5; (S.hsWhy = S.hsWhy || []).push(c.name + ' gewonnen (½ ★)'); S.hsAnim = (S.hsAnim || 0) + 1; c.won = true; c.alive = false; c.next = null; xp(S, 100); ach(S, 'pokal_' + c.k, c.name); S.fans = clamp(S.fans + 8, 0, 100); S.board = clamp(S.board + 8, 0, 100); msg(S, 'pokal', '🏆 POKALSIEG im ' + c.name + '!' + (c.k === 'mrp' ? ' Nächste Saison spielen wir im PRO Pokal!' : '')); if (c.k === 'mrp') S.qual.dfb = true; }
         else { drawCup(S, D, c); if (c.rn === 5) ach(S, 'pokal_finale', c.name, false); }
       } else { c.alive = false; c.next = null; c.rn++; cupFinishWithoutUs(S, D, c); }
     } else if (q.kind === 'rel') {
@@ -2314,6 +2341,7 @@ var MGR = (function () {
     var tz = 1; if (S.tmp.zus && S.tmp.zus.n > 0) { tz = 1 + S.tmp.zus.p / 100; S.tmp.zus.n--; }
     var closed = S.pitch.type === 'kunst' && S.pitch.age > S.pitch.life + 1 && o.home === true;
     var a = (S.fanbase / 4) * (0.4 + S.fans / 100) * pf * of * rnd(0.85, 1.15) * (1 + e.zus / 100) * tz * (closed ? 0.4 : 1);
+    if (skv(S, 'fmM') && o.comp === 'liga' && o.home !== false) a = Math.max(a, capacity(S, D) * 0.8);
     return Math.round(Math.min(capacity(S, D), Math.max(10, a)));
   }
 
@@ -2354,6 +2382,7 @@ var MGR = (function () {
     if (S.incoming && S.incoming.length) S.incoming = S.incoming.filter(function (x) { if (x.d > S.date) return true; S.players.push(x.p); x.sig.arrived = true; S.lastSigned = x.sig; msg(S, 'transfer', '🧳 ' + x.p.n + ' ist da und trainiert ab heute mit!'); return false; });
     S.players.filter(function (p) { return p.leaving && p.leaving.d <= S.date; }).forEach(function (p) { msg(S, 'transfer', '👋 ' + p.n + ' wechselt heute zu ' + p.leaving.club + '.'); removePlayer(S, p); });
     if (S.cash < 0 && (S.tb > 0 || S.sav > 0)) { var nd0 = -S.cash, f1 = Math.min(nd0, Math.max(0, S.tb)); S.tb -= f1; S.cash += f1; nd0 -= f1; var f2 = Math.min(nd0, Math.max(0, S.sav)); S.sav -= f2; S.cash += f2; }
+    cupBidDay(S, D);
     var d = S.date, e = eff(S, D);
     // Bauprojekte
     S.building = S.building.filter(function (b) { if (b.done <= d) { S.built[b.id] = true; if (b.id === 'naturrasen') S.pitch.type = 'natur'; msg(S, 'verein', '🏗️ Fertig: ' + (D.items[b.id] ? D.items[b.id].name : b.id) + '.'); return false; } return true; });
@@ -2905,7 +2934,7 @@ var MGR = (function () {
     switch (a) {
       case 'noop': break;
       case 'misClaim': { var MV = misView(S, D), mk = String(p.k || ''), mm = MV.daily.concat(MV.career).filter(function (x) { return x.id === mk; })[0]; if (!mm || mm.st !== 'done') err('Diese Mission ist noch nicht geschafft.');
-        if (mk.indexOf('d:') === 0) { if (!MV.dailyOn) err('Tagesmissionen gibt es ab Level ' + featLvl('tagesmissionen') + '.'); S.dm.got[mk.slice(2)] = 1; mcAdd(S, 'dmdone'); } else { if (!MV.careerOn) err('Karriere-Missionen gibt es ab Level ' + featLvl('missionen') + '.'); cmInit(S); var cix = +mk.slice(2); if (Math.floor(cix / 10) !== S.cms || S.cmc[cix]) err('Diese Mission ist nicht offen.'); S.cmc[cix] = 1; S.cmi = (S.cmi || 0) + 1; if (Object.keys(S.cmc).length >= Math.min(10, CMISS.length - S.cms * 10) && S.cms * 10 + 10 < CMISS.length) { cmStageOpen(S, S.cms + 1); msg(S, 'erfolg', '🏆 Karriere-Stufe ' + S.cms + ' abgeschlossen – Stufe ' + (S.cms + 1) + ' ist jetzt offen!'); } }
+        if (mk.indexOf('d:') === 0) { if (!MV.dailyOn) err('Tagesmissionen gibt es ab Level ' + featLvl('tagesmissionen') + '.'); S.dm.got[mk.slice(2)] = 1; mcAdd(S, 'dmdone'); if (Object.keys(S.dm.got).length >= 3 && S.dm.coin !== S.dm.day) { S.dm.coin = S.dm.day; skCoin(S, 1, 'Alle Tagesmissionen'); } } else { if (!MV.careerOn) err('Karriere-Missionen gibt es ab Level ' + featLvl('missionen') + '.'); cmInit(S); var cix = +mk.slice(2); if (Math.floor(cix / 10) !== S.cms || S.cmc[cix]) err('Diese Mission ist nicht offen.'); S.cmc[cix] = 1; S.cmi = (S.cmi || 0) + 1; if (Object.keys(S.cmc).length >= Math.min(10, CMISS.length - S.cms * 10) && S.cms * 10 + 10 < CMISS.length) { cmStageOpen(S, S.cms + 1); skCoin(S, 2, 'Karriere-Stufe ' + S.cms); msg(S, 'erfolg', '🏆 Karriere-Stufe ' + S.cms + ' abgeschlossen – Stufe ' + (S.cms + 1) + ' ist jetzt offen!'); } }
         info = misPay(S, mm.rw, mm.t);
         // Tagesmission: kleiner Nebeneffekt auf Follower, Fans und Moral
         if (mk.indexOf('d:') === 0) { var fo = rint(4, 12) + Math.round(Math.sqrt(S.follow || 0) * 0.15); followAdd(S, fo); S.fans = clamp((S.fans || 50) + 0.3, 0, 100); S.moral = clamp((S.moral || 60) + 0.5, 0, 100); info += ' · +' + fo + ' Follower'; }
@@ -3171,7 +3200,7 @@ var MGR = (function () {
       case 'liveGk': gkPick(S, D, p.pid); break;
       case 'gevClaim': { need(S, 'events'); var GE = gevView(S, D).filter(function (x) { return x.id === +p.id; })[0]; if (!GE) err('Event nicht gefunden.'); var GT = GE.tiers[+p.t | 0]; if (!GT || !GT.done) err('Diese Stufe ist noch nicht geschafft.'); if (GT.claimed) err('Schon abgeholt.'); if (gevNow(S) > addDays(GE.ends.slice(0, 10), 3)) err('Das Event ist vorbei.');
         S.evc = S.evc || {}; S.evc[GE.id] = S.evc[GE.id] || {}; S.evc[GE.id][GT.i] = 1; var gout = [];
-        if (GT.xp) { xp(S, GT.xp); gout.push('+' + GT.xp + ' XP'); } if (GT.cash) { book(S, 'Event-Prämie', GT.cash); gout.push('+' + euro(GT.cash)); } if (GT.jk) { S.jokers = (S.jokers || 0) + GT.jk; gout.push('+' + GT.jk + ' Joker'); } if (GT.hs) { S.hsPts = (S.hsPts || 0) + GT.hs * 0.5; gout.push('+' + GT.hs + ' halbe Sterne'); } if (GT.fol) { S.follow = (S.follow || 0) + GT.fol; gout.push('+' + GT.fol.toLocaleString('de-DE') + ' Follower'); }
+        if (GT.xp) { xp(S, GT.xp); gout.push('+' + GT.xp + ' XP'); } if (GT.cash) { book(S, 'Event-Prämie', GT.cash); gout.push('+' + euro(GT.cash)); } if (GT.jk) { S.jokers = (S.jokers || 0) + GT.jk; gout.push('+' + GT.jk + ' Joker'); } if (GT.hs) { S.hsPts = (S.hsPts || 0) + GT.hs * 0.5; gout.push('+' + GT.hs + ' halbe Sterne'); } if (GT.mc) { skCoin(S, GT.mc, 'Event: ' + (GE.title || '')); gout.push('+' + GT.mc + ' Manager Coins'); } if (GT.fol) { S.follow = (S.follow || 0) + GT.fol; gout.push('+' + GT.fol.toLocaleString('de-DE') + ' Follower'); }
         info = '🎉 ' + GE.title + ': ' + (gout.join(' · ') || 'geschafft!'); break; }
       case 'liveUndo': liveUndo(S); break;
       case 'instantMatch': { if (S.live && !S.live.done) err('Das Spiel läuft schon.'); liveStart(S, D); liveAutoRun(S, D); break; }
@@ -3379,6 +3408,21 @@ var MGR = (function () {
         break;
       }
       case 'pvAccept': { need(S, 'partner'); var po = (S.pvOffers || [])[+p.i]; if (!po || po.gone) err('Angebot nicht mehr gültig.'); if (S.pv && S.pv.to >= S.season) err('Du hast bereits einen Partnerverein.'); info = pvAccept(S, D, po); xp(S, 5); msg(S, 'verein', '🤝 ' + info); break; }
+      case 'skUp': {
+        var TT = SKTREE.filter(function (x) { return x[0] === p.k; })[0]; if (!TT) err('Unbekannte Rubrik.'); S.skt = S.skt || {}; var si0 = S.skt[TT[0]] || 0; if (si0 >= 25) err('Diese Rubrik ist komplett.');
+        if ((S.mlvl || 1) < skStepLvl(si0)) err('Diese Fähigkeit gibt es ab Manager-Level ' + skStepLvl(si0) + '.'); var sc0 = skStepCost(si0); if ((S.skc || 0) < sc0) err('Dafür brauchst du ' + sc0 + ' Manager Coin' + (sc0 > 1 ? 's' : '') + '.');
+        S.skc -= sc0; S.skt[TT[0]] = si0 + 1; var sf = skStepFx(TT, si0); info = TT[2] + ' ' + (si0 === 24 ? 'Meisterfähigkeit freigeschaltet: ' + TT[5] + '!' : 'Neue Fähigkeit: ' + skFxTxt(sf[0], sf[1]) + '.'); if (si0 === 24) xp(S, 50); break;
+      }
+      case 'cupBid': {
+        var cbk = p.c === 'mrp' ? 'mrp' : 'kp', CB = CUPBID[cbk], md0 = S.date.slice(5), inWin = md0 >= '08-01' || md0 <= '03-31';
+        if (!inWin) err('Bewerbungen sind von August bis Ende März möglich – entschieden wird Mitte April.');
+        S.cupBids = (S.cupBids || []).filter(function (b) { return b.s >= S.season; });
+        if (S.cupBids.some(function (b) { return b.c === cbk && b.s === S.season; })) err('Für ' + CB.n + ' hast du dich diese Saison schon beworben.');
+        var miss = cupBidMiss(S, D, cbk); if (miss.length) err('Noch nicht erfüllt: ' + miss.join(', ') + '.');
+        if (S.cash < CB.fee) err('Die Bewerbungsgebühr von ' + euro(CB.fee) + ' fehlt in der Kasse.');
+        book(S, 'Bewerbung Pokalfinale', -CB.fee); S.cupBids.push({ c: cbk, s: S.season, st: 'open' });
+        info = '📨 Bewerbung für das ' + cupName(S, cbk) + '-Finale ' + (S.season + 1) + '/' + String(S.season + 2).slice(2) + ' abgeschickt – Entscheidung Mitte April.'; break;
+      }
       case 'pvOffers': { need(S, 'partner'); if (S.pv && S.pv.to >= S.season) err('Du hast bereits einen Partnerverein.'); if (S.pvOffers && S.pvOffers.length) { info = 'Es liegen bereits Angebote vor.'; break; }
         if (!S.pvAsk || S.pvAsk.s !== S.season) S.pvAsk = { s: S.season, n: 0 }; if (S.pvAsk.n >= 3) err('Du hast diese Saison schon 3 Vereine angefragt – nächste Saison kannst du es wieder versuchen.');
         S.pvAsk.n++; var pvLeft = 3 - S.pvAsk.n, pvCh = clamp(0.45 + (S.spons || 50) / 400 + (S.lvl <= 5 ? 0.05 : 0), 0.35, 0.7);
@@ -3591,6 +3635,31 @@ var MGR = (function () {
   function srng(seed) { var x = (seed >>> 0) || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
   function hashS(str) { var h = 2166136261; str = String(str); for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
   function sPois(l, r) { l = clamp(l, 0.05, 8); var L = Math.exp(-l), k = 0, p = 1; do { k++; p *= r(); } while (p > L); return k - 1; }
+  // ============================================================ Fähigkeitsbaum (Manager Coins) – 6 Rubriken × 25 Stufen, fest nacheinander, pro Spielstand
+  var SKTREE = [
+    ['tk', 'Taktik & Spiel', '🧠', [['str', 0.15], ['att', 0.02], ['def', 0.02], ['late', 0.016]], ['str', 0.55], 'Meistertaktiker', 'Einmal pro Saison wird eine 1-Tor-Niederlage in der Liga noch zum Unentschieden.', ['Spielidee', 'Pressingfalle', 'Kompakte Kette', 'Joker von der Bank', 'Matchplan', 'Umschaltspiel', 'Standardvarianten', 'Gegneranalyse', 'Raumdeckung', 'Ballbesitz', 'Konterfalle', 'Taktiktafel']],
+    ['tr', 'Training & Jugend', '🏃', [['dev', 4], ['inj', -4], ['rec', 0.6], ['ydev', 5]], ['dev', 6], 'Wunderkind', 'Jede Saison kommt ein 5-Sterne-Talent in deine Academy.', ['Trainingsplan', 'Athletikcoach', 'Physio-Routine', 'Jugendförderung', 'Videoanalyse', 'Leistungsdiagnostik', 'Regeneration', 'Talentsichtung', 'Krafttraining', 'Ernährungsplan', 'Mentaltraining', 'Nachwuchskonzept']],
+    ['tf', 'Transfers & Scouting', '🔁', [['fee', 0.02], ['sal', 0.02], ['sell', 0.03], ['scout', 1]], ['fee', 0.04], 'Transfercoup', 'Einmal pro Saison zahlst du für einen Neuzugang keine Ablöse.', ['Verhandlungsgeschick', 'Scoutnetzwerk', 'Beraterkontakte', 'Gehaltsstruktur', 'Marktkenntnis', 'Schnäppchenjäger', 'Videoscouting', 'Ablösepoker', 'Datenanalyse', 'Ausstiegsklausel', 'Vertragskunst', 'Transferfenster']],
+    ['sp', 'Sponsoren & Finanzen', '💼', [['spons', 3], ['prize', 0.03], ['build', 0.03], ['merch', 0.03]], ['spons', 6], 'Mäzen', 'Jeden Monat überweist ein Gönner dem Verein Extra-Geld.', ['Netzwerken', 'Sponsorenpflege', 'Businessclub', 'Finanzplanung', 'Bauherrenwissen', 'Merch-Strategie', 'Werbepartner', 'Prämienverhandlung', 'Kostenkontrolle', 'Markenaufbau', 'Investorenpitch', 'Bilanzprofi']],
+    ['fm', 'Fans & Medien', '📣', [['zus', 3], ['ticket', 3], ['fol', 0.04], ['food', 3]], ['fol', 0.08], 'Ausverkauft', 'Ligaheimspiele sind immer mindestens zu 80 % ausgelastet.', ['Fannähe', 'Social Media', 'Stadionerlebnis', 'Pressearbeit', 'Fanclub-Pflege', 'Ticketing', 'Catering-Konzept', 'Influencer', 'Choreo-Support', 'Stadionsprecher', 'Fanfest', 'Kultstatus']],
+    ['mg', 'Manager', '🎩', [['xp', 0.03], ['priv', 0.06], ['coinS', 0.4], ['jk', 0.4]], ['xp', 0.05], 'Legende', 'Jeden Monat bekommst du einen Joker geschenkt.', ['Ehrgeiz', 'Selbstvermarktung', 'Karriereplan', 'Glückshand', 'Führungsstil', 'Medienprofi', 'Gehaltsverhandlung', 'Visionär', 'Ruhe bewahren', 'Ausstrahlung', 'Erfahrung', 'Charisma']]
+  ];
+  var SKN = { str: 'Teamstärke', att: 'Torgefahr', def: 'Abwehr', late: 'Schlussphase', dev: 'Spielerentwicklung', inj: 'Verletzungsrisiko', rec: 'Regeneration', ydev: 'Jugendentwicklung', fee: 'Ablösen', sal: 'Gehälter', sell: 'Verkaufserlöse', scout: 'Scouting', spons: 'Sponsorengeld', prize: 'Prämien & TV-Geld', build: 'Baukosten', merch: 'Merchandise', zus: 'Zuschauer', ticket: 'Ticketeinnahmen', fol: 'Follower', food: 'Catering', xp: 'Manager-XP', priv: 'Privatgehalt', coinS: 'Coins zum Saisonende', jk: 'Joker zum Saisonstart' };
+  function skStepFx(T, i) { if (i === 24) return [T[0] + 'M', 1]; if ((i + 1) % 5 === 0) return T[4]; return T[3][i % 4]; }
+  function skStepLvl(i) { return 1 + Math.floor(i * 14 / 24); }
+  function skStepCost(i) { return i < 8 ? 1 : i < 16 ? 2 : i < 22 ? 3 : 5; }
+  function skFxTxt(k, v) { if (/M$/.test(k)) return 'Meisterfähigkeit'; var pc = ['att', 'def', 'late', 'fee', 'sal', 'sell', 'prize', 'build', 'merch', 'fol', 'xp', 'priv'].indexOf(k) >= 0; var neg = k === 'fee' || k === 'sal' || k === 'build' || k === 'inj';
+    if (k === 'str') return '+' + String(v).replace('.', ',') + ' ' + SKN[k]; if (k === 'rec') return '+' + String(v).replace('.', ',') + ' ' + SKN[k]; if (k === 'scout') return 'schnellerer Scout'; if (k === 'coinS' || k === 'jk') return '+' + String(v).replace('.', ',') + ' ' + SKN[k];
+    var n = pc ? Math.round(v * 1000) / 10 : Math.abs(v); return (neg ? '−' : '+') + String(Math.abs(n)).replace('.', ',') + ' % ' + SKN[k]; }
+  var SKC = { sig: null, v: {} };
+  function skv(S, k) { var t = (S && S.skt) || null; if (!t) return 0; var sig = SKTREE.map(function (T) { return t[T[0]] || 0; }).join(','); if (SKC.sig !== sig) { var v = {}; SKTREE.forEach(function (T) { for (var i = 0; i < (t[T[0]] || 0); i++) { var f = skStepFx(T, i); v[f[0]] = (v[f[0]] || 0) + f[1]; } }); SKC = { sig: sig, v: v }; } return SKC.v[k] || 0; }
+  function skCoin(S, n, why) { if (!n) return; S.skc = (S.skc || 0) + n; S.skcLog = S.skcLog || []; S.skcLog.unshift([S.date, why, n]); if (S.skcLog.length > 30) S.skcLog.length = 30; }
+  function skView(S) {
+    var t = S.skt || {}, ml = S.mlvl || 1, spent = 0, tot = 0;
+    var trees = SKTREE.map(function (T) { var n = t[T[0]] || 0, steps = []; for (var i = 0; i < 25; i++) { var f = skStepFx(T, i), c = skStepCost(i); tot += c; if (i < n) spent += c; steps.push({ i: i, n: i === 24 ? T[5] : T[7][i % T[7].length] + ' ' + ['I', 'II', 'III'][Math.floor(i / T[7].length)], fx: i === 24 ? T[6] : skFxTxt(f[0], f[1]), c: c, lvl: skStepLvl(i), ms: (i + 1) % 5 === 0, st: i < n ? 'on' : i === n ? (ml < skStepLvl(i) ? 'lvl' : (S.skc || 0) < c ? 'coin' : 'next') : 'off' }); }
+      var sum = {}; for (var j = 0; j < n; j++) { var g = skStepFx(T, j); if (j < 24) sum[g[0]] = (sum[g[0]] || 0) + g[1]; } return { k: T[0], n: T[1], ic: T[2], lv: n, steps: steps, sum: Object.keys(sum).map(function (k) { return skFxTxt(k, Math.round(sum[k] * 1000) / 1000); }), master: n >= 25 ? T[5] : null }; });
+    return { coins: S.skc || 0, trees: trees, spent: spent, tot: tot, log: (S.skcLog || []).slice(0, 12) };
+  }
   // ============================================================ Spielerwerte (1–100): Fähigkeiten, Erfahrung, Regeneration, Verletzungsanfälligkeit, Persönlichkeit
   // Die Werte ergeben sich fest aus Name, Position und Stärke – ihr gewichteter Schnitt ist immer die Stärke. Training verschiebt sie (p.skd).
   var SKL = [['tem', 'Tempo', 'phy'], ['aus', 'Ausdauer', 'phy'], ['zwk', 'Zweikampf', 'def'], ['gra', 'Grätsche', 'def'], ['stl', 'Stellungsspiel', 'def'], ['kop', 'Kopfball', 'def'], ['pas', 'Passspiel', 'tec'], ['tec', 'Technik', 'tec'], ['fla', 'Flanken', 'tec'], ['sch', 'Schuss', 'off'], ['ref', 'Reflexe', 'tw'], ['fan', 'Fangsicherheit', 'tw'], ['ant', 'Antritt', 'phy'], ['tst', 'Stellungsspiel', 'tw'], ['abs', 'Abschlag', 'tw'], ['lin', 'Auf der Linie', 'tw']];
@@ -3612,12 +3681,12 @@ var MGR = (function () {
     SKL.forEach(function (s, i) { o[s[0]] = Math.round(clamp(str + raw[i] - c, 1, 100)); }); return o;
   }
   function skInfo(p) { var t = skTraits(p); return { sk: skillsOf(p), ex: skExp(p), rg: Math.round(skRegF(p) / 1.265 * 100), ip: t.ip, pers: t.pers }; }
-  var SKFOC = { technik: ['tec', 'pas', 'fla'], abschluss: ['sch', 'kop'], abwehr: ['zwk', 'gra', 'stl'], torwart: ['ref', 'fan', 'tst', 'abs', 'lin'], kondition: ['aus', 'tem', 'ant'], taktik: ['stl', 'pas'] };
+  var SKFOC = { aussen: ['fla', 'tem', 'ant'], standards: ['sch', 'fla', 'tec'], technik: ['tec', 'pas', 'fla'], abschluss: ['sch', 'kop'], abwehr: ['zwk', 'gra', 'stl'], torwart: ['ref', 'fan', 'tst', 'abs', 'lin'], kondition: ['aus', 'tem', 'ant'], taktik: ['stl', 'pas'] };
   function skTrain(p, g, focus) { var ks = SKFOC[focus]; if (!ks || !(g > 0)) return; p.skd = p.skd || {}; ks.forEach(function (k) { p.skd[k] = clamp((p.skd[k] || 0) + g * 5, -15, 15); }); }
   function skAt(p, k) { return skillsOf(p)[k] || p.str; }
-  function potVis(S) { return !!(S.scout && (S.scout.score || 0) >= 40); }
+  function potVis(S) { return !!(S.scout && (S.scout.score || 0) >= 40 - skv(S, 'scout') * 2); }
   // Watchlist: in 3–5 Tagen werden die Werte nach und nach aufgedeckt (fest gemischte Reihenfolge)
-  function wReveal(S, mp) { var w = (S.watch || []).filter(function (x) { return x.mid === mp.mid; })[0]; if (!w) return null; var rv = 3 + hashS(mp.n + '|rv') % 3, days = w.wd ? Math.max(0, diffDays(w.wd, S.date)) : 0; var ks = SKL.map(function (s) { return s[0]; }).concat(['_ex', '_tr']), N = ks.length; var n = days >= rv ? N : Math.floor(N * (days + 0.5) / (rv + 0.5)); var r = srng(hashS(mp.n + '|ord')), ord = ks.map(function (k) { return [k, r()]; }).sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; }); return { keys: ord.slice(0, n), n: n, all: N, left: Math.max(0, rv - days) }; }
+  function wReveal(S, mp) { var w = (S.watch || []).filter(function (x) { return x.mid === mp.mid; })[0]; if (!w) return null; var rv = Math.max(1, 3 + hashS(mp.n + '|rv') % 3 - Math.floor(skv(S, 'scout') / 3)), days = w.wd ? Math.max(0, diffDays(w.wd, S.date)) : 0; var ks = SKL.map(function (s) { return s[0]; }).concat(['_ex', '_tr']), N = ks.length; var n = days >= rv ? N : Math.floor(N * (days + 0.5) / (rv + 0.5)); var r = srng(hashS(mp.n + '|ord')), ord = ks.map(function (k) { return [k, r()]; }).sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; }); return { keys: ord.slice(0, n), n: n, all: N, left: Math.max(0, rv - days) }; }
   function mkSkills(S, mp) { var rv = wReveal(S, mp); if (!rv) return null; var I = skInfo(mp), o = { n: rv.n, all: rv.all, left: rv.left, sk: {} }; rv.keys.forEach(function (k) { if (k === '_ex') { o.ex = I.ex; o.rg = I.rg; } else if (k === '_tr') { o.ip = I.ip; o.pers = I.pers; } else o.sk[k] = I.sk[k]; }); return o; }
   function sGauss(r) { var u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
   function synthPlayers(S, D, team) {
@@ -3735,7 +3804,7 @@ var MGR = (function () {
   }
   // ============================================================ Training an Trainingstagen
   var TRAIN = {
-    abwehr: ['Abwehr', ['IV', 'RV', 'LV', 'DM', 'TW'], ['Zweikampf', 'Kopfball', 'Stellungsspiel']],
+    abwehr: ['Abwehr', ['IV', 'RV', 'LV', 'DM'], ['Zweikampf', 'Kopfball', 'Stellungsspiel']],
     sturm: ['Sturm', ['ST', 'RA', 'LA', 'OM'], ['Abschluss', 'Kombinationen', 'Konter']],
     aussen: ['Außenbahn', ['RM', 'LM', 'RA', 'LA', 'RV', 'LV'], ['Flanken', 'Tempo', '1-gegen-1']],
     mittelfeld: ['Mittelfeld', ['ZM', 'DM', 'OM', 'RM', 'LM'], ['Passspiel', 'Spielaufbau', 'Ballkontrolle']],
@@ -3750,10 +3819,12 @@ var MGR = (function () {
     var pos = T[1]; var out = []; var man = score != null; var good = (man ? 0.3 + score * 0.65 : 0.56) + (e.dev || 0) / 300 + (S.train.int === 'hart' ? -0.04 : 0);
     var ps = S.players.filter(function (p) { return !p.inj && !(p.loan && p.loan.to); });
     ps.forEach(function (p) {
+      // Nur wer betroffen ist, trainiert mit (z. B. Torwarttraining nur für Torhüter) – die anderen erholen sich leicht
+      if (pos && pos.indexOf(p.dp) < 0) { p.fit = clamp(p.fit + 1, 20, 100); return; }
       p.fit = clamp(p.fit - (t === 'kondition' ? rnd(5, 8) : rnd(2, 5)), 20, 100); p.fitCap = Math.min(100, (p.fitCap || 100) + (t === 'kondition' ? 1.5 : 0.6) * (mult || 1));
-      if (pos && pos.indexOf(p.dp) < 0) return;
       var neutral = man && R() < 0.25 - Math.abs(score - 0.5) * 0.3; if (neutral) return; var pct = 0.65 * (man ? rnd(0.002, 0.01) * (0.6 + score * 0.8) : (R() < 0.08 ? rnd(0.01, 0.02) : rnd(0.001, 0.008))) * (pos ? 1 : 0.5) * (p.age <= 23 ? 1.2 : p.age >= 31 ? 0.7 : 1); var sign = R() < good ? 1 : -1;
       var before = p.str; p.str = clamp(p.str * (1 + sign * pct * (mult || 1) * (sign > 0 ? 0.6 + 0.14 * (p.tal || 3) : 1)), 1, Math.max(p.pot + 1, p.str)); var d = Math.round((p.str - before) * 100) / 100;
+      if (d > 0) skTrain(p, d * 2, { abwehr: 'abwehr', sturm: 'abschluss', aussen: 'aussen', mittelfeld: 'technik', torwart: 'torwart', kondition: 'kondition', standards: 'standards', taktik: 'taktik' }[t]);
       if (Math.abs(d) >= 0.15) out.push({ n: p.n, pos: p.dp, d: d });
     });
     if (t === 'taktik') S.chem = { v: Math.min(2, ((S.chem && S.chem.v) || 0) + 0.3), until: addDays(S.date, 10) };
@@ -3982,7 +4053,9 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
   ];
   function shopItem(id, S) { var r = SHOP.filter(function (x) { return x[0] === id; })[0]; return r ? { id: r[0], cat: r[1], n: rxL(S, r[2]), price: r[3], rent: r[4], ic: r[5] } : null; }
   function mgrMonthly(S, D) {
-    mgrInit(S, D); var sal = S.mc.sal; if (S.salCut) { sal = Math.round(sal * 0.75); S.salCut = 0; msg(S, 'finanzen', '✂️ Dein Gehalt wurde diesen Monat um 25 % gekürzt (zweimal hintereinander Sofortergebnis in der 2. Halbzeit).'); } book(S, 'Trainergehalt', -sal); S.priv.cash += sal; S.priv.log.unshift([S.date, 'Gehalt', sal]);
+    mgrInit(S, D); var sal = S.mc.sal; if (S.salCut) { sal = Math.round(sal * 0.75); S.salCut = 0; msg(S, 'finanzen', '✂️ Dein Gehalt wurde diesen Monat um 25 % gekürzt (zweimal hintereinander Sofortergebnis in der 2. Halbzeit).'); } book(S, 'Trainergehalt', -sal); S.priv.cash += sal; S.priv.log.unshift([S.date, 'Gehalt', sal]); var skpb = Math.round(sal * skv(S, 'priv')); if (skpb > 0) { S.priv.cash += skpb; S.priv.log.unshift([S.date, 'Bonus (Fähigkeiten)', skpb]); }
+    if (skv(S, 'spMx') || skv(S, 'spM')) book(S, 'Mäzen', [0, 250000, 120000, 60000, 30000, 15000, 8000, 5000, 3000, 2000, 1500, 1000, 800][S.lvl] || 800);
+    if (skv(S, 'mgM')) { S.jokers = (S.jokers || 0) + 1; msg(S, 'erfolg', '🃏 Legende: Dein monatlicher Joker ist da.'); }
     if (S.priv.rent) { var it = shopItem(S.priv.rent, S); if (S.priv.cash >= it.rent) { S.priv.cash -= it.rent; S.priv.log.unshift([S.date, 'Miete ' + it.n, -it.rent]); } else { infoMail(S, 'Vermieter', 'Kündigung: ' + it.n, 'Die Miete konnte nicht bezahlt werden. Der Mietvertrag für „' + it.n + '“ ist beendet.', 'info'); S.priv.rent = null; } }
     if (S.priv.log.length > 30) S.priv.log.length = 30;
     if (!S.mc.offer && mgrMonthsLeft(S) <= 12 && S.board >= 70 && R() < 0.35 && mgrCan(S, D).ok) {
@@ -4004,7 +4077,7 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
   function blockingMails(S) { return (S.mails || []).filter(function (m) { return !m.answered && !m.info; }).length; }
   function levelUp(S) {
     var nl = levelOf(S.xp || 0).lvl; if (nl <= (S.mlvl || 1)) return null;
-    var old = S.mlvl || 1; S.mlvl = nl;
+    var old = S.mlvl || 1; S.mlvl = nl; skCoin(S, nl - old, 'Manager-Level ' + nl);
     // Neu freigeschaltete Bereiche wieder als NEU markieren (Highlight in der Navigation)
     if (!S.featSeen) { S.featSeen = {}; FEATURES.forEach(function (f) { if (f[0] <= old) S.featSeen[f[1]] = true; }); } FEATURES.forEach(function (f) { if (f[0] > old && f[0] <= nl) delete S.featSeen[f[1]]; });
     var feats = FEATURES.filter(function (f) { return f[0] > old && f[0] <= nl && !(f[1] === 'aufstellung' && S.aufstOk); }).map(function (f) { return { lvl: f[0], k: f[1], n: f[2], d: f[3] }; });
@@ -4103,7 +4176,7 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
       youthTeams: ['u15', 'u17', 'u19'].filter(function (k) { return S.built[k]; }),
       achv: S.achv || [], achDef: ACH, spons: SPONS, sponsorsAll: S.sponsors, captain: S.captain, pen: S.pen, loanInfo: S.loan, fcs: S.fcs || [], fcNext: (S.fcs || []).length < FC_STEPS.length ? { pct: FC_STEPS[(S.fcs || []).length][1], need: FC_STEPS[(S.fcs || []).length][3] } : null, dk: S.dk ? { price: S.dk.price, hist: S.dk.hist, canSet: (S.hist || []).length > 0 && S.dk.setS !== S.season, fair: DK_FAIR[S.lvl] || 50 } : null, sellPop: S.sellPop || null, matchWx: S.mq && S.mq.length ? wxFor(S.mq[0].o.d || S.date, S.mq[0].o.opp && S.mq[0].o.opp.n) : null, talkOpts: talkOpts(S), hollyOn: hollyOn(S), holly: S.holly ? S.holly.list.filter(function (x) { return x.exp >= S.date; }) : [], hollyStar: S.hollyStar || null, streamFol: S.streamFol || 0, inhPop: S.inhPop || null, socUsed: socUsed(S), certPop: S.certPop || null, courseSpent: S.courseSpent || 0, qualF: qualF(S), tipPop: S.tipPop || null, daily: S.daily ? { streak: S.daily.streak, open: !!S.daily.open } : null, dailyLast: S.dailyLast || null, jokIntro: S.jokIntro === 1 && !S.live, starIntro: S.starIntro === 1 && !S.live && S.jokIntro !== 1, ag: S.ag || null, agWhy: S.ag ? [] : agCheck(S, D), agBase: agBase(S, D), bond: S.bond || null, bondOffer: S.bondOffer || null, bondAskDone: S.bondAskW === wkStart(S), credMax: nice(L.budget * 0.6), stadion: S.stadion, jersey: S.jersey,
       top: top, out: { inj: S.players.filter(function (p) { return p.inj > 0; }).map(pub), ban: S.players.filter(function (p) { return p.ban > 0; }).map(pub), loanOut: S.players.filter(function (p) { return p.loan && p.loan.to; }).map(pub), loanIn: S.players.filter(function (p) { return p.loan && p.loan.from; }).map(pub) },
-      pvAskLeft: 3 - (S.pvAsk && S.pvAsk.s === S.season ? S.pvAsk.n : 0), likeSm: S.likeSm || 0, tplans: TPLANS, dev: !!S._dev, devOk: !!S._devOk, potVis: potVis(S), scoutScore2: S.scout ? Math.round(S.scout.score || 0) : 0, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
+      pvAskLeft: 3 - (S.pvAsk && S.pvAsk.s === S.season ? S.pvAsk.n : 0), likeSm: S.likeSm || 0, skill: skView(S), seasonNum: S.season, stad: (function () { var e0 = eff(S, D), bids = (S.cupBids || []).filter(function (b) { return b.s >= S.season - 1; }); if (!S.stadBuilt) S.stadBuilt = 1952 + hashS(String(S.club || 'x')) % 46; return { built: S.stadBuilt, inc: S.stadInc && S.stadInc.s === S.season ? S.stadInc : { s: S.season, t: 0, f: 0, n: 0, prev: S.stadInc && S.stadInc.s === S.season - 1 ? { t: S.stadInc.t, f: S.stadInc.f, n: S.stadInc.n } : null }, avgAtt: S.attLog && S.attLog.length ? Math.round(S.attLog.reduce(function (a, b) { return a + b; }, 0) / S.attLog.length) : 0, ticket: S.ticket, flut: e0.flut, bids: bids, host: S.cupHost || null, req: Object.keys(CUPBID).map(function (k) { var B = CUPBID[k]; return { k: k, n: cupName(S, k), fee: B.fee, cap: B.cap, natur: B.natur, items: B.items.map(function (id) { return D.items[id] ? D.items[id].name : id; }), miss: cupBidMiss(S, D, k), cash: B.cash, fol: B.fol, xp: B.xp }; }), win: S.date.slice(5) >= '08-01' || S.date.slice(5) <= '03-31' }; })(), tplans: TPLANS, dev: !!S._dev, devOk: !!S._devOk, potVis: potVis(S), scoutScore2: S.scout ? Math.round(S.scout.score || 0) : 0, ptsTotal: S.ptsTotal || 0, wins: S.wins || 0, draws: S.draws || 0, losses: S.losses || 0, start: S.start, peak: S.peak,
 
       club: D.club, mgr: S.mgr, date: S.date, dateF: fmtD(S.date), season: S.season + '/' + String(S.season + 1).slice(2), lvl: S.lvl, liga: L.name, ligaShort: L.short,
       cash: Math.round(S.cash), fans: Math.round(S.fans), board: Math.round(S.board), moral: Math.round(S.moral), goal: S.goal ? GOALS[S.goal] : '', fired: S.fired, firedOn: S.firedOn || null, fireWhy: S.fireWhy || null, firedTxt: S.fired ? ((S.inbox || []).filter(function (m) { return /entlassen/.test(m.t || m.text || ''); })[0] || {}).t || '' : '', warnPop: S.warnPop || null, jokers: S.jokers || 0, gev: gevView(S, D), power: S.power == null ? 100 : S.power, jokNew: !!S.jokNew,

@@ -2,7 +2,7 @@
 var BG = [['titel', 'Titelbild Startseite (ganze Breite)'], ['publisher', 'Publisher-Logo oben rechts'], ['entwickler', 'Profilbild „Entwickler“ im Chat'],
   ['saisonziel', 'Popup Saisonziel'], ['hauptsponsor', 'Popup Hauptsponsor'], ['ausstatter', 'Popup Ausstatter'], ['budget', 'Popup Saisonbudget'], ['presse', 'Popup Pressekonferenz'], ['vorbereitung', 'Popup Saisonvorbereitung'], ['vorbereitung_winter', 'Titelbild Wintervorbereitung'],
   ['aufstieg', 'Saisonabschluss Aufstieg'], ['klassenerhalt', 'Saisonabschluss Klassenerhalt'], ['abstieg', 'Saisonabschluss Abstieg'], ['wahl', 'Saisonende: Wahl & Auszählung'], ['ligen', 'Saisonende: Ligenübersicht'], ['bestenliste', 'Saisonende: Bestenlisten'], ['vorstand', 'Saisonende: Vorstandsbewertung'], ['neue_saison', 'Saisonstart: Ladebildschirm'], ['entlassung', 'Entlassung'], ['talent', 'Popup Neues Talent / Sterne'],
-  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'], ['vertrag_verl', 'Ersatzbild Vertragsverlängerung'],
+  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'], ['vertrag_verl', 'Ersatzbild Vertragsverlängerung'], ['rote_karte', 'Titelbild Rote Karte (Live-Spiel)'],
   ['krypto_gewinn', 'Fazit Krypto mit Gewinn'], ['krypto_verlust', 'Fazit Krypto mit Verlust'], ['aktie_gewinn', 'Fazit Aktie mit Gewinn'], ['aktie_verlust', 'Fazit Aktie mit Verlust'],
   ['karte_academy', 'Hintergrund Karte Academy-Campus'], ['karte_verein', 'Hintergrund Karte Vereinsgelände'], ['karte_med', 'Hintergrund Karte Med-Abteilung']];
 var SCOUT = [['region', 'Regionales Scout-Netzwerk'], ['video', 'Video-Analyse-Software'], ['daten', 'Talent-Datenbank'], ['sichtung', 'Leistungsdiagnostik & Sichtungstage'], ['tw', 'Torwart-Spezialscout'], ['abwehr', 'Abwehr-Scout'], ['sturm', 'Offensiv-Scout'], ['intl', 'Internationales Scouting']];
@@ -36,7 +36,7 @@ function loginGate(err) {
 function admLogin() { var m = ($('#lgm').value || '').trim(), pw = $('#lgp').value || ''; if (!m || !pw) return toast('E-Mail und Passwort eingeben.', true); authSignIn(m, pw).then(function () { start(); }).catch(function (e) { loginGate(e.message || 'Anmeldung fehlgeschlagen.'); }); }
 function admLogout() { authSignOut(); loginGate(); }
 function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a> <button class="btn" onclick="admLogout()">Anderes Konto</button></div>'; }
-function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys, cfg: showCfg, bal: showBal, ev: showEv, fl: showFl })[k](); }
+function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys, cfg: showCfg, bal: showBal, ev: showEv, fl: showFl, inj: showInj })[k](); }
 
 /* ---------- Übersicht */
 function showOver() {
@@ -314,7 +314,7 @@ var CF = {}, CFI = null;
 function cfgLoad() { return Promise.all([rest('game_config?select=key,value'), loadMap()]).then(function (a) { var rows = a[0]; CF = {}; (rows || []).forEach(function (r) { CF[r.key] = r.value; }); MGR.applyCfg(D0, rows || []); CFI = MGR.cfgInfo(D0); }); }
 function cfgPut(key, val) {
   var p = val == null ? rest('game_config?key=eq.' + encodeURIComponent(key), { method: 'DELETE' }) : rest('game_config', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: key, value: val, updated_at: new Date().toISOString(), updated_by: SESSION.user.id } });
-  return p.then(function () { return game('cfgReload', {}).catch(function () {}); }).then(function () { toast(val == null ? 'Standardwerte wiederhergestellt ✓' : 'Gespeichert – gilt ab sofort im Spiel ✓'); showCfg(true); }).catch(function (e) { toast(e.message, true); });
+  return p.then(function () { return game('cfgReload', {}).catch(function () {}); }).then(function () { toast(val == null ? 'Standardwerte wiederhergestellt ✓' : 'Gespeichert – gilt ab sofort im Spiel ✓'); if (SECTION === 'inj') showInj(); else showCfg(true); }).catch(function (e) { toast(e.message, true); });
 }
 function cfgNum(sel) { var o = {}; document.querySelectorAll(sel).forEach(function (i) { var v = i.value.trim(); if (v === '') return; var k = i.dataset.k, f = i.dataset.f; if (f) { o[k] = o[k] || {}; o[k][f] = i.type === 'number' ? +v : v; } else o[k] = i.type === 'number' ? +v : v; }); return o; }
 function nIn(k, f, v, def, w) { var chg = def != null && v != null && v !== '' && +v !== +def; return '<input type="number" class="cfi' + (chg ? ' chg' : '') + '" data-k="' + k + '"' + (f != null ? ' data-f="' + f + '"' : '') + ' value="' + (v == null ? '' : v) + '" placeholder="' + (def == null ? '' : def) + '" style="width:' + (w || 90) + 'px"' + (chg ? ' title="Standard: ' + def + '"' : '') + '>'; }
@@ -402,3 +402,21 @@ function showFl() {
   }).catch(function (er) { $('#main').innerHTML = '<div class="card err">' + esc(er.message) + '</div>'; });
 }
 function flSave() { var v = ($('#fl_tx').value || '').trim(); var p = !v || v === FL_DEF ? rest('game_config?key=eq.flWelcome', { method: 'DELETE' }) : rest('game_config', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: { key: 'flWelcome', value: v, updated_at: new Date().toISOString(), updated_by: SESSION.user.id } }); p.then(function () { toast('Gespeichert ✓'); }).catch(function (e) { toast(e.message, true); }); }
+
+/* ---------- Verletzungen: Katalog (Name, Häufigkeit, Ausfallspanne, Arzt) – Schlüssel „inj“ in game_config */
+var INJA = null;
+function showInj() {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  cfgLoad().then(function () { INJA = JSON.parse(JSON.stringify(CFI.inj || [])); injDraw(); }).catch(function (e) { $('#main').innerHTML = '<div class="card">Fehler: ' + esc(e.message) + '</div>'; });
+}
+function injDraw() {
+  var A = INJA, tot = A.reduce(function (a, x) { return a + Math.max(0, +x[1] || 0); }, 0) || 1;
+  var row = function (x, i) { var pc = (Math.max(0, +x[1] || 0) / tot * 100); return '<tr><td>' + (i + 1) + '</td><td><input class="ij" data-i="' + i + '" data-f="0" value="' + esc(x[0]) + '" style="width:220px"></td><td><input type="number" step="0.1" min="0" class="ij" data-i="' + i + '" data-f="1" value="' + x[1] + '" style="width:70px"> <span class="muted" style="font-size:11px">' + pc.toFixed(1) + ' %</span></td><td><input type="number" min="1" class="ij" data-i="' + i + '" data-f="2" value="' + x[2] + '" style="width:64px"> – <input type="number" min="1" class="ij" data-i="' + i + '" data-f="3" value="' + x[3] + '" style="width:64px"> Tage</td><td><input type="number" step="0.1" min="0" class="ij" data-i="' + i + '" data-f="4" value="' + x[4] + '" style="width:64px" title="0 = kein Arzt möglich"></td><td><input type="number" min="0" max="80" class="ij" data-i="' + i + '" data-f="5" value="' + x[5] + '" style="width:64px"> %</td><td><button class="btn ghost" onclick="injDel(' + i + ')">✕</button></td></tr>'; };
+  $('#main').innerHTML = '<div class="card"><h3>🩹 Verletzungen (' + A.length + ')</h3><p class="muted" style="font-size:12px">Häufigkeit = Gewicht (je höher, desto öfter; der Anteil steht daneben). Ausfall = Spanne in Tagen (das Medizin-Personal verkürzt sie zusätzlich). Arzt-Faktor = Kosten für den Spezialisten im Verhältnis zum Standardpreis, <b>0 = kein Arzt möglich</b>. Arzt-Minderung = höchstens so viel Prozent der Ausfallzeit spart ein Arztbesuch (alle 14 Tage einmal, ab 10 Tagen Ausfall).</p>' +
+    '<div style="overflow:auto"><table class="t"><tr><th>#</th><th>Name</th><th>Häufigkeit</th><th>Ausfall</th><th>Arzt-Faktor</th><th>Arzt-Minderung</th><th></th></tr>' + A.map(row).join('') + '</table></div>' +
+    '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn ghost" onclick="injAdd()">＋ Verletzung hinzufügen</button><button class="btn" onclick="injSave()">Speichern</button>' + (CF.inj ? '<button class="btn ghost" onclick="if(confirm(\'Alle Verletzungen auf Standard zurücksetzen?\'))cfgPut(\'inj\',null)">Standard wiederherstellen</button>' : '') + '</div></div>';
+}
+function injRead() { document.querySelectorAll('.ij').forEach(function (el) { var x = INJA[+el.dataset.i], f = +el.dataset.f; if (!x) return; x[f] = f === 0 ? String(el.value || '').trim().slice(0, 60) : Math.max(0, +el.value || 0); }); return INJA; }
+function injAdd() { injRead(); INJA.push(['Neue Verletzung', 1, 5, 10, 1, 20]); injDraw(); }
+function injDel(i) { if (!confirm('Verletzung löschen?')) return; injRead(); INJA.splice(i, 1); injDraw(); }
+function injSave() { var A = injRead().filter(function (x) { return x[0]; }).map(function (x) { var a = +x[2] || 1, b = Math.max(a, +x[3] || a); return [x[0], +x[1] || 0, a, b, +x[4] || 0, Math.min(80, +x[5] || 0)]; }); if (A.length < 3) { toast('Mindestens 3 Verletzungen', true); return; } cfgPut('inj', A); }

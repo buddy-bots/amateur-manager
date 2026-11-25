@@ -23,7 +23,7 @@ var GROUPS = [
   ['jugendG', 'Academy', [['jugend', 'Academy', 'academy'], ['partner', 'Partnerverein', 'partner'], ['scout', 'Scouting', 'scouting'], ['jcamps', 'Internationale Camps', 'jcamps']]], ['kal', 'Kalender'], ['liga', 'Liga'], ['pokal', 'Pokal'], ['events', 'Events', null, 'events'],
   ['finanzen', 'Finanzen', [['fin', 'Budget'], ['transfer', 'Transfers', 'transfers'], ['spons', 'Sponsoren', 'sponsor1'], ['ausstatter', 'Ausstatter & Partner', 'ausbau']]],
   ['vereinG', 'Verein', [['verein', 'Vereinsgelände'], ['stadion', 'Stadion'], ['fans', 'Fans'], ['erfolge', 'Erfolge'], ['news', 'Nachrichten'], ['masc', 'Maskottchen', 'maskottchen'], ['med', 'Med. Abteilung', 'med']]],
-  ['managerG', 'Manager', [['manager', 'Profil'], ['skills', 'Fähigkeiten'], ['privat', 'Privater Bereich', 'privat'], ['missionen', 'Missionen', 'missionen'], ['psponsor', 'Persönlicher Sponsor', 'psponsor'], ['kurse', 'Lehrgänge', 'lehrgang']]]
+  ['managerG', 'Manager', [['manager', 'Profil'], ['skills', 'Fähigkeiten'], ['privat', 'Privater Bereich', 'privat'], ['vkauf', 'Vereine kaufen', 'privat'], ['missionen', 'Missionen', 'missionen'], ['psponsor', 'Persönlicher Sponsor', 'psponsor'], ['kurse', 'Lehrgänge', 'lehrgang']]]
 ];
 function tabFeat(t) { var f = null; GROUPS.forEach(function (g) { if (g[0] === t && g[3]) f = g[3]; (g[2] || []).forEach(function (s) { if (s[0] === t) f = s[2] || null; }); }); return f; }
 function groupOf(t) { var r = t; GROUPS.forEach(function (g) { if (g[0] === t) r = g[0]; (g[2] || []).forEach(function (s) { if (s[0] === t) r = g[0]; }); }); return r; }

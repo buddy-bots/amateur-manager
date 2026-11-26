@@ -350,7 +350,7 @@ function homeInfo() {
   return 'Angemeldet als <b>' + esc(ME.name) + '</b> · ' + (ME.admin ? '<a href="admin.html" style="color:var(--g)">Admin</a> · ' : '') + '<a href="#" onclick="logout();return false" style="color:var(--g)">Abmelden</a>';
 }
 function startScreen() { document.body.classList.remove('gbg');
-  V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg();
+  V = null; S = null; SAVEID = null; ST.screen = 'start'; stopIg(); try { amVP(false); } catch (e) {}
   $('#app').innerHTML = '<div class="titlewrap">' + (typeof VERSION === 'string' && VERSION ? '<div class="verbadge">' + esc(VERSION) + '</div>' : '') + fsBtn('fsstart') + (imgOf('bg', 'publisher') ? '<div class="pubbadge"><img src="' + imgOf('bg', 'publisher') + '" alt="Publisher"></div>' : '') + '' + (function () { var ts = titleSrc(), ph = ts === 'PH'; return '<img class="titleimg' + (ph ? ' ph' : '') + '" src="' + (ph ? TITLEIMG : ts) + '" onload="if(!this.classList.contains(\'ph\'))this.style.opacity=1;titleFit()" onerror="if(this.src!==TITLEIMG){this.classList.remove(\'ph\');this.src=TITLEIMG}" style="opacity:0;transition:opacity .4s" alt="Amateur Manager">'; })() + '' +
     '<div class="tbtns"><button class="pri" style="background:var(--g);color:#14200c" onclick="startNew()">Neues Spiel</button><button onclick="startLoad()">Spiel laden</button><button onclick="langPick()" title="Sprache / Language">' + flagImg(LFLAG[(userSet && userSet().lang) || 'de'] || 'de', 16) + '</button></div>' +
     '<div class="legal"><a href="impressum.html" target="_blank">Impressum</a> · <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · <span title="Logos, Wappen, Grafiken und Bilder wurden mit KI erstellt">🤖 Grafiken mit KI erstellt</span></div></div>';
@@ -363,7 +363,7 @@ function refreshHome() {
     HOME = r; if (ST.screen === 'start') drawBoard();
   });
 }
-function drawBoard() {
+function drawBoard() { try { amVP(false); } catch (e) {}
   var B = (HOME && HOME.board) || [], per = 5, pages = Math.max(1, Math.ceil(B.length / per)); ST.boardPage = Math.min(ST.boardPage, pages - 1);
   var list = B.slice(ST.boardPage * per, ST.boardPage * per + per); var el = $('#board'); if (!el) return;
   $('#bcount').textContent = B.length ? B.length + ' Manager' : '';
@@ -670,16 +670,28 @@ function deMapLand(land) {
   return '<div class="mapbar"><button onclick="cpLand(\'\')">← Deutschland</button><b>' + esc(land) + '</b>' + (CP.kreis ? '<span>Kreis ' + esc(kName(CP.kreis)) + ' <a href="javascript:void 0" onclick="cpKreis(\'\')">✕</a></span>' : '<span class="muted">Tipp auf deinen Kreis</span>') + '</div>' +
     '<svg class="zoom" viewBox="' + (bx[0] - pad).toFixed(1) + ' ' + (bx[1] - pad - lift).toFixed(1) + ' ' + (w + pad * 2).toFixed(1) + ' ' + (h + pad * 2 + lift).toFixed(1) + '">' + mapDefs() + '<path d="' + l[1] + '" transform="' + sc + '" fill="#000" opacity=".45" filter="url(#mblur)"/>' + walls + kre + lab + mapPin(lift, w / 260) + '</svg>';
 }
+// Ladebildschirm nach der Vereinswahl: 15 Sekunden, kündigt das Spiel und wechselnde Features an
+var LDFEAT = [['🏟️', 'Dein Stadion wächst mit', 'Vom Sportplatz zur Arena – Ebene für Ebene, Rang für Rang.'], ['🧒', 'Eigene Jugend', 'U15, U17, U19 mit eigener Liga – hol die Besten in die Erste.'], ['📈', 'Live-Spiele mit xG', 'Wechsle, stell um, reagier auf Rote Karten – in Echtzeit.'], ['🌳', 'Fähigkeitsbaum', '150 Fähigkeiten in 6 Rubriken – und ganz innen wartet God Mode.'], ['💼', 'Vereine kaufen', 'Werde Investor, Mehrheitseigner – oder kauf gleich ganze Vereine.'], ['🏆', 'Freundesliga', 'Jede Woche gegen deine Freunde um Punkte und Manager Coins.'], ['👕', 'Trikot-Designer', 'Heim, Auswärts, Torwart – Design, Farben, Sponsor, alles deins.'], ['🩺', 'Medizin-Campus', 'Physio, MRT und Reha – damit deine Stars schneller zurück sind.'], ['🤝', 'Transfers & Verhandlungen', 'Wandervogel oder Vereinstreu? Jeder Spieler tickt anders.'], ['🎓', 'Trainerlizenzen', 'Von der C-Lizenz bis zum Fußballlehrer – Schritt für Schritt nach oben.']];
+function startLoader(club) { var u = imgOf('bg', 'spielstart'), t0 = Date.now(), dur = 15000, fin = null, dead = false, fi = Math.floor(Math.random() * LDFEAT.length);
+  var el = document.createElement('div'); el.className = 'ldscr'; el.innerHTML = '<div class="ldbg"' + (u ? ' style="background-image:url(&quot;' + driveImg(u, 1600) + '&quot;)"' : '') + '></div><div class="ldglow"></div><div class="ldin"><div class="ldtag">Amateur Manager</div><div class="ldclub">' + (club ? esc(club) : 'Dein Verein') + '</div><div class="ldsub">Die Saison beginnt – mach dich bereit.</div><div class="ldfeat" id="ldfeat"></div><div class="ldbar"><i id="ldfill"></i></div><div class="ldmeta"><span id="ldtxt">Spielplan wird erstellt …</span><b id="ldpc">0 %</b></div></div>';
+  document.body.appendChild(el);
+  var STEPS = ['Spielplan wird erstellt …', 'Kader wird zusammengestellt …', 'Gegner werden gescoutet …', 'Sponsoren melden sich …', 'Platzwart mäht den Rasen …', 'Fans strömen ins Stadion …', 'Anpfiff gleich!'];
+  var feat = function () { var f = LDFEAT[fi++ % LDFEAT.length], b = $('#ldfeat'); if (!b) return; b.classList.remove('in'); void b.offsetWidth; b.innerHTML = '<span class="ldfi">' + f[0] + '</span><div><b>' + f[1] + '</b><small>' + f[2] + '</small></div>'; b.classList.add('in'); };
+  feat(); var fT = setInterval(feat, 2600);
+  var tick = setInterval(function () { var pc = Math.min(100, (Date.now() - t0) / dur * 100); if (fin && pc < 100 && Date.now() - t0 > 4000) { } var f = $('#ldfill'), p = $('#ldpc'), tx = $('#ldtxt'); if (f) f.style.width = pc + '%'; if (p) p.textContent = Math.floor(pc) + ' %'; if (tx) tx.textContent = STEPS[Math.min(STEPS.length - 1, Math.floor(pc / 100 * STEPS.length))]; if (pc >= 100 && fin) end(); }, 80);
+  var end = function () { if (dead) return; dead = true; clearInterval(tick); clearInterval(fT); var cb = fin; el.classList.add('out'); setTimeout(function () { el.remove(); }, 650); cb(); };
+  return { done: function (cb) { fin = cb; if (Date.now() - t0 >= dur) end(); }, abort: function () { dead = true; clearInterval(tick); clearInterval(fT); el.remove(); } }; }
 function createGame() {
   if (!CP.team) return toast('Bitte zuerst deinen Verein suchen.', true);
   var nd = MGR.LIGA_LVL[(CP.info || {}).eb] || 0; if (nd >= 999) return toast('🔒 Vereine ab der Regionalliga sind im Amateur Manager nicht wählbar.', true); if (nd && cpMyLvl() < nd) return toast('🔒 Diese Liga kannst du erst ab Manager-Level ' + nd + ' wählen.', true);
   var sp = $('#selfpos') ? $('#selfpos').value : '';
-  loading(true); game('new', { self: sp ? { pos: sp } : null, team: CP.team.id }).then(function (r) {
+  closePop(); var LD = startLoader(CP.team.name || '');
+  game('new', { self: sp ? { pos: sp } : null, team: CP.team.id }).then(function (r) {
     SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = false; S = r.state; NOTE = { levelUp: null };
     // erst alles laden, dann Spiel und Saisonziel zusammen zeigen (kein kurzes Aufblitzen des Spielmenüs)
-    var go2 = function () { loading(false); closePop(); ST.tab = 'home'; ST.screen = 'game'; V = MGR.view(S, D); render(); afterUpdate(); };
+    var go2 = function () { LD.done(function () { closePop(); ST.tab = 'home'; ST.screen = 'game'; V = MGR.view(S, D); render(); afterUpdate(); }); };
     dailyKick().then(go2, go2);
-  }).catch(function (x) { loading(false); toast(x.message, true); });
+  }).catch(function (x) { LD.abort(); toast(x.message, true); });
 }
 function startLoad() {
   if (needLogin('load')) return;

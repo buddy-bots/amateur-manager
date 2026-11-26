@@ -67,7 +67,7 @@ function navHTML(extra) {
     return '<button data-g="' + g[0] + '" class="' + (on ? 'on' : '') + (badge.indexOf('newb') >= 0 ? ' hasnew' : '') + '">' + g[1] + (sub ? ' ▾' : '') + badge + '</button>';
   }).join('') + (extra || '') + '</nav>';
 }
-function render(keepScroll) {
+function render(keepScroll) { try { amVP(true); } catch (e) {}
   if (!V) return startScreen();
   ST.screen = 'game'; var sx = window.scrollY;
   applyBg();

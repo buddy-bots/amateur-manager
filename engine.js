@@ -1561,14 +1561,15 @@ var MGR = (function () {
   // Spielertrainer: immer mit Abstand der Beste der Liga (5 Sterne, wächst mit jeder Liga mit)
   function selfBoost(S, D) { var L = D.lv[S.lvl]; if (!L) return; S.players.forEach(function (p) { if (!p.self) return; var best = Math.max.apply(null, S.players.filter(function (q) { return !q.self; }).map(function (q) { return q.str; }).concat([L.hi])); p.str = Math.min(99, Math.max(p.str, best + 8, L.hi + 10)); p.tal = 5; p.pot = 99; if (p.ce < S.season + 1) p.ce = S.season + 10; }); }
   function startSeason(S, D, first) { selfBoost(S, D); if (!first) { ownSeason(S, D); try { ytAge(S, D); } catch (ya) { } }
+    if (S.expLvl != null && S.lvl !== S.expLvl) { var dl = S.expLvl - S.lvl; S.players.forEach(function (p) { p.exAdj = clamp((p.exAdj || 0) - dl * 1.2, -3, 0); }); if (dl > 0) msg(S, 'kader', '🎓 Neue Liga, neue Gegner: Die Erfahrung deiner Spieler zählt hier erst mal weniger – mit jedem Spiel wächst sie wieder.'); } S.expLvl = S.lvl;
     if (!first && S.skt) { if (skv(S, 'trM')) { try { var wy = newYouth(S, D, false); wy.tal = 5; wy.pot = Math.max(wy.pot || 0, wy.str + 25); if (youthAdd(S, wy)) msg(S, 'jugend', '🌟 Wunderkind: ' + wy.n + ' (5 Sterne) wechselt in deine Academy!'); } catch (e0) {} } var jkS = Math.floor(skv(S, 'jk')); if (jkS) { S.jokers = (S.jokers || 0) + jkS; msg(S, 'erfolg', '🃏 Fähigkeiten: +' + jkS + ' Joker zum Saisonstart.'); } }
     if (!first) kidsToAcademy(S, D);
-    S.season = seasonOf(S.date);
+    var prevS = S.season; S.season = seasonOf(S.date);
     var L = D.lv[S.lvl];
-    if (!first) {
+    if (!first) { S.players.forEach(function (p) { if (!p.gp && !p.mins) return; p.hist = (p.hist || []).filter(function (h) { return h.s !== prevS; }); p.hist.push({ s: prevS, c: p.loan && p.loan.to ? p.loan.to : S.club, gp: p.gp, g: p.g, a: p.a, avg: p.gp ? Math.round(p.gr / p.gp * 10) / 10 : null }); if (p.hist.length > 8) p.hist = p.hist.slice(-8); });
       S.players.forEach(function (p) { p.age++; }); S.youth.forEach(function (y) { y.s0 = y.str; }); S.inbox = []; S.mails = (S.mails || []).filter(function (m) { return !m.answered && !m.info; });
     }
-    S.players.forEach(function (p) { p.fitCap = 80; p.fit = Math.min(p.fit, rnd(60, 72)); });
+    S.players.forEach(function (p) { p.fitCap = 80; p.fit = Math.min(p.fit, rnd(60, 72)); }); try { carEnsure(S, D); } catch (ce) { }
     S.players.forEach(function (p) { p.mins = 0; p.g = 0; p.a = 0; p.gp = 0; p.gr = 0; p.lg = 0; p.la = 0; p.lgp = 0; p.lgr = 0; p.lkg = 0; p.lga = 0; p.cgp = 0; p.cg = 0; p.ca = 0; p.cgr = 0; p.str0 = p.str; p.tries = 0; p.block = false; });
     var need = { TW: 2, AB: 5, MF: 5, ST: 3 }, added = [];
     Object.keys(need).forEach(function (pos) {
@@ -2061,7 +2062,7 @@ var MGR = (function () {
     var SLOTMAP = {}; (function () { var xs = S.live && S.live.on ? S.live.on : (S.lineup.xi || currentXI(S).map(function (q) { return q ? q.id : null; })); var sl = FORMS[S.lineup.form]; xs.forEach(function (id, i) { if (id != null) SLOTMAP[id] = sl[i]; }); if (S.live && S.live.st) Object.keys(S.live.st).forEach(function (id) { if (S.live.st[id].slot) SLOTMAP[id] = SLOTMAP[id] || S.live.st[id].slot; }); })();
     Object.keys(res.played).forEach(function (id) {
       var x = res.played[id]; var p = S.players.filter(function (q) { return q.id === +id; })[0]; if (!p || !x.min) return;
-      p.gp++; p.xgp = (p.xgp || 0) + 1; p.recent = (p.recent || 0) + 1; p.g += x.g; p.a += x.a; if (!test) p.mins = (p.mins || 0) + (x.min || 0);
+      p.gp++; p.xgp = (p.xgp || 0) + 1; if (p.exAdj && !test) p.exAdj = Math.min(0, p.exAdj + 1 / 18); p.recent = (p.recent || 0) + 1; p.g += x.g; p.a += x.a; if (!test) p.mins = (p.mins || 0) + (x.min || 0);
       var grade = Math.round(clamp(x.grade, 1, 6) * 10) / 10; p.gr += grade;
       if (o.comp === 'kp' || o.comp === 'mrp' || o.comp === 'dfb') { p.cgp = (p.cgp || 0) + 1; p.cg = (p.cg || 0) + x.g; p.ca = (p.ca || 0) + x.a; p.cgr = (p.cgr || 0) + grade; } if (o.comp === 'liga') { p.lgp = (p.lgp || 0) + 1; p.lg = (p.lg || 0) + x.g; p.la = (p.la || 0) + x.a; p.lgr = (p.lgr || 0) + grade; if (p.dp === 'TW' && x.min >= 60) { p.lkg = (p.lkg || 0) + 1; p.lga = (p.lga || 0) + ga; } } p.lastGrade = grade; grades.push({ id: p.id, n: p.n, pos: p.dp, grade: grade, min: x.min, g: x.g, a: x.a, sv: x.sv || 0, sub: !!x.sub });
       p.form = clamp(p.form * 0.7 + (3.5 - grade) * 1.5, -5, 5);
@@ -2541,7 +2542,7 @@ var MGR = (function () {
   }
 
   function weekly(S, D) {
-    xp(S, 2);
+    xp(S, 2); try { carEnsure(S, D); } catch (ce) { }
     ['captain', 'pen', 'fk', 'ck'].forEach(function (k) { var tp = S[k] && S.players.filter(function (p) { return p.id === S[k]; })[0]; if (tp) tp.form = clamp(tp.form + (k === 'captain' ? 0.35 : 0.2), -5, 5); });
     var e = eff(S, D); var inCamp = !!(S.camp && S.camp.from <= S.date);
     var tf = S.train; var intM = { locker: 0.8, normal: 1, hart: 1.25 }[tf.int];
@@ -2556,7 +2557,7 @@ var MGR = (function () {
       var fac = 1 + (e.dev + (p.pos === 'TW' ? e.twdev : 0)) / 100;
       var play = p.loan && p.loan.to ? 1.15 : (p.recent >= 1 ? 1.15 : 0.85 * (1 + e.bench / 100));
       var g = Math.max(0, p.pot - p.str) * 0.0055 * ageF * (0.55 + p.tal * 0.2) * m * fac * play;
-      var trt = skTraits(p); if (trt.pers === 1 && g > 0) g *= 1.1;
+      var trt = skTraits(p); if (trt.pers === 1 && g > 0) g *= 1.1; if (g > 0) g *= [1.18, 1.06, 1, 0.82][trt.ein];
       if (p.age >= 31) g -= 0.035 + (p.age - 31) * 0.02;
       p.str = clamp(p.str + g, 1, 99); skTrain(p, g, p.tp || tf.focus);
       p.form = p.form * 0.85 + (trt.pers === 4 ? gauss() * 0.6 : 0); p.recent = 0;
@@ -2930,7 +2931,7 @@ var MGR = (function () {
     var reFee = fee, reSal = sal, fix = false;
     var askF = (S.mlvl || 1) >= 29 ? nice(mp.fee * 0.95) : mp.fee;
     if (!mp.free && !ng.feeOk && fee < askF && (fee < askF * 0.85 || R() < 0.5)) { ok = false; why = mp.club + ' lehnt das Angebot ab und fordert ' + euro(askF) + ' Ablöse.'; reFee = askF; fix = true; }
-    var gap = S.lvl - natLvl(D, mp.str); var needSal = nice(mp.dem * (1 + 0.35 * Math.max(0, gap)));
+    var gap = S.lvl - natLvl(D, mp.str), wvB = skTraits(mp).wv; var needSal = nice(mp.dem * (1 + 0.35 * Math.max(0, gap)) * [0.92, 1.15, 1, gap < 0 ? 0.88 : gap > 0 ? 1.15 : 1][wvB]);
     if (ok && gap >= 3 && sal < mp.dem * 3) { ok = false; why = mp.n + ' möchte nicht in der ' + D.lv[S.lvl].name + ' spielen.'; }
     if (sal < needSal * 0.98 && !(sal >= needSal * 0.9 && R() < 0.4)) { if (ok) why = mp.n + ' lehnt ab. Er möchte ' + euro(needSal) + ' im Monat verdienen.'; else if (fix) why += ' Außerdem möchte ' + mp.n + ' ' + euro(needSal) + ' im Monat.'; ok = false; reSal = needSal; fix = true; }
     if (!ok && fix && !(gap >= 3 && sal < mp.dem * 3)) { var ng2 = JSON.parse(JSON.stringify(ng)); ng2.fee = reFee; ng2.sal = reSal; var tre = trAct(S, mp, 'renego'); tre.mail = S.nextId; actMail(S, (mp.free || ng.feeOk) ? 'Berater von ' + mp.n : 'Sportdirektor ' + mp.club, 'Nachbessern? ' + mp.n, why + ' Wenn du auf die Forderung eingehst, ist der Wechsel durch.', [{ label: 'Nachbessern: ' + (reFee ? euro(reFee) + ' Ablöse · ' : '') + euro(reSal) + '/Monat', fx: '' }, { label: 'Verzichten', fx: '' }], 'renego', ng2); return; }
@@ -3226,7 +3227,7 @@ var MGR = (function () {
         var ep = getP(S, p.pid); if (ep.loan && ep.loan.from) err('Leihspieler kannst du nicht verlängern.');
         if (ep.block) { info = ep.n + ' will nicht mehr verhandeln.'; break; }
         var unt = +p.until; if (!(unt > ep.ce && unt <= seasonEndYear(S) + 5)) err('Ungültige Laufzeit.');
-        var dem = salDemand(ep, S.lvl) * (ep.gp < 3 && S.fix.some(function (f) { return f.hg != null; }) ? 1.1 : 1) * (1 + Math.max(0, unt - ep.ce - 2) * 0.05) * (ep.age >= 31 ? 0.85 : 1);
+        var dem = salDemand(ep, S.lvl) * (ep.gp < 3 && S.fix.some(function (f) { return f.hg != null; }) ? 1.1 : 1) * (1 + Math.max(0, unt - ep.ce - 2) * 0.05) * (ep.age >= 31 ? 0.85 : 1); var wvE = skTraits(ep).wv, gapE = S.lvl - natLvl(D, ep.str); dem *= [1.12, 0.9, 1, gapE > 0 ? 1.15 : 1][wvE];
         dem = Math.max(dem, ep.sal * 0.9);
         var off = +p.sal;
         if (off >= dem || (off >= dem * 0.9 && R() < 0.5)) { ep.sal = nice(off); ep.ce = unt; info = ep.n + ' verlängert bis 06/' + unt + ' für ' + euro(ep.sal) + ' im Monat.'; msg(S, 'transfer', '✍️ ' + info); }
@@ -3342,7 +3343,7 @@ var MGR = (function () {
           if (ng.fee) book(S, 'Ablösezahlungen', -ng.fee); trLog(S, 'in', ng.mp.n, ng.fee || 0, ng.mp.club || 'vereinslos', ng.mp, D);
           if (rs) { S.tb -= rs; S.cash += rs; }
           var m2 = ng.mp; S.sgMid = S.sgMid || {}; if (m2.mid && S.sgMid[m2.mid]) { ml.answered = { idx: 0, res: ['Schon verpflichtet'] }; err(m2.n + ' hat schon bei dir unterschrieben.'); } if (S.players.concat((S.incoming || []).map(function (x) { return x.p; })).some(function (q) { return q.n === m2.n && Math.abs((q.str0 || q.str) - m2.str) < 0.01 && q.age === m2.age; })) { ml.answered = { idx: 0, res: ['Schon im Kader'] }; err(m2.n + ' ist schon in deinem Kader.'); } if (m2.mid) S.sgMid[m2.mid] = 1;
-          var np = { id: S.nextPid++, n: m2.n, pos: m2.pos, dp: m2.dp, dp2: m2.dp2, age: m2.age, str: m2.str, tal: m2.tal, pot: m2.pot, fit: 90, form: 0, inj: 0, g: 0, a: 0, gp: 0, gr: 0, recent: 0, tries: 0, sal: ng.sal, ce: ng.until };
+          var np = { id: S.nextPid++, n: m2.n, pos: m2.pos, dp: m2.dp, dp2: m2.dp2, age: m2.age, str: m2.str, tal: m2.tal, pot: m2.pot, fit: 90, form: 0, inj: 0, g: 0, a: 0, gp: 0, gr: 0, recent: 0, tries: 0, sal: ng.sal, ce: ng.until, fee0: ng.fee || 0 };
           np.str0 = np.str; var sig = { id: np.id, n: np.n, pos: np.dp, pos2: np.dp2, age: np.age, str: Math.round(np.str), tal: np.tal, fee: ng.fee, sal: ng.sal, until: ng.until, club: m2.club || 'vereinslos' };
           if (ng.fee >= 10000) ach(S, 'rekordtransfer', m2.n + ' für ' + euro(ng.fee), true);
           var late = !m2.free && !inWindow(S.date);
@@ -3677,9 +3678,9 @@ var MGR = (function () {
       case 'clubSupport': { var Ou = ownInit(S), cu = Ou.clubs[p.n]; if (!cu) err('?'); var am = Math.round(+p.amt || 0); if (am < 1000) err('Mindestens 1.000 €.'); var Pu = privInit(S); if (Pu.cash < am) err('Nicht genug Privatvermögen.'); Pu.cash -= am; Pu.log.unshift([S.date, 'Unterstützung ' + p.n, -am]); cu.sup = (cu.sup || 0) + am; var chU = ownChance(cu); info = '💶 ' + euro(am) + ' an ' + p.n + ' – Aufstiegschance jetzt ' + chU.up + ' %, Abstiegsrisiko ' + chU.dn + ' %.'; break; }
       case 'clubSell': { var Os = ownInit(S), cs = Os.clubs[p.n]; if (!cs) err('?'); if (cs.pct == null) cs.pct = 100; var sv = nice(cs.val * cs.pct / 100 * 0.9), gn = sv - cs.price; privInit(S).cash += sv; privInit(S).log.unshift([S.date, 'Verkauf ' + p.n, sv]); delete Os.clubs[p.n]; Os.log.unshift([S.date, p.n + ' verkauft (' + euro(sv) + ', ' + (gn >= 0 ? 'Gewinn ' : 'Verlust ') + euro(Math.abs(gn)) + ')']); info = p.n + ' verkauft für ' + euro(sv) + ' – ' + (gn >= 0 ? 'Gewinn ' : 'Verlust ') + euro(Math.abs(gn)) + ' (+ ' + euro(cs.paid || 0) + ' Einnahmen bisher).'; break; }
       case 'kitSet': { // Trikot-Designer (Unser Club): je Trikot Oberteil, Hose, Stutzen + Logo-Darstellung – wird automatisch gespeichert
-        var kd = p.d || {}, okc = function (c, d) { return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : d; }, lm = function (v) { return ['orig', 'black', 'white'].indexOf(v) >= 0 ? v : 'orig'; }, kout = {};
+        var kd = p.d || {}, okc = function (c, d) { return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : d; }, lm = function (v) { return ['orig', 'black', 'white', 'acc', 'wb', 'bw', 'wm'].indexOf(v) >= 0 ? v : 'orig'; }, kout = {};
         ['home', 'away', 'gk'].forEach(function (k) { var x = kd[k] || {}, sh = x.sh || {}, ho = x.ho || {}, so = x.so || {};
-          kout[k] = { sh: { ds: clamp(+sh.ds || 0, 0, 9), a: okc(sh.a, '#4f8f2a'), b: okc(sh.b, '#ffffff'), sl: okc(sh.sl, okc(sh.a, '#4f8f2a')) }, ho: { ds: clamp(+ho.ds || 0, 0, 3), a: okc(ho.a, '#ffffff'), b: okc(ho.b, '#4f8f2a') }, so: { ds: clamp(+so.ds || 0, 0, 3), a: okc(so.a, '#4f8f2a'), b: okc(so.b, '#ffffff') }, lsp: lm(x.lsp), lout: lm(x.lout) }; });
+          kout[k] = { sh: { ds: clamp(+sh.ds || 0, 0, 11), a: okc(sh.a, '#4f8f2a'), b: okc(sh.b, '#ffffff'), sl: okc(sh.sl, okc(sh.a, '#4f8f2a')), kr: clamp(+sh.kr || 0, 0, 2) }, ho: { ds: clamp(+ho.ds || 0, 0, 3), a: okc(ho.a, '#ffffff'), b: okc(ho.b, '#4f8f2a') }, so: { ds: clamp(+so.ds || 0, 0, 3), a: okc(so.a, '#4f8f2a'), b: okc(so.b, '#ffffff') }, lsp: lm(x.lsp), lout: lm(x.lout), sm: ['both', 'logo', 'text'].indexOf(x.sm) >= 0 ? x.sm : 'both', s2: !!x.s2 }; });
         S.kitD = kout; info = ''; break; }
       case 'ytCoach': { if (!S.built[p.k]) err('Dieses Jugendteam gibt es noch nicht.'); var Tc = ytInit(S, p.k, D), ytl = +p.lv; if (!YTC[ytl]) err('?'); Tc.coach = ytl; info = ytl ? YTC[ytl][1] + ' für die ' + YTN[p.k] + ' eingestellt (' + euro(YTC[ytl][2]) + '/Monat).' : 'Jugendtrainer der ' + YTN[p.k] + ' entlassen.'; break; }
       case 'ownRepSeen': { if (S.own && S.own.rep) S.own.rep.seen = true; info = ''; break; }
@@ -3796,9 +3797,29 @@ var MGR = (function () {
   var SKWM = { LV: 'RV', LM: 'RM', LA: 'RA' };
   var SKPERS = [['Führungsspieler', 'Hebt die Stimmung im Team, wenn er regelmäßig spielt'], ['Ehrgeizig', 'Entwickelt sich etwas schneller'], ['Teamplayer', 'Legt öfter Tore auf'], ['Profi', 'Regeneriert schneller'], ['Launisch', 'Seine Form schwankt stärker'], ['Ruhig', 'Sieht seltener Karten'], ['Lebemann', 'Regeneriert etwas langsamer'], ['Kämpfer', 'Ermüdet im Spiel weniger']];
   var IPN = ['gering', 'normal', 'hoch'];
+  // Stationen + frühere Saisons: einmal (deterministisch) simuliert, danach mit echten Wechseln fortgeschrieben
+  function carEnsure(S, D) {
+    var names = []; try { Object.keys(S.world.lv).forEach(function (l) { S.world.lv[l].forEach(function (t) { if (t.n !== S.club && !/ (II|III|IV)$/.test(t.n)) names.push([+l, t.n]); }); }); } catch (e) { }
+    S.players.forEach(function (p) {
+      if (!p.car) {
+        var r = srng(hashS(String(p.n) + '|car')), t = skTraits(p), age = p.age || 22, y0 = S.season - Math.max(0, age - 18), fr = [0.42, 0.05, 0.16, 0.24][t.wv], car = [], hist = [];
+        var strAt = function (y) { return Math.max(3, p.str - Math.max(0, S.season - y) * (age - (S.season - y) < 25 ? 1.6 : 0.4)); };
+        var clubAt = function (y) { var lv = natLvl(D, strAt(y)), c = names.filter(function (x) { return Math.abs(x[0] - lv) <= 1; }); if (!c.length) c = names; return c.length ? c[Math.floor(r() * c.length)][1] : 'FC Blau-Weiß'; };
+        var moves = []; if (!p.youth && !p.self) for (var y = y0 + 1; y <= S.season; y++) if (r() < fr) moves.push(y);
+        if (!moves.length) car.push({ c: S.club, y: y0, f: 0, u: 1 });
+        else { car.push({ c: clubAt(y0), y: y0, f: 0, u: 1 }); moves.forEach(function (y, i) { var last = i === moves.length - 1, c = last ? S.club : clubAt(y); for (var tz = 0; tz < 6 && c === car[car.length - 1].c; tz++) c = clubAt(y); var a = age - (S.season - y), fe = r() < 0.28 ? 0 : nice(mw({ str: strAt(y), age: a, tal: p.tal || 2 }) * (0.5 + r() * 0.9)); car.push({ c: c, y: y, f: fe }); }); if (car[car.length - 1].c !== S.club) car.push({ c: S.club, y: S.season, f: 0 }); }
+        if (p.fee0 != null) { car = car.filter(function (x) { return x.c !== S.club; }); if (!car.length) car.push({ c: clubAt(y0), y: y0, f: 0, u: 1 }); car.push({ c: S.club, y: S.season, f: p.fee0 }); }
+        p.car = car;
+        if (!p.hist) { for (var k = 3; k >= 1; k--) { var ys = S.season - k; if (age - k < 18) continue; var cl = car.filter(function (x) { return x.y <= ys; }).pop(); var gp = Math.round(6 + r() * 26), at = p.pos === 'ST' ? 0.45 : p.pos === 'MF' ? 0.18 : p.pos === 'AB' ? 0.05 : 0; hist.push({ s: ys, c: cl ? cl.c : S.club, gp: gp, g: Math.round(gp * at * (0.4 + r())), a: Math.round(gp * (at * 0.6 + 0.04) * (0.3 + r())), avg: Math.round((2.4 + r() * 1.5) * 10) / 10, sim: 1 }); } p.hist = hist; }
+      } else { var lc = p.car[p.car.length - 1]; if (lc && lc.c !== S.club && !(p.loan && p.loan.to)) p.car.push({ c: S.club, y: S.season, f: p.fee0 || 0 }); }
+    });
+  }
   function skSeed(p) { return srng(hashS(String(p.n || '') + '|sk')); }
-  function skTraits(p) { var r = skSeed(p); for (var i = 0; i < 14; i++) r(); var a = r(), b = r(); return { ip: a < 0.2 ? 0 : a < 0.92 ? 1 : 2, pers: Math.floor(b * SKPERS.length) }; }
-  function skExp(p) { return clamp(Math.floor(1 + Math.max(0, (p.age || 25) - 18) / 4.5 + (p.xgp || 0) / 90), 1, 5); }
+  function skTraits(p) { var r = skSeed(p); for (var i = 0; i < 14; i++) r(); var a = r(), b = r(), c = r(), d = r(); return { ip: a < 0.2 ? 0 : a < 0.92 ? 1 : 2, pers: Math.floor(b * SKPERS.length), wv: c < 0.15 ? 0 : c < 0.3 ? 1 : c < 0.85 ? 2 : 3, ein: d < 0.12 ? 0 : d < 0.27 ? 1 : d < 0.85 ? 2 : 3 }; }
+  var WVN = [['Wandervogel', 'Wechselt gern – lässt sich leichter locken, verlängert aber ungern'], ['Vereinstreu', 'Bleibt am liebsten – verlängert günstiger, ist schwer wegzulocken'], ['Neutral', 'Keine besonderen Vorlieben'], ['Will nach oben', 'Kommt gern zu höherklassigen Vereinen, will aus schwächeren weg']];
+  var EINN = [['Trainingsweltmeister', 'Entwickelt sich deutlich schneller'], ['Achtet auf seinen Körper', 'Entwickelt sich etwas schneller, ist fitter'], ['Neutral', 'Normale Entwicklung'], ['Trainingsfaul', 'Entwickelt sich langsamer']];
+  // Erfahrung ist ligabezogen: nach einem Aufstieg sinkt sie (exAdj), mit Spielen in der neuen Liga kommt sie zurück
+  function skExp(p) { return clamp(Math.floor(1 + Math.max(0, (p.age || 25) - 18) / 4.5 + (p.xgp || 0) / 90 + (p.exAdj || 0)), 1, 5); }
   function skRegF(p) { var t = skTraits(p); return clamp(1.15 - Math.max(0, (p.age || 25) - 23) * 0.03, 0.6, 1.15) * (t.pers === 3 ? 1.1 : t.pers === 6 ? 0.9 : 1); }
   function skillsOf(p) {
     var dp = p.dp || p.pos || 'ZM'; if (dp === 'AB') dp = 'IV'; if (dp === 'MF') dp = 'ZM'; var w = SKW[SKWM[dp] || dp] || SKW.ZM, tw = dp === 'TW', r = skSeed(p), d = p.skd || {};
@@ -3806,7 +3827,7 @@ var MGR = (function () {
     var sw = 0, sv = 0; raw.forEach(function (b, i) { var wi = w[i] || 0.02; sw += wi; sv += wi * b; }); var c = sv / sw, str = p.str || 1, o = {};
     SKL.forEach(function (s, i) { o[s[0]] = Math.round(clamp(str + raw[i] - c, 1, 100)); }); return o;
   }
-  function skInfo(p) { var t = skTraits(p); return { sk: skillsOf(p), ex: skExp(p), rg: Math.round(skRegF(p) / 1.265 * 100), ip: t.ip, pers: t.pers }; }
+  function skInfo(p) { var t = skTraits(p); return { sk: skillsOf(p), ex: skExp(p), rg: Math.round(skRegF(p) / 1.265 * 100), ip: t.ip, pers: t.pers, wv: t.wv, ein: t.ein }; }
   var SKFOC = { aussen: ['fla', 'tem', 'ant'], standards: ['elf', 'dis', 'fla', 'tec'], technik: ['tec', 'pas', 'dri', 'kre'], abschluss: ['sch', 'kop', 'lfw'], abwehr: ['zwk', 'gra', 'stl', 'spo'], torwart: ['ref', 'fan', 'tst', 'abs', 'lin'], kondition: ['aus', 'tem', 'ant', 'phs'], taktik: ['stl', 'pas'], x_elf: ['elf'], x_spr: ['tem', 'ant'], x_tec: ['tec', 'dri'], x_pas: ['pas', 'spo'] };
   function skTrain(p, g, focus) { var ks = SKFOC[focus]; if (!ks || !(g > 0)) return; p.skd = p.skd || {}; ks.forEach(function (k) { p.skd[k] = clamp((p.skd[k] || 0) + g * 5, -15, 15); }); }
   function skAt(p, k) { return skillsOf(p)[k] || p.str; }
@@ -4326,10 +4347,11 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
     var curMd = 0; S.fix.forEach(function (f) { if (f.hg != null) curMd = Math.max(curMd, f.md); });
     var mdShow = Math.max(1, curMd);
     var matchday = function (md) { return S.fix.filter(function (f) { return f.md === md; }).map(function (f) { return { h: teams[f.h].n, a: teams[f.a].n, hg: f.hg, ag: f.ag, d: f.d, svw: !!(teams[f.h].svw || teams[f.a].svw) }; }); };
+    try { if (S.players.some(function (p) { return !p.car; })) carEnsure(S, D); } catch (ce) { }
     var players = S.players.map(function (p) {
       return { id: p.id, n: p.n, pos: p.dp, pos2: p.dp2, f2: p.dp2 ? Math.round((p.f2 == null ? 0.78 : p.f2) * 100) : null, pos3: p.dp3 || null, f3: p.dp3 ? Math.round((p.f3 || 0) * 100) : null, grp: p.pos, age: p.age, str: Math.round(p.str), dS: p.str0 != null ? Math.round(p.str) - Math.round(p.str0) : 0, sh: (p.sh || []).concat([Math.round(p.str * 10) / 10]), isNew: !!p.isNew, injN: p.injN || (p.inj > 0 ? ((INJ_T.filter(function (x) { return p.inj <= x[0]; })[0] || INJ_T[3])[1][p.id % 3]) : null), docOk: !!(p.inj >= 10 && !(injCat(p.injN) && !(+injCat(p.injN)[4] > 0)) && (!p.docD || diffDays(p.docD, S.date) >= 14)), docIn: p.docD ? Math.max(0, 14 - diffDays(p.docD, S.date)) : 0, docCost: p.inj > 0 ? nice((injCat(p.injN) ? +injCat(p.injN)[4] || 1 : 1) * docCost(S, D, p)) : 0, leaving: p.leaving || null, lgp: p.lgp || 0, mins: p.mins || 0, lg: p.lg || 0, la: p.la || 0, lgr: p.lgp ? Math.round(p.lgr / p.lgp * 10) / 10 : null, strF: Math.round(p.str * 10) / 10, tal: p.tal, talLo: e.scout ? p.tal : Math.max(1, p.tal - 1), talHi: e.scout ? p.tal : Math.min(5, p.tal + 1), pot: potVis(S) ? Math.round(p.pot) : null, skx: skInfo(p),
         fit: Math.round(p.fit), form: Math.round(p.form * 10) / 10, inj: p.inj, mw: mw(p), sal: p.sal, ce: p.ce, g: p.g, a: p.a, gp: p.gp, avg: p.gp ? Math.round(p.gr / p.gp * 10) / 10 : null, last: p.lastGrade || null,
-        loan: p.loan || null, tl: !!p.tl, ask: p.ask || null, fp: S.train.fp.indexOf(p.id) >= 0, youth: !!p.youth, block: !!p.block, ending: p.ce <= seasonEndYear(S), dem: salDemand(p, S.lvl), natLvl: natLvl(D, p.str), inXI: xi.indexOf(p) >= 0, posG: p.posG || null, starDone: p.starS === S.season, dStr: p.dStr || 0, dSeas: Math.round((p.str - (p.str0 == null ? p.str : p.str0)) * 10) / 10, tp: p.tp || null, retrain: p.retrain || null, self: !!p.self, ban: p.ban || 0, abs: p.abs || 0, yc: p.yc || 0, untouch: !!p.untouch };
+        loan: p.loan || null, tl: !!p.tl, ask: p.ask || null, fp: S.train.fp.indexOf(p.id) >= 0, youth: !!p.youth, block: !!p.block, ending: p.ce <= seasonEndYear(S), dem: salDemand(p, S.lvl), natLvl: natLvl(D, p.str), inXI: xi.indexOf(p) >= 0, posG: p.posG || null, starDone: p.starS === S.season, dStr: p.dStr || 0, dSeas: Math.round((p.str - (p.str0 == null ? p.str : p.str0)) * 10) / 10, tp: p.tp || null, retrain: p.retrain || null, self: !!p.self, ban: p.ban || 0, abs: p.abs || 0, yc: p.yc || 0, untouch: !!p.untouch, car: p.car || [], hist: p.hist || [] };
     });
     var mkMarket = function (mp) { return { nlz: !!mp.nlz, nlzLeft: mp.nlz ? diffDays(S.date, mp.nlzUntil) + 1 : 0, mid: mp.mid, n: mp.n, pos: mp.dp, pos2: mp.dp2, age: mp.age, str: Math.round(mp.str), talLo: e.scout ? mp.tal : Math.max(1, mp.tal - 1), talHi: e.scout ? mp.tal : Math.min(5, mp.tal + 1), pot: potVis(S) ? Math.round(mp.pot) : null, skx: mkSkills(S, mp), mw: mw(mp), fee: mp.fee, dem: mp.dem, club: mp.club, clubLvl: mp.clubLvl, liga: D.lv[mp.clubLvl] ? D.lv[mp.clubLvl].short : '', free: mp.free, loanFee: mp.loanFee, share: mp.share, gap: S.lvl - natLvl(D, mp.str), moved: mp.moved || null, watched: (S.watch || []).some(function (w) { return w.mid === mp.mid; }) }; };
     var hist = S.fin.hist.concat(S.fin.cur ? [S.fin.cur] : []).slice(-12).map(function (m) { var i = 0, o = 0; Object.keys(m.inn).forEach(function (k) { i += m.inn[k]; }); Object.keys(m.out).forEach(function (k) { o += m.out[k]; }); return { m: m.m, inn: Math.round(i), out: Math.round(o), detIn: m.inn, detOut: m.out }; });
@@ -4398,5 +4420,5 @@ var STOCKS = [['MAST', 'Mainstahl AG', 23.02, 0.03, '#009999'], ['VESP', 'Vega S
   var LIGA_LVL = { 1: 999, 2: 999, 3: 999, 4: 999 };
   // Gebiet einheitlich: in Württemberg und Südbaden sind die Bezirke die unterste Ebene (= Fußballkreis)
   function gebietNorm(vb, g) { g = String(g || ''); if (vb === 'Württemberg' || vb === 'Südbaden') { if (/^Bezirk /.test(g)) return g.replace(/^Bezirk /, 'Kreis '); if (vb === 'Südbaden' && g && !/^(Kreis |Südbaden)/.test(g)) return 'Kreis ' + g; } return g; }
-  return { skInfo: skInfo, SKL: SKL, PERS: SKPERS, IPN: IPN, applyCfg: applyCfg, cfgInfo: cfgInfo, _injT: function (n) { var e = { heal: 0 }, c = {}; for (var i = 0; i < n; i++) { var d = injDays(e), nm = injName(d); c[nm] = (c[nm] || 0) + 1; } return c; }, ligaName: ligaName, gebietNorm: gebietNorm, LIGA_LVL: LIGA_LVL, VB_LAND: VB_LAND, PRO_ORT: PRO_ORT, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
+  return { skInfo: skInfo, SKL: SKL, PERS: SKPERS, IPN: IPN, WVN: WVN, EINN: EINN, applyCfg: applyCfg, cfgInfo: cfgInfo, _injT: function (n) { var e = { heal: 0 }, c = {}; for (var i = 0; i < n; i++) { var d = injDays(e), nm = injName(d); c[nm] = (c[nm] || 0) + 1; } return c; }, ligaName: ligaName, gebietNorm: gebietNorm, LIGA_LVL: LIGA_LVL, VB_LAND: VB_LAND, PRO_ORT: PRO_ORT, dOf: dOf, buildReg: buildReg, rx: rxPub, clubTown: clubTown, geoIndex: geoIndex, geoFind: geoFind, leagueView: wrapD(leagueView), teamSquad: wrapD(teamSquad), oppInfo: wrapD(oppInfo), tableBefore: wrapD(tableBefore), normalize: normalize, newGame: newGame, act: wrapD(actW), view: wrapD(view), summary: wrapD(summary), FEATURES: FEATURES, XPLV: XPLV, levelOf: levelOf, ACH: ACH, SPONS: SPONS, featLvl: featLvl, FORMS: FORMS, DPN: DPN, GRP: GRP, SHOP: SHOP, _int: { simDay: simDay, table: table, xiAvg: xiAvg, mw: mw, eff: eff, natLvl: natLvl } };
 })();

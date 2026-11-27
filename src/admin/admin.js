@@ -2,7 +2,7 @@
 var BG = [['titel', 'Titelbild Startseite (ganze Breite)'], ['publisher', 'Publisher-Logo oben rechts'], ['entwickler', 'Profilbild „Entwickler“ im Chat'],
   ['saisonziel', 'Popup Saisonziel'], ['hauptsponsor', 'Popup Hauptsponsor'], ['ausstatter', 'Popup Ausstatter'], ['budget', 'Popup Saisonbudget'], ['presse', 'Popup Pressekonferenz'], ['vorbereitung', 'Popup Saisonvorbereitung'], ['vorbereitung_winter', 'Titelbild Wintervorbereitung'],
   ['aufstieg', 'Saisonabschluss Aufstieg'], ['klassenerhalt', 'Saisonabschluss Klassenerhalt'], ['abstieg', 'Saisonabschluss Abstieg'], ['wahl', 'Saisonende: Wahl & Auszählung'], ['ligen', 'Saisonende: Ligenübersicht'], ['bestenliste', 'Saisonende: Bestenlisten'], ['vorstand', 'Saisonende: Vorstandsbewertung'], ['neue_saison', 'Saisonstart: Ladebildschirm'], ['entlassung', 'Entlassung'], ['talent', 'Popup Neues Talent / Sterne'],
-  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'], ['vertrag_verl', 'Ersatzbild Vertragsverlängerung'], ['rote_karte', 'Titelbild Rote Karte (Live-Spiel)'], ['verein_kauf', 'Titelbild Vereinskauf (Glückwunsch)'], ['spielstart', 'Hintergrund Ladebildschirm (Spiel startet)'],
+  ['transfer_kauf', 'Ersatzbild Spielerkauf'], ['transfer_verkauf', 'Ersatzbild Spielerverkauf'], ['vertrag_verl', 'Ersatzbild Vertragsverlängerung'], ['rote_karte', 'Titelbild Rote Karte (Live-Spiel)'], ['verein_kauf', 'Titelbild Vereinskauf (Glückwunsch)'], ['verein_anteil', 'Titelbild Anteile aufgestockt (Verein schon im Besitz)'], ['spielstart', 'Hintergrund Ladebildschirm (Spiel startet)'], ['einweihung', 'Titelbild Einweihung (Gebäude eröffnet)'],
   ['krypto_gewinn', 'Fazit Krypto mit Gewinn'], ['krypto_verlust', 'Fazit Krypto mit Verlust'], ['aktie_gewinn', 'Fazit Aktie mit Gewinn'], ['aktie_verlust', 'Fazit Aktie mit Verlust'],
   ['karte_academy', 'Hintergrund Karte Academy-Campus'], ['karte_verein', 'Hintergrund Karte Vereinsgelände'], ['karte_med', 'Hintergrund Karte Med-Abteilung']];
 var SCOUT = [['region', 'Regionales Scout-Netzwerk'], ['video', 'Video-Analyse-Software'], ['daten', 'Talent-Datenbank'], ['sichtung', 'Leistungsdiagnostik & Sichtungstage'], ['tw', 'Torwart-Spezialscout'], ['abwehr', 'Abwehr-Scout'], ['sturm', 'Offensiv-Scout'], ['intl', 'Internationales Scouting']];
@@ -36,7 +36,7 @@ function loginGate(err) {
 function admLogin() { var m = ($('#lgm').value || '').trim(), pw = $('#lgp').value || ''; if (!m || !pw) return toast('E-Mail und Passwort eingeben.', true); authSignIn(m, pw).then(function () { start(); }).catch(function (e) { loginGate(e.message || 'Anmeldung fehlgeschlagen.'); }); }
 function admLogout() { authSignOut(); loginGate(); }
 function gate(msg) { $('#main').innerHTML = '<div class="card"><h2>Admin</h2><p>' + esc(msg) + '</p><a class="btn" href="./">Zum Spiel</a> <button class="btn" onclick="admLogout()">Anderes Konto</button></div>'; }
-function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys, cfg: showCfg, bal: showBal, ev: showEv, fl: showFl, inj: showInj })[k](); }
+function nav(k) { SECTION = k; document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); }); ({ over: showOver, fb: showFb, img: showImg, lig: showLig, inv: showInv, key: showKeys, cfg: showCfg, bal: showBal, ev: showEv, fl: showFl, inj: showInj, platz: showPlatz })[k](); }
 
 /* ---------- Übersicht */
 function showOver() {
@@ -405,6 +405,14 @@ function flSave() { var v = ($('#fl_tx').value || '').trim(); var p = !v || v ==
 
 /* ---------- Verletzungen: Katalog (Name, Häufigkeit, Ausfallspanne, Arzt) – Schlüssel „inj“ in game_config */
 var INJA = null;
+// Platzierungsprämien vom Verband: je Liga ein Betrag pro Tabellenplatz (Standard ab Regionalliga, darunter 0 €)
+function showPlatz() {
+  $('#main').innerHTML = '<div class="spin"></div>';
+  cfgLoad().then(function () { var P = CFI.platz || {}, lv = (CFI.lv || []).slice().sort(function (a, b) { return a.l - b.l; });
+    $('#main').innerHTML = '<div class="card"><h3>🏅 Platzierungsprämien vom Verband</h3><p class="muted" style="font-size:12px">Am Saisonende zahlt der Verband je nach Tabellenplatz diese Prämie aus (zusätzlich zur Meisterprämie). Leer lassen = Standard. 0 € = keine Prämie.</p><div style="overflow:auto">' + lv.map(function (L) { var a = P[L.l] || []; return '<div style="margin:10px 0"><b>' + esc(L.name) + '</b> <span class="muted" style="font-size:11px">(' + a.length + ' Plätze)</span><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">' + a.map(function (v, i) { return '<label style="font-size:10px;display:flex;flex-direction:column;align-items:center">' + (i + 1) + '.<input type="number" min="0" step="1000" class="pz" data-l="' + L.l + '" data-i="' + i + '" value="' + v + '" style="width:92px"></label>'; }).join('') + '</div></div>'; }).join('') + '</div><div class="row" style="gap:8px;margin-top:12px"><button class="btn" onclick="platzSave()">Speichern</button>' + (CF.platz ? '<button class="btn ghost" onclick="if(confirm(\'Auf Standard zurücksetzen?\'))cfgPut(\'platz\',null)">Standard wiederherstellen</button>' : '') + '</div></div>';
+  }).catch(function (e) { $('#main').innerHTML = '<div class="card">Fehler: ' + esc(e.message) + '</div>'; });
+}
+function platzSave() { var o = {}; document.querySelectorAll('.pz').forEach(function (el) { var l = el.dataset.l; (o[l] = o[l] || [])[+el.dataset.i] = Math.max(0, Math.round(+el.value || 0)); }); cfgPut('platz', o); }
 function showInj() {
   $('#main').innerHTML = '<div class="spin"></div>';
   cfgLoad().then(function () { INJA = JSON.parse(JSON.stringify(CFI.inj || [])); injDraw(); }).catch(function (e) { $('#main').innerHTML = '<div class="card">Fehler: ' + esc(e.message) + '</div>'; });

@@ -323,7 +323,7 @@ function spPop(msg0) {
   var h = '<div class="row" style="gap:10px"><span style="font-size:30px">🤝</span><div><h2 style="padding:0;margin:0">' + (renew ? 'Hauptsponsor: Verlängerung' : 'Neuer Hauptsponsor') + '</h2><div class="small muted">Jeder Sponsor nennt Summe und Laufzeit. Jeder Klick auf − Jahr, + Jahr oder Mehr Geld ist ein Verhandlungsversuch (max. 3) – die Laune sinkt. Scheitern zwei Verhandlungen, unterschreibst du automatisch beim dritten.</div></div></div>' + (msg0 ? '<div class="hint">' + esc(msg0) + '</div>' : '') +
     '<div class="spoff" style="margin-top:12px">' + O.map(function (o, i) {
       var head = '<div style="background:#fff;border-radius:10px;height:54px;display:grid;place-items:center"><img src="' + spLogo(o.firm) + '" style="max-height:40px;max-width:90%"></div><b>' + esc(o.firm) + '</b>' + (o.renew ? '<span class="pill g" style="align-self:flex-start;font-size:10px">bisheriger Partner</span>' : '');
-      var cf = amtCols(O)(o.amt); return negoCard('sp', o, i, head, '<div class="big" style="font-size:19px;color:' + cf + '">' + eur(o.amt) + '<span class="xs muted"> / Saison</span></div>', 'spDo(\'spAccept\',' + i + ')', cf);
+      var cf = amtCols(O)(o.amt); return negoCard('sp', o, i, head, '<div class="big" style="font-size:19px;color:' + cf + '">' + eur(o.amt) + '<span class="xs muted"> / Saison</span></div>' + (o.up ? '<div class="xs" style="margin-top:2px">🚀 Aufstiegsprämie <b class="pos">' + eur(o.up) + '</b></div>' : ''), 'spDo(\'spAccept\',' + i + ')', cf);
     }).join('') + '</div>';
   pop(h, { lock: true, wide: true, top: true });
 }

@@ -69,7 +69,7 @@ var MGR_DATA = (function () {
     ['ausbau5k', 'Stadion', 'Stadionausbau Stufe 1', '+10.000 Plätze (ab 10.000 Plätzen, einmalig)', 2500000, 3000, 180, '', 'kap:+10000'],
     ['ausbau10k', 'Stadion', 'Stadionausbau Stufe 2', '+20.000 Plätze', 12000000, 12000, 270, 'ausbau5k', 'kap:+20000'],
     ['arena', 'Stadion', 'Neue Arena', 'Stadion mit 89.000 Plätzen, Arena-Atmosphäre', 60000000, 60000, 540, 'ausbau10k', 'fans:+5; ticket:+10'],
-    ['vip', 'Stadion', 'VIP-Logen', 'Business-Bereich, mehr Einnahmen pro Heimspiel', 2000000, 5000, 150, 'sitztrib', 'ticket:+20; spons:+10'],
+    ['vip', 'Stadion', 'VIP-Logen', 'Business-Bereich, mehr Einnahmen pro Heimspiel', 2000000, 5000, 150, 'sitztrib', 'ticket:+45; spons:+30; sponsorchance:+15'],
     ['videowand', 'Stadion', 'Videowand', 'Werbefläche und Stimmung', 40000, 100, 20, '', 'spons:+10; fans:+2'],
     ['flutlicht2', 'Stadion', 'Spielflutlicht', 'Pflicht ab Regionalliga (Flutlicht-Stufe 2)', 120000, 300, 45, '', 'flut:2'],
     ['flutlicht3', 'Stadion', 'TV-Flutlicht', 'Pflicht ab 3. Liga (Flutlicht-Stufe 3)', 1500000, 1500, 90, 'flutlicht2', 'flut:3'],

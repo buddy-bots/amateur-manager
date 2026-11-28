@@ -116,12 +116,17 @@ window.addEventListener('dragover', function (e) { e.preventDefault(); }); windo
 // Verkleinern (GIFs bleiben unverändert, damit die Animation erhalten bleibt)
 function maxFor(key) { return /^(bg|hintergrund|kauf|verkauf|verl|rel)\./.test(key) ? 1920 : 900; }
 function optimizeAll() {
-  var ks = Object.keys(MAP).filter(function (k) { return !/\.(webp|gif|jpe?g)$/i.test(MAP[k].path); }), i = 0, b = $('#optb'); if (!ks.length) return;
+  // alle Bilder außer GIFs prüfen: neu speichern, wenn es kein WebP ist oder die Datei größer als 300 KB ist
+  var ks = Object.keys(MAP).filter(function (k) { return !/\.gif$/i.test(MAP[k].path); }), i = 0, done = 0, skip = 0, fail = 0, saved = 0, b = $('#optb');
+  if (!ks.length) return toast('Keine Bilder zum Optimieren gefunden.');
   if (b) b.disabled = true;
   var next = function () {
-    if (i >= ks.length) { toast('Fertig – ' + ks.length + ' Bilder optimiert ✓'); return showImg(true); }
-    var k = ks[i++]; if (b) b.textContent = '⏳ Optimiere ' + i + ' / ' + ks.length + ' …';
-    fetch(mediaUrl(MAP[k].path)).then(function (r) { if (!r.ok) throw new Error('Laden fehlgeschlagen'); return r.blob(); }).then(function (bl) { return upload(k, bl, true); }).then(next, function () { next(); });
+    if (i >= ks.length) { if (b) { b.disabled = false; b.textContent = '🪄 Bilder optimieren'; } toast('Fertig: ' + done + ' optimiert' + (saved ? ' (−' + Math.round(saved / 1024) + ' KB)' : '') + ', ' + skip + ' waren schon klein' + (fail ? ', ' + fail + ' fehlgeschlagen' : '') + ' ✓', fail > 0 && !done); return showImg(true); }
+    var k = ks[i++]; if (b) b.textContent = '⏳ Prüfe ' + i + ' / ' + ks.length + ' …';
+    fetch(mediaUrl(MAP[k].path) + (mediaUrl(MAP[k].path).indexOf('?') < 0 ? '?' : '&') + 'o=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('Laden fehlgeschlagen'); return r.blob(); }).then(function (bl) {
+      if (/\.webp$/i.test(MAP[k].path) && bl.size <= 300 * 1024) { skip++; return; }
+      var f = bl.type ? bl : new Blob([bl], { type: 'image/jpeg' }); return shrink(f, maxFor(k)).then(function (o) { if (o.blob.size >= bl.size && /\.webp$/i.test(MAP[k].path)) { skip++; return; } saved += Math.max(0, bl.size - o.blob.size); done++; return upload(k, bl, true); });
+    }).then(next, function (e) { fail++; console.warn('Optimieren', k, e); next(); });
   };
   next();
 }

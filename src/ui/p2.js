@@ -165,9 +165,13 @@ function decide(id, k, ev) {
 }
 
 /* ===================================================================== Aktionen (laufen auf dem Server, Antwort ist der neue Spielstand) */
+var OPTI = { swap: 1, bench: 1, form: 1, lineupAuto: 1, autoLineup: 1, capt: 1 };
+function ACTBUSY() { return typeof BUSY !== 'undefined' && BUSY > 0; }
 function act(action, params, o) {
   o = o || {};
   if (!S) return Promise.resolve(null); var mailsBefore = openMails();
+  // Aufstellung sofort anzeigen (Server bestätigt im Hintergrund) – Ziehen fühlt sich dadurch flüssig an
+  if (OPTI[action] && !ACTBUSY()) { try { var S0 = JSON.parse(JSON.stringify(S)); MGR.act(S0, D, action, params || {}); S = S0; V = MGR.view(S, D); render(true); } catch (e) { } }
   return serverAct(action, params || {}).then(function (r) {
     V = MGR.view(S, D);
     if (r.levelUp) NOTE.levelUp = r.levelUp;

@@ -705,9 +705,11 @@ function startLoad() {
   }).catch(function (x) { loading(false); toast(x.message, true); });
 }
 function loadSave(id) {
-  loading(true); game('load', { saveId: id }).then(function (r) {
-    loading(false); SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = !!r.joker; enterGame(r.state);
-  }).catch(function (x) { loading(false); toast(x.message, true); });
+  closePop(); var LD = startLoader('');
+  game('load', { saveId: id }).then(function (r) {
+    SAVEID = r.saveId; SAVEVER = r.version; JOKER_OK = !!r.joker; try { var cl = document.querySelector('.ldclub'); if (cl && r.state && r.state.club) cl.textContent = r.state.club; var sb = document.querySelector('.ldsub'); if (sb) sb.textContent = 'Willkommen zurück – dein Spielstand wird geladen.'; } catch (e) { }
+    LD.done(function () { enterGame(r.state); });
+  }).catch(function (x) { LD.abort(); toast(x.message, true); });
 }
 // Hinweis auf neuen Patch – einmal pro Version und Gerät
 function patchPop() { var k = 'am_seen_ver', old = ''; try { old = localStorage.getItem(k) || ''; } catch (e) {} if (old === ENGVER) return false; try { localStorage.setItem(k, ENGVER); } catch (e) {} if (!old) return false;
